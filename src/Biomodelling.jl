@@ -1,6 +1,5 @@
 module Biomodelling
 
-greet() = print("Hello World!")
 using Distributions
 
 include("comp_g.jl")
