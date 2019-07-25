@@ -1,0 +1,8 @@
+name = "Biomodelling"
+uuid = "9f4c04fe-aef9-11e9-18a8-b5ce91034548"
+authors = ["ayoublasri "]
+version = "0.1.0"
+
+[deps]
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
