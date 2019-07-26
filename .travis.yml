@@ -1,0 +1,26 @@
+language: julia
+
+# for building petri nets in docs
+sudo: required
+os:
+  - linux
+  - osx
+  - windows
+  
+dist: trusty
+
+julia:
+  - 1.0
+  - nightly
+
+matrix:
+  allow_failures:
+    - julia: 1.0
+    - julia: nightly
+
+notifications:
+  email: false
+
+#script: # the default script is equivalent to the following
+#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#  - julia -e 'Pkg.clone(pwd()); Pkg.build("Example"); Pkg.test("Example"; coverage=true)';
