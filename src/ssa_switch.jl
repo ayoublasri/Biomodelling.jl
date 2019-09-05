@@ -32,7 +32,7 @@ function ssa_switch(data,count)
             end
 
             # find which reaction will fire
-            reaction = minimum(findall(c0 * rand() .< c_cum))[1]
+            reaction = minimum(findall(c0 * rand() .< c_cum))[1] #test
 
             # compute waiting time
             dt = -log(rand()) / c0
