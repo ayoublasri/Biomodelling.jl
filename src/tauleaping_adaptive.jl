@@ -1,6 +1,7 @@
 module tauleaping_adaptive
 
 using Distributions
+using PoissonRandom
 
 include("comp_g.jl")
 include("comp_hist_1d.jl")

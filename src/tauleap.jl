@@ -37,7 +37,7 @@ function tauleap(data)
             return t
         end
     # find which reaction will fire ()
-        r = [rand(Distributions.Poisson(v * temp_data.tau)) for v in c]
+        r = [PoissonRandom.pois_rand(v * temp_data.tau) for v in c]
 
 
     # update species after reaction
