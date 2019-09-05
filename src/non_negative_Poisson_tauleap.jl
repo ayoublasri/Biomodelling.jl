@@ -35,7 +35,7 @@ function non_negative_Poisson_tauleap(data,n_c)
             end
             if length(critical_reaction)== 0
                 dt = comp_tau(c, temp_data)
-                r = [rand(Distributions.Poisson(v * dt)) for v in c]
+                r = [rand(PoissonRandom.pois_rand(v * dt)) for v in c]
 
                 if t + dt > tt
                     dt = tt-t
@@ -77,13 +77,13 @@ function non_negative_Poisson_tauleap(data,n_c)
 
                     if dt < dt2
                         temp_data.tau = dt
-                        r = [rand(Distributions.Poisson(v * temp_data.tau)) for v in c]
+                        r = [PoissonRandom.pois_rand(v * temp_data.tau) for v in c]
                         for i in critical_reaction
                             r[i] = 0
                         end
                     elseif dt2 <= dt
                         temp_data.tau = dt2
-                        r = [rand(Distributions.Poisson(v * temp_data.tau)) for v in c]
+                        r = [PoissonRandom.pois_rand(v * temp_data.tau) for v in c]
                         reaction = minimum(findall(c_critical[end] * rand() .< c_critical))[1]
                         for i in critical_reaction
                             if i == reaction

@@ -6,7 +6,7 @@ os:
   - linux
   - osx
   - windows
-  
+
 dist: trusty
 
 julia:

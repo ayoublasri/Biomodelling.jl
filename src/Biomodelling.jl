@@ -1,6 +1,6 @@
 module Biomodelling
 
-using Distributions
+using PoissonRandom
 
 include("comp_g.jl")
 include("comp_hist_1d.jl")

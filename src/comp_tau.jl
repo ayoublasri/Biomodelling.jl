@@ -1,19 +1,5 @@
 function comp_tau(c, data)
 
-# Compute the adaptive tau. For details see "Efficient step size selection
-# for the tau-leaping simulation method" of Cao, Gillespie and Petzold.
-#
-#
-#  ---- INPUT PARAMETERS ----
-#   c: rates vector, [Mx1]
-#   data: same structure as in "reaction_tauleap.m", [1x1]
-#
-# ---- OUTPUT PARAMETERS ----
-#   tau : new tau, [1x1]
-#
-# (c) Giorgos Arampatzis & Yannis Pantazis, 2012, umass & uoc
-#     mail: {gtarabat, yannis.pantazis}@gmail.com
-
     tau = 1e5; # initialize with a big tau
 
     g = comp_g(data)

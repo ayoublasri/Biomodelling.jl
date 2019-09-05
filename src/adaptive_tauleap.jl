@@ -44,7 +44,7 @@ function adaptive_tauleap(data)
             end
 
             # find which reaction will fire
-            r = [rand(Distributions.Poisson(v * temp_data.tau)) for v in c]
+            r = [PoissonRandom.pois_rand(v * temp_data.tau) for v in c]
 
             # update species after reaction
             for reaction = 1:temp_data.M
