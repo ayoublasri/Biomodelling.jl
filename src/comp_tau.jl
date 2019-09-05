@@ -11,8 +11,6 @@ function comp_tau(c, data)
 # ---- OUTPUT PARAMETERS ----
 #   tau : new tau, [1x1]
 #
-# (c) Giorgos Arampatzis & Yannis Pantazis, 2012, umass & uoc
-#     mail: {gtarabat, yannis.pantazis}@gmail.com
 
     tau = 1e5; # initialize with a big tau
 
