@@ -8,6 +8,8 @@ mutable struct Donne
     switch_steps::Int64
     epsilon::Float64
     NoJ::Int64
+    NoC::Int64
+    growth_rate::Float64
     X::Matrix{Int64}
     stoichio::Matrix{Int64}
     stoichio2::Matrix{Int64}
@@ -17,24 +19,22 @@ mutable struct Donne
     hor::Matrix{Int64}
     mrr::Matrix{Int64}
 
-#   rname: file name that describes the model.
+    # ---- OUTPUT PARAMETERS ----
+    #   data.M: number of reactions, [1x1]
+    #   data.N: number of species, [1x1]
+    #   data.X: initial population of the system(), [Nx1]
+    #   data.stoichio: stoichiometric matrix, [Mx4]
+    #   data.kr: rate constants, [Mx1]
+    #   data.delays: reaction delays [type of delay and uniform dirstibution parameters],[Mx3]
+    #   data.cm_rea: connectivity matrix for the reactions, [Mx4]
+    #   data.cm_spe: connectivity matrix for the species, [MxK+1]
 
-# ---- OUTPUT PARAMETERS ----
-#   data.M: number of reactions, [1x1]
-#   data.N: number of species, [1x1]
-#   data.X: initial population of the system(), [Nx1]
-#   data.stoichio: stoichiometric matrix, [Mx4]
-#   data.kr: rate constants, [Mx1]
-#   data.delays: reaction delays [type of delay and uniform dirstibution parameters],[Mx3]
-#   data.cm_rea: connectivity matrix for the reactions, [Mx4]
-#   data.cm_spe: connectivity matrix for the species, [MxK+1]
-
-    function Donne(model, initiale, T, tau, epsilon=0.03)
+    function Donne(model, initiale, T, tau, NoC, growth_data, epsilon=0.03)
 
         M = length(model)
-#####################################
-#### load stoichoimetric matrix #####
-#####################################
+        #####################################
+        #### load stoichoimetric matrix #####
+        #####################################
 
         N = length(getSpecies(model))
 
@@ -50,18 +50,18 @@ mutable struct Donne
         for m = 1:M
             stoichio2[tmp_stoichio2[m,1], :] = tmp_stoichio2[m, 2:5]
         end
-#######################################
-#### load reaction rate constants #####
-#######################################
+        #######################################
+        #### load reaction rate constants #####
+        #######################################
 
         kr = zeros(M, 1)
         for i = 1:M
             kr[i,1] = model[i].rate
         end
 
-############################################
-#### load reaction connectivity matrix #####
-############################################
+        ############################################
+        #### load reaction connectivity matrix #####
+        ############################################
         species = getSpecies(model)
         tmp_cm_rea = getConnectivity(model,species)
 
@@ -71,9 +71,9 @@ mutable struct Donne
         end
 
 
-##################################
-#### load initial population #####
-##################################
+        ##################################
+        #### load initial population #####
+        ##################################
         tmp_X = getInitiale(initiale,species)
 
         X = zeros(N, 1)
@@ -84,9 +84,9 @@ mutable struct Donne
             X[tmp_X[j,1]] = tmp_X[j, 2]
         end
 
-#############################################
-#### create species connectivity matrix #####
-#############################################
+        #############################################
+        #### create species connectivity matrix #####
+        #############################################
         K = 10
 
         cm_spe = zeros(Int64, N, K)
@@ -139,7 +139,12 @@ mutable struct Donne
                 end
             end
         end
-        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr)
+        if typeof(growth_data) == Float64
+            growth_rate = growth_data
+        else
+            growth_rate = growth_estimate(growth_data)
+        end
+        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr)
     end
 end
 
@@ -298,5 +303,13 @@ function getInitiale(initiale,species)
     end
     temp_initiale[:,1] = ind
     int_pop = temp_initiale
-return int_pop
+    return int_pop
+end
+
+function growth_estimate(growth_data)
+    exp_growth(t, p) = p0 * exp.(p[1] * t)
+    p0 = growth_data[1,5]
+    fit = LsqFit.curve_fit(exp_growth, growth_data[:,1], growth_data[:,5], [0.0])
+    param = fit.param[1]
+    return param
 end
