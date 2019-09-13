@@ -2,7 +2,7 @@ function ssa(data)
 
     temp_data = deepcopy(data)
 
-    output_species_ts = zeros(temp_data.NoJ + 1, temp_data.N)
+    output_species_ts = zeros(Int,temp_data.NoJ + 1, temp_data.N)
     output_t = zeros(temp_data.NoJ + 1)
 
     new_species_ts = temp_data.X

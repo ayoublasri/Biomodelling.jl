@@ -12,8 +12,8 @@ function test_1()
     reaction4 = (name = "protein decay", rate = k4, reactants = [:protein], products = [:NULL], coeff_rea = [1] , coeff_pro = [1] )
     model = (reaction1, reaction2, reaction3, reaction4)
 
-    initiale_population = [:NULL 0;:mRNA 5;:protein 500]
-    data = Biomodelling.Donne(model,initiale_population,1000,1.0, 1000, 0.38,0.03)
+    initiale_population = [:NULL 0;:mRNA 5;:protein 100]
+    data = Biomodelling.Donne(model,initiale_population,100,0.1, 100, 0.03,0.03)
     return data.M
 end
 

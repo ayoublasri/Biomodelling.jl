@@ -2,7 +2,7 @@ mutable struct Donne
 
     M::Int64
     N::Int64
-    T::Int64
+    T::Float64
     tau::Float64
     start::Float64
     switch_steps::Int64
