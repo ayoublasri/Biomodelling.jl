@@ -1,4 +1,4 @@
-function exponential_growth(data)
+function exponential_growth(data,alg::Function)
 
     temp_data = deepcopy(data)
 
@@ -13,7 +13,7 @@ function exponential_growth(data)
     for tt = temp_data.tau:temp_data.tau:temp_data.T
         # iterate
         i = i + 1
-        output_expression = genexpression(temp_data,expression)
+        output_expression = genexpression(temp_data,expression,alg::Function)
         V = V .*exp(temp_data.growth_rate*temp_data.tau)
         V1 , V_D, I1, I2= division(V,2.0,output_expression)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
@@ -53,23 +53,25 @@ function replace_cells(V,V_D,expression,expression_D)
     return V, expression
 end
 
-function genexpression(data,expression)
+function genexpression(data,expression,alg::Function)
     temp_data = deepcopy(data)
     temp_data.T = temp_data.tau
     temp_data.NoJ = 1
     output_expression = zeros(Int,temp_data.NoC,temp_data.N)
     for i = 1:temp_data.NoC
         temp_data.X[:,1] = expression[i,:]
-        temps, valeur = Biomodelling.ssa(temp_data)
+        if alg == Biomodelling.tauleapswitch
+            temps, valeur = alg(temp_data,100)
+        elseif alg == Biomodelling.non_negative_Poisson_tauleap
+            temps, valeur = alg(temp_data,10)
+        else
+            temps, valeur = alg(temp_data)
+        end
         for j = 1:temp_data.N
             output_expression[i,j] = valeur[end,j]
         end
     end
     return output_expression
-end
-
-function cell_death(data)
-    temp_data = deepcopy(data)
 end
 
 function getBinomial(n::Integer, p::Real)

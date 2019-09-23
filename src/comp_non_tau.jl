@@ -22,7 +22,7 @@ function comp_non_tau(c, data, critical_reaction)
                                 tmp_stoichio = data.stoichio[rxns, :]
                                 vi = tmp_stoichio[idx]
                                 # compute mean()
-                                mi = c[rxns]'* vi
+                                mi = c[rxns]' * vi
                                 # compute variance
                                 sigma2 = c[rxns]'* vi.^2
                                 # temporary tau

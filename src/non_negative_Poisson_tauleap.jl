@@ -36,7 +36,6 @@ function non_negative_Poisson_tauleap(data,n_c)
             if length(critical_reaction)== 0
                 dt = comp_tau(c, temp_data)
                 r = [rand(PoissonRandom.pois_rand(v * dt)) for v in c]
-
                 if t + dt > tt
                     dt = tt-t
                 end

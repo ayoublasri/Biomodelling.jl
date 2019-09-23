@@ -54,7 +54,7 @@ function ssa_switch(data,count)
             new_species_ts = temp_data.X
             new_t = old_t + dt
         end
-        temp_species_ts[i,:] = old_species_ts
+        temp_species_ts[i,:] = old_species_ts'
         temp_t[i] = count*temp_data.tau
         count = count + 1
     end
