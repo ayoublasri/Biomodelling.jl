@@ -32,11 +32,12 @@ function division(V::Array{Float64,1},V_f::Float64,expression)
     temp_V = copy(V)
     out = V .> V_f
     if any(out)
-        V[out].=0.5.*temp_V[out]
+        cell_div = 0.5.+0.025.*randn(sum(out.==true))
+        V[out] .= cell_div.*temp_V[out]
         for i = 1: size(expression,2)
-            expression[out,i] .= getBinomial.(expression[out,i],0.5)
+            expression[out,i] .= getBinomial.(expression[out,i],cell_div)
         end
-        V_D = zeros(length(out))
+        V_D = zeros(sum(out.==true))
         V_D .= temp_V[out] .- V[out]
         expression_D = zeros(size(expression[out,:]))
         expression_D = temp_expression[out,:] .- expression[out,:]
