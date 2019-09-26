@@ -1,5 +1,6 @@
 module Biomodelling
 
+using Statistics
 using PoissonRandom
 using LsqFit
 using Random
