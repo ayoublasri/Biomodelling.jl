@@ -4,7 +4,6 @@ authors = ["ayoublasri "]
 version = "0.2.0"
 
 [deps]
-Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ExcelReaders = "c04bee98-12a5-510c-87df-2a230cb6e075"
 LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
 PoissonRandom = "e409e4f3-bfea-5376-8464-e040bb5c01ab"
