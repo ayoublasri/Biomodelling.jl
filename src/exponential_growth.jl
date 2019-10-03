@@ -1,4 +1,4 @@
-function exponential_growth(data,div_noise,alg::Function)
+function exponential_growth(data,div_noise::Float64,alg::Function)
 
     temp_data = deepcopy(data)
 
