@@ -1,4 +1,4 @@
-function exponential_growth(data,alg::Function)
+function exponential_growth(data,div_noise,alg::Function)
 
     temp_data = deepcopy(data)
 
@@ -15,7 +15,7 @@ function exponential_growth(data,alg::Function)
         i = i + 1
         output_expression = genexpression(temp_data,expression,alg::Function)
         V = V .*exp(temp_data.growth_rate*temp_data.tau)
-        V1 , V_D, I1, I2= division(V,2.0,output_expression)
+        V1 , V_D, I1, I2= division(V,2.0,output_expression,div_noise)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
         output_V[i,:] = V
         output_X[i,:,:] = output_expression
@@ -25,14 +25,14 @@ function exponential_growth(data,alg::Function)
     return output_t, output_V, output_X
 end
 
-function division(V::Array{Float64,1},V_f::Float64,expression)
+function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64)
     V_D = []
     expression_D = []
     temp_expression = copy(expression)
     temp_V = copy(V)
     out = V .> V_f
     if any(out)
-        cell_div = 0.5.+0.025.*randn(sum(out.==true))
+        cell_div = 0.5.+div_noise.*randn(sum(out.==true))
         V[out] .= cell_div.*temp_V[out]
         for i = 1: size(expression,2)
             expression[out,i] .= getBinomial.(expression[out,i],cell_div)
