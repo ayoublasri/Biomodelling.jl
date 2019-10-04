@@ -1,7 +1,7 @@
 name = "Biomodelling"
 uuid = "9f4c04fe-aef9-11e9-18a8-b5ce91034548"
 authors = ["ayoublasri "]
-version = "0.3.0"
+version = "0.2.1"
 
 [deps]
 ExcelReaders = "c04bee98-12a5-510c-87df-2a230cb6e075"
