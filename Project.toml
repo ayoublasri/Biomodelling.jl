@@ -1,7 +1,7 @@
 name = "Biomodelling"
 uuid = "9f4c04fe-aef9-11e9-18a8-b5ce91034548"
 authors = ["ayoublasri "]
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
