@@ -4,7 +4,6 @@ using Statistics
 using PoissonRandom
 using LsqFit
 using Random
-using ExcelReaders
 
 include("comp_g.jl")
 include("comp_hist_1d.jl")
