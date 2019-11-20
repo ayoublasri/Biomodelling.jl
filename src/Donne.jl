@@ -295,7 +295,7 @@ end
 
 function getInitiale(initiale,species)
 
-    temp_initiale = initiale
+    temp_initiale = deepcopy(initiale)
     ind = zeros(Int64,length(species),1)
 
     for i = 1:length(species)
