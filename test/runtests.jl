@@ -74,30 +74,9 @@ function test_4()
     model = (Reaction1, Reaction2, Reaction3, Reaction4)
 
     initiale_population = [:NULL 0;:A 10;:B 10]
-
-    growth = ExcelReaders.readxlsheet("test/Book1.xlsx","Sheet1",nrows=7,ncols=5)
-    data = Biomodelling.Donne(model,initiale_population,1000,1.0, 1000, growth,0.03)
-    return data.growth_rate
-end
-
-@test test_4() == 0.3970472060379792
-
-function test_5()
-    k1 = 4e-5
-    k2 = 50
-    k3 = 10
-    k4 = 25
-
-    Reaction1 = (name = "trans", rate = k1, reactants = [:A ; :B], products =[:A] , coeff_rea = [2;1] , coeff_pro = [3] )
-    Reaction2 = (name = "birth", rate = k2, reactants = [:NULL], products =[:A] , coeff_rea = [1] , coeff_pro = [1] )
-    Reaction3 = (name = "death", rate = k3, reactants = [:A], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1] )
-    Reaction4 = (name = "transf", rate = k4, reactants = [:NULL], products =[:B] , coeff_rea = [1] , coeff_pro = [1] )
-    model = (Reaction1, Reaction2, Reaction3, Reaction4)
-
-    initiale_population = [:NULL 0;:A 10;:B 10]
     growth = 0.11
     data = Biomodelling.Donne(model,initiale_population,1000,0.1, 10, growth,0.03)
     return data.growth_rate
 end
 
-@test test_5() == 0.11
+@test test_4() == 0.11
