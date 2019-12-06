@@ -1,10 +1,10 @@
 | **Build Status** | **Help** |
-|:---:|:---:|:---:|
+|:---:|:---:|
 | [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] | [![][slack-img]][slack-url] |
 
 # Biomodelling.jl
 
-Authors: 
+Authors:
 - Ayoub Lasri (lasriay@gmail.com)
 - Marc Sturrock
 

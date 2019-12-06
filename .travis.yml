@@ -31,5 +31,5 @@ after_success:
     - julia -e 'import Pkg; cd(Pkg.dir("Biomodelling")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
 
 #script: # the default script is equivalent to the following
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("Example"); Pkg.test("Example"; coverage=true)';
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia -e 'Pkg.clone(pwd()); Pkg.build("Biomodelling"); Pkg.test("Biomodelling"; coverage=true)';
