@@ -11,9 +11,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-compathelper/new_version/2019-12-10-10-03-17-933-3122183370
 LsqFit = "0.8"
-
 PoissonRandom = "0.4"
-master
 julia = "1"
