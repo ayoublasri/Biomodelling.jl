@@ -1,4 +1,4 @@
-using Test, Statistics, ExcelReaders, Biomodelling
+using Test, Statistics, Biomodelling
 @test 1==1
 function test_1()
     k1 = 1.0
