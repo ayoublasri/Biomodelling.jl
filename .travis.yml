@@ -5,17 +5,12 @@ sudo: required
 os:
   - linux
   - osx
-
-dist: trusty
-
 julia:
   - 1.0
   - nightly
-
 matrix:
   allow_failures:
     - julia: nightly
-
 notifications:
   email: false
 
