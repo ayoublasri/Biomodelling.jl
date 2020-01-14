@@ -5,23 +5,19 @@ sudo: required
 os:
   - linux
   - osx
-  - windows
 
 dist: trusty
 
 julia:
+  - 1.0
   - nightly
 
 matrix:
   allow_failures:
-    - julia: 1.0
     - julia: nightly
 
 notifications:
   email: false
-cache:
-  directories:
-  - test/kernels
 
 after_success:
   - if [[ $TRAVIS_OS_NAME = linux ]]; then
