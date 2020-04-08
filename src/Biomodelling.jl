@@ -4,6 +4,16 @@ using Statistics
 using PoissonRandom
 using LsqFit
 using Random
+using NetworkInference
+using LightGraphs
+using GraphPlot
+using DelimitedFiles
+using bayNormJL
+using StringDistances
+using GraphRecipes
+using Plots
+using LinearAlgebra
+using SparseArrays
 
 include("comp_g.jl")
 include("comp_hist_1d.jl")
@@ -23,6 +33,7 @@ include("ssa_switch.jl")
 include("ssa_switch2.jl")
 include("ssa_switch3.jl")
 include("adaptive_tauleap.jl")
+include("network_inference.jl")
 
 export comp_g
 export comp_hist_1d
@@ -42,5 +53,6 @@ export adaptive_tauleap
 export comp_non_tau
 export compute_L
 export non_negative_Poisson_tauleap
+export network_inference
 
 end # module
