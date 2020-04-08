@@ -1,3 +1,4 @@
+codecov: true
 language: julia
 
 # for building petri nets in docs
