@@ -11,7 +11,6 @@ using DelimitedFiles
 using bayNormJL
 using StringDistances
 using GraphRecipes
-using Plots
 using LinearAlgebra
 using SparseArrays
 
