@@ -1,6 +1,7 @@
 module Biomodelling
 
 using Statistics
+using StatsBase
 using PoissonRandom
 using LsqFit
 using Random
@@ -33,6 +34,7 @@ include("ssa_switch2.jl")
 include("ssa_switch3.jl")
 include("adaptive_tauleap.jl")
 include("network_inference.jl")
+include("random_network.jl")
 
 export comp_g
 export comp_hist_1d
@@ -53,5 +55,6 @@ export comp_non_tau
 export compute_L
 export non_negative_Poisson_tauleap
 export network_inference
+export random_network
 
 end # module
