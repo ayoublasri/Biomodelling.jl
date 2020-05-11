@@ -589,5 +589,4 @@ deps = ["BlackBoxOptim", "DataFrames", "Distributed", "Distributions", "GLM", "O
 git-tree-sha1 = "544fce14e03956c80b4f3fd874a47717fb398ad8"
 repo-rev = "master"
 repo-url = "https://github.com/WT215/bayNormJL.jl.git"
-uuid = "d29b84ce-5084-44e9-95e5-a913e37dbeb9"
 version = "0.1.3"
