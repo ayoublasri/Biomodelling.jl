@@ -191,9 +191,9 @@ version = "1.3.9"
 
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "StaticArrays"]
-git-tree-sha1 = "78f0ce9d01993b637a8f28d84537d75dc0ce8eef"
+git-tree-sha1 = "34bfa994967e893ab2f17b864eec221b3521ba4d"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
-version = "0.7.10"
+version = "0.8.3"
 
 [[GraphPlot]]
 deps = ["ArnoldiMethod", "ColorTypes", "Colors", "Compose", "DelimitedFiles", "LightGraphs", "LinearAlgebra", "Random", "SparseArrays"]
@@ -203,9 +203,9 @@ version = "0.4.2"
 
 [[GraphRecipes]]
 deps = ["AbstractTrees", "GeometryTypes", "InteractiveUtils", "Interpolations", "LightGraphs", "LinearAlgebra", "NaNMath", "NetworkLayout", "PlotUtils", "RecipesBase", "SparseArrays", "Statistics"]
-git-tree-sha1 = "ea2c7603a384af1d614c55bbbb305ce8b8cb4676"
+git-tree-sha1 = "2b84bae7060cada5e2d92f5865ec96fcd0d6e096"
 uuid = "bd48cda9-67a9-57be-86fa-5b3c104eda73"
-version = "0.5.1"
+version = "0.5.3"
 
 [[Inflate]]
 git-tree-sha1 = "f5fc07d4e706b84f72d54eedcc1c13d92fb0871c"
@@ -258,9 +258,9 @@ uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LightGraphs]]
 deps = ["ArnoldiMethod", "DataStructures", "Distributed", "Inflate", "LinearAlgebra", "Random", "SharedArrays", "SimpleTraits", "SparseArrays", "Statistics"]
-git-tree-sha1 = "f40c4dbcd957cc3afc8cca0ff26c9f8304def00d"
+git-tree-sha1 = "6f85a35d2377cb2db1bc448ed0d6340d2bb1ea64"
 uuid = "093fc24a-ae57-5d10-9952-331d41423f4d"
-version = "1.3.1"
+version = "1.3.3"
 
 [[LineSearches]]
 deps = ["LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "Printf", "Test"]
@@ -438,9 +438,9 @@ uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
 version = "0.4.0"
 
 [[RecipesBase]]
-git-tree-sha1 = "b4ed4a7f988ea2340017916f7c9e5d7560b52cae"
+git-tree-sha1 = "54f8ceb165a0f6d083f0d12cb4996f5367c6edbc"
 uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "0.8.0"
+version = "1.0.1"
 
 [[Reexport]]
 deps = ["Pkg"]
@@ -542,9 +542,9 @@ version = "0.6.11"
 
 [[StringDistances]]
 deps = ["Distances"]
-git-tree-sha1 = "7c0186deacb086221f05281627ea4231581753e7"
+git-tree-sha1 = "d481aa2052d9be659e146eba285ed10c5fb7133a"
 uuid = "88034a9c-02f8-509d-84a9-84ec65e18404"
-version = "0.6.3"
+version = "0.6.4"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
@@ -589,4 +589,5 @@ deps = ["BlackBoxOptim", "DataFrames", "Distributed", "Distributions", "GLM", "O
 git-tree-sha1 = "544fce14e03956c80b4f3fd874a47717fb398ad8"
 repo-rev = "master"
 repo-url = "https://github.com/WT215/bayNormJL.jl.git"
+uuid = "d29b84ce-5084-44e9-95e5-a913e37dbeb9"
 version = "0.1.3"
