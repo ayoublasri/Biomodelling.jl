@@ -1,14 +1,7 @@
 function tauleapswitch(data,ssa_steps)
     temp_data = deepcopy(data)
     temp_X = temp_data.X
-    # Stochastic tau-leap algorithm for well-mixed reaction systems.
 
-    # ---- OUTPUT PARAMETERS ----
-    #   output.t: time vector, [NoJx1]
-    #   output.species_ts: the concentrations of each species at each time step, [NoJxN]
-
-
-    # initialize output struct()
     species_ts = zeros(temp_data.NoJ +1, temp_data.N)
     t          = zeros(temp_data.NoJ +1, 1)
 
