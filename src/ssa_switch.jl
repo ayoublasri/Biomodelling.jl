@@ -2,8 +2,8 @@ function ssa_switch(data,count)
 
     temp_data = deepcopy(data)
 
-    temp_species_ts = zeros(temp_data.switch_steps, temp_data.N)
-    temp_t = zeros(temp_data.switch_steps, 1)
+    temp_species_ts = zeros(temp_data.switch_steps+1, temp_data.N)
+    temp_t = zeros(temp_data.switch_steps+1, 1)
 
     new_species_ts = temp_data.X
     old_species_ts = temp_data.X
