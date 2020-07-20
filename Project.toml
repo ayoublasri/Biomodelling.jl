@@ -21,11 +21,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 bayNormJL = "d29b84ce-5084-44e9-95e5-a913e37dbeb9"
 
 [compat]
-<<<<<<< HEAD
 GraphPlot = "0.4"
-=======
-LightGraphs = "1.3"
->>>>>>> master
 LsqFit = "≥ 0.8"
 NetworkInference = "0.1"
 PoissonRandom = "≥ 0.4"
