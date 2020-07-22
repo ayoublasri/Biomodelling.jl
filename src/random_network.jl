@@ -17,7 +17,7 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         while kk < activation_num
                 global kk = kk + 1
                 global genes = sample(gene_list,2,replace=false)
-                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[2]], coeff_rea = [1] , coeff_pro = [1] )
+                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],genes[2]], coeff_rea = [1] , coeff_pro = [1] )
         end
 
         global tt = 0
