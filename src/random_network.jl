@@ -8,8 +8,8 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         global ii = 0
         while ii < gene_num
                 global ii = ii + 1
-                @eval $(Symbol("reaction$ii")) = (name = "birth$ii", rate = k1, reactants = [:NULL], products =[Symbol(:G,ii)] , coeff_rea = [1] , coeff_pro = [1] )
-                @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1] )
+                @eval $(Symbol("reaction$ii")) = (name = "birth$ii", rate = k1, reactants = [:NULL], products =[Symbol(:G,ii)] , coeff_rea = [1] , coeff_pro = [1])
+                @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1])
         end
 
         gene_list  = Symbol.(:G,(1:gene_num))
@@ -17,14 +17,14 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         while kk < activation_num
                 global kk = kk + 1
                 global genes = sample(gene_list,2,replace=false)
-                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],genes[2]], coeff_rea = [1] , coeff_pro = [1] )
+                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],genes[2]], coeff_rea = [1] , coeff_pro = [1,1])
         end
 
         global tt = 0
         while tt < inhibition_num
                 global tt = tt + 1
                 global genes = sample(gene_list,2,replace=false)
-                @eval $(Symbol("reaction$(tt+2*gene_num+activation_num)")) = (name = "inhibition$tt", rate = k4, reactants = [genes[1],genes[2]], products =[genes[1]], coeff_rea = [1,1] , coeff_pro = [1] )
+                @eval $(Symbol("reaction$(tt+2*gene_num+activation_num)")) = (name = "inhibition$tt", rate = k4, reactants = [genes[1],genes[2]], products =[genes[1]], coeff_rea = [1,1] , coeff_pro = [1])
         end
 
         model = []
