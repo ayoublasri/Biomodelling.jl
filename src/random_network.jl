@@ -50,8 +50,8 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         end
 
         initiale_population = [:NULL 0;gene_list rand(0:100,gene_num)]
-        data = Biomodelling.Donne(model,initiale_population,1000.0,0.1, cell_num, 0.03,0.03)
-        temps, V, X = Biomodelling.exponential_growth(data,0.05,ssa)
+        data = Biomodelling.Donne(model,initiale_population,10000.0,0.1, cell_num, 0.03,0.03)
+        temps, V, X = Biomodelling.exponential_growth(data,div_noise,ssa)
 
         table1 =  Array{Any,2}(undef,gene_num+1,cell_num+1)
         table1[1,1] = "time"
