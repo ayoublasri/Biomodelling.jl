@@ -31,7 +31,6 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         for ll = 1:2*gene_num+activation_num+inhibition_num
                 push!(model,@eval $(Symbol("reaction$ll")))
         end
-        model =
 
         for i = 1:TS_num
                 gene_list  = Symbol.(:G,(1:gene_num))
