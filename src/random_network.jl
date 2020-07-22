@@ -31,11 +31,12 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         for ll = 1:2*gene_num+activation_num+inhibition_num
                 push!(model,@eval $(Symbol("reaction$ll")))
         end
+        model =
 
         for i = 1:TS_num
                 gene_list  = Symbol.(:G,(1:gene_num))
                 initiale_population = [:NULL 0;gene_list rand(0:100,gene_num)]
-                data = Biomodelling.Donne(model,initiale_population,1.0,0.2, cell_num, 0.03,0.03)
+                data = Biomodelling.Donne(model,initiale_population,5.0,0.2, cell_num, 0.03,0.03)
                 temps, V, X = Biomodelling.exponential_growth(data,div_noise,ssa)
 
                 table =  Array{Any,2}(undef,length(temps)+1,gene_num+1)
