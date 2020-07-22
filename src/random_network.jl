@@ -1,4 +1,4 @@
-function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation_num::Int64,inhibition_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64)
+function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation_num::Int64,inhibition_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64,div_noise::Float64)
 
         global k1 = birth_rate
         global k2 = decay_rate
@@ -36,7 +36,7 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
                 gene_list  = Symbol.(:G,(1:gene_num))
                 initiale_population = [:NULL 0;gene_list rand(0:100,gene_num)]
                 data = Biomodelling.Donne(model,initiale_population,1.0,0.2, cell_num, 0.03,0.03)
-                temps, V, X = Biomodelling.exponential_growth(data,0.05,ssa)
+                temps, V, X = Biomodelling.exponential_growth(data,div_noise,ssa)
 
                 table =  Array{Any,2}(undef,length(temps)+1,gene_num+1)
                 table[1,1] = "time"
