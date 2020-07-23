@@ -1,4 +1,4 @@
-function random_network(TS_num::Int64,activation_num::Int64,inhibition_num::Int64,gene_num::Int64,activated::Array{Symbol,1},inhibited::Array{Symbol,1},cell_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64,div_noise::Float64)
+function network_generator(TS_num::Int64,activation_num::Int64,inhibition_num::Int64,gene_num::Int64,activated::Array{Symbol,1},inhibited::Array{Symbol,1},cell_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64,div_noise::Float64)
 
         global k1 = birth_rate
         global k2 = decay_rate
