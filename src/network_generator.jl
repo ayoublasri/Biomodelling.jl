@@ -23,16 +23,16 @@ function network_generator(TS_num::Int64,activation_num::Int64,inhibition_num::I
         global kk = 0
         while kk < activation_num
                 global kk = kk + 1
-                global active = sample(activated,1,replace=false)
-                global genes = sample(gene_minus_active,1,replace=false)
+                global active = StatsBase.sample(activated,1,replace=false)
+                global genes = StatsBase.sample(gene_minus_active,1,replace=false)
                 @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],active[1]], coeff_rea = [1] , coeff_pro = [1,1])
         end
 
         global tt = 0
         while tt < inhibition_num
                 global tt = tt + 1
-                global inhibit = sample(inhibited,1,replace=false)
-                global genes = sample(gene_minus_inhibit,1,replace=false)
+                global inhibit = StatsBase.sample(inhibited,1,replace=false)
+                global genes = StatsBase.sample(gene_minus_inhibit,1,replace=false)
                 @eval $(Symbol("reaction$(tt+2*gene_num+activation_num)")) = (name = "inhibition$tt", rate = k4, reactants = [genes[1],inhibit[1]], products =[genes[1]], coeff_rea = [1,1] , coeff_pro = [1])
         end
 
