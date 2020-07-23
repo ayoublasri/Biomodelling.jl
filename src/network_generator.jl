@@ -1,4 +1,4 @@
-function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation_num::Int64,inhibition_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64,div_noise::Float64)
+function random_network(TS_num::Int64,activation_num::Int64,inhibition_num::Int64,gene_num::Int64,activated::Array{Symbol,1},inhibited::Array{Symbol,1},cell_num::Int64,birth_rate::Float64,decay_rate::Float64,activation_rate::Float64,inhibition_rate::Float64,div_noise::Float64)
 
         global k1 = birth_rate
         global k2 = decay_rate
@@ -9,22 +9,32 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
         while ii < gene_num
                 global ii = ii + 1
                 @eval $(Symbol("reaction$ii")) = (name = "birth$ii", rate = k1, reactants = [:NULL], products =[Symbol(:G,ii)] , coeff_rea = [1] , coeff_pro = [1])
-                @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1])
+                if Symbol(:G,ii) in inhibited
+                        @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2/10, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1])
+                else
+                        @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1])
+                end
+
         end
 
         gene_list  = Symbol.(:G,(1:gene_num))
+        gene_minus_active = gene_list[findall(x->x ∉ activated, gene_list)]
+        gene_minus_inhibit = gene_list[findall(x->x ∉ inhibited, gene_list)]
+
         global kk = 0
         while kk < activation_num
                 global kk = kk + 1
-                global genes = sample(gene_list,2,replace=false)
-                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],genes[2]], coeff_rea = [1] , coeff_pro = [1,1])
+                global active = sample(activated,1,replace=false)
+                global genes = sample(gene_minus_active,1,replace=false)
+                @eval $(Symbol("reaction$(kk+2*gene_num)")) = (name = "activation$kk", rate = k3, reactants = [genes[1]], products =[genes[1],active[1]], coeff_rea = [1] , coeff_pro = [1,1])
         end
 
         global tt = 0
         while tt < inhibition_num
                 global tt = tt + 1
-                global genes = sample(gene_list,2,replace=false)
-                @eval $(Symbol("reaction$(tt+2*gene_num+activation_num)")) = (name = "inhibition$tt", rate = k4, reactants = [genes[1],genes[2]], products =[genes[1]], coeff_rea = [1,1] , coeff_pro = [1])
+                global inhibit = sample(inhibited,1,replace=false)
+                global genes = sample(gene_minus_inhibit,1,replace=false)
+                @eval $(Symbol("reaction$(tt+2*gene_num+activation_num)")) = (name = "inhibition$tt", rate = k4, reactants = [genes[1],inhibit[1]], products =[genes[1]], coeff_rea = [1,1] , coeff_pro = [1])
         end
 
         model = []
@@ -34,7 +44,7 @@ function random_network(TS_num::Int64,gene_num::Int64,cell_num::Int64,activation
 
         for i = 1:TS_num
                 gene_list  = Symbol.(:G,(1:gene_num))
-                initiale_population = [:NULL 0;gene_list rand(0:100,gene_num)]
+                initiale_population = [:NULL 0;gene_list rand(10:100,gene_num)]
                 data = Biomodelling.Donne(model,initiale_population,5.0,0.2, cell_num, 0.03,0.03)
                 temps, V, X = Biomodelling.exponential_growth(data,div_noise,ssa)
 
