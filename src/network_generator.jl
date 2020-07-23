@@ -14,7 +14,6 @@ function network_generator(TS_num::Int64,activation_num::Int64,inhibition_num::I
                 else
                         @eval $(Symbol("reaction$(ii+gene_num)")) = (name = "decay$ii", rate = k2, reactants = [Symbol(:G,ii)], products =[:NULL] , coeff_rea = [1] , coeff_pro = [1])
                 end
-
         end
 
         gene_list  = Symbol.(:G,(1:gene_num))
