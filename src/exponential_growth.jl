@@ -15,7 +15,7 @@ function exponential_growth(data,div_noise::Float64,alg::Function)
         i = i + 1
         output_expression = genexpression(temp_data,expression,alg::Function)
         V = V .*exp(temp_data.growth_rate*temp_data.tau)
-        V1 , V_D, I1, I2= division(V,2.0,output_expression,div_noise)
+        V1 , V_D, I1, I2= division(V,2.0,output_expression,div_noise,temp_data)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
         output_V[i,:] = V
         output_X[i,:,:] = output_expression
@@ -25,22 +25,28 @@ function exponential_growth(data,div_noise::Float64,alg::Function)
     return output_t, output_V, output_X
 end
 
-function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64)
+function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64,data)
     V_D = []
     expression_D = []
+    temp_data = deepcopy(data)
     temp_expression = copy(expression)
     temp_V = copy(V)
     out = V .> V_f
     if any(out)
         cell_div = 0.5.+div_noise.*randn(sum(out.==true))
         V[out] .= cell_div.*temp_V[out]
-        for i = 1: size(expression,2)
+        exclude = String.(temp_data.species)
+        vv = occursin.("on",exclude)
+        cc = occursin.("off",exclude)
+        aa = vv+cc
+        bb=findall(x->x!=1,aa)
+        for i in bb
             expression[out,i] .= getBinomial.(expression[out,i],cell_div)
         end
         V_D = zeros(sum(out.==true))
         V_D .= temp_V[out] .- V[out]
-        expression_D = zeros(size(expression[out,:]))
-        expression_D = temp_expression[out,:] .- expression[out,:]
+        expression_D = expression[out,:]
+        expression_D[out,bb] = temp_expression[out,bb] .- expression[out,bb]
     end
     return V, V_D, expression, expression_D
 end
