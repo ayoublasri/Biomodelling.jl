@@ -10,6 +10,7 @@ mutable struct Donne
     NoJ::Int64
     NoC::Int64
     growth_rate::Float64
+    species::Array{Symbol,1}
     X::Matrix{Int64}
     stoichio::Matrix{Int64}
     stoichio2::Matrix{Int64}
@@ -32,6 +33,7 @@ mutable struct Donne
     function Donne(model, initiale, T, tau, NoC, growth_data, epsilon=0.03)
 
         M = length(model)
+        species = getSpecies(model)
         #####################################
         #### load stoichoimetric matrix #####
         #####################################
@@ -144,7 +146,7 @@ mutable struct Donne
         else
             growth_rate = growth_estimate(growth_data)
         end
-        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr)
+        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr)
     end
 end
 
