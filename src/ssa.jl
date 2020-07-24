@@ -30,7 +30,7 @@ function ssa(data)
                 output_species_ts = output_species_ts[1:i - 1,:]
                 output_t = output_t[1:i - 1]
             end
-
+            @show c0
             # find which reaction will fire
             reaction = minimum(findall(c0 * rand() .< c_cum))[1]
             # compute waiting time
