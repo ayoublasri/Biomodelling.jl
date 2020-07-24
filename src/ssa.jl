@@ -29,8 +29,9 @@ function ssa(data)
                 println("System reached a degenerate point. Exiting...")
                 output_species_ts = output_species_ts[1:i - 1,:]
                 output_t = output_t[1:i - 1]
+                return output_t, output_species_ts
             end
-            @show c0
+            
             # find which reaction will fire
             reaction = minimum(findall(c0 * rand() .< c_cum))[1]
             # compute waiting time
