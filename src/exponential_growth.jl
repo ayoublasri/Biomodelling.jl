@@ -1,4 +1,4 @@
-function exponential_growth(data,div_noise::Float64,alg::Function)
+function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
 
     temp_data = deepcopy(data)
 
@@ -7,7 +7,7 @@ function exponential_growth(data,div_noise::Float64,alg::Function)
     output_t = zeros(temp_data.NoJ + 1)
     expression = repeat(temp_data.X',temp_data.NoC)
 
-    V = ones(temp_data.NoC) .+ (1.0 .* ones(temp_data.NoC)) .*rand(temp_data.NoC)
+    V = ones(temp_data.NoC) .+ (Ni .* ones(temp_data.NoC)) .*rand(temp_data.NoC)
 
     output_V[1,:] = V
     i = 1
