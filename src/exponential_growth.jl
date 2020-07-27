@@ -7,14 +7,15 @@ function exponential_growth(data,div_noise::Float64,alg::Function)
     output_t = zeros(temp_data.NoJ + 1)
     expression = repeat(temp_data.X',temp_data.NoC)
 
-    V = ones(temp_data.NoC)
+    V = ones(temp_data.NoC) .+ (1.0 .* ones(temp_data.NoC)) .*rand(temp_data.NoC)
+
     output_V[1,:] = V
     i = 1
     for tt = temp_data.tau:temp_data.tau:temp_data.T
         # iterate
         i = i + 1
         output_expression = genexpression(temp_data,expression,alg::Function)
-        V = V .*exp(temp_data.growth_rate*temp_data.tau)
+        V = V .* exp(temp_data.growth_rate*temp_data.tau)
         V1 , V_D, I1, I2= division(V,2.0,output_expression,div_noise,temp_data)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
         output_V[i,:] = V
