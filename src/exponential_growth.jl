@@ -45,7 +45,7 @@ function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64
         end
         V_D = zeros(sum(out.==true))
         V_D .= temp_V[out] .- V[out]
-        expression_D = zeros(sum(out.==true),bb)
+        expression_D = zeros(sum(out.==true),length(bb))
         expression_D = temp_expression[out,bb] .- expression[out,bb]
     end
     return V, V_D, expression, expression_D
