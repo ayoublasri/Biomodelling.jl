@@ -56,7 +56,6 @@ end
 function replace_cells(V,V_D,expression,expression_D)
     if !isempty(V_D)
         indexes = Random.randperm(length(V))[1:length(V_D)]
-        @show size(expression_D), size(expression[indexes,:])
         V[indexes] .= V_D
         expression[indexes,:] .= expression_D
     end
