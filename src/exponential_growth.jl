@@ -7,6 +7,17 @@ function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
     output_t = zeros(temp_data.NoJ + 1)
     expression = repeat(temp_data.X',temp_data.NoC)
 
+    exclude = String.(temp_data.species)
+    vv = occursin.("on",exclude)
+    bb = findall(x->x==1,vv)
+    for i in bb
+        expression[:,i] .= getBinomial.(ones(Int,temp_data.NoC),0.5)
+    end
+
+    cc = occursin.("off",exclude)
+    aa = findall(x->x==1,cc)
+    expression[:,aa] .= 1 .- expression[:,bb]
+
     V = ones(temp_data.NoC) .+ (Ni .* ones(temp_data.NoC)) .*rand(temp_data.NoC)
 
     output_V[1,:] = V
@@ -40,7 +51,7 @@ function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64
         vv = occursin.("on",exclude)
         cc = occursin.("off",exclude)
         aa = vv+cc
-        bb=findall(x->x!=1,aa)
+        bb = findall(x->x!=1,aa)
         for i in bb
             expression[out,i] .= getBinomial.(expression[out,i],cell_div)
         end
