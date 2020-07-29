@@ -30,7 +30,7 @@ function ssa(data)
                 output_species_ts = output_species_ts[1:i - 1,:]
                 output_t = output_t[1:i - 1]
             end
-            
+
             # find which reaction will fire
             reaction = minimum(findall(c0 * rand() .< c_cum))[1]
             # compute waiting time
@@ -39,7 +39,7 @@ function ssa(data)
             for k = 1:4
                 ind = temp_data.cm_rea[reaction, k]
                 if !iszero(temp_data.cm_rea[reaction, k])
-                    temp_data.X[ind] = temp_data.X[ind] + temp_data.stoichio[reaction, k]
+                    temp_data.X[ind] = temp_data.X[ind] + temp_data.stoichio2[reaction, k]
                 end
             end
 
