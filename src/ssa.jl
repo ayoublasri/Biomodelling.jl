@@ -39,7 +39,7 @@ function ssa(data)
             for k = 1:4
                 ind = temp_data.cm_rea[reaction, k]
                 if !iszero(temp_data.cm_rea[reaction, k])
-                    temp_data.X[ind] = temp_data.X[ind] + temp_data.stoichio2[reaction, k]
+                    temp_data.X[ind] = temp_data.X[ind] + temp_data.stoichio[reaction, k]
                 end
             end
 
