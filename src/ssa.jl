@@ -32,8 +32,15 @@ function ssa(data)
             end
 
             # find which reaction will fire
-            reaction = minimum(findall(c0 * rand() .< c_cum))[1]
+            # reaction = minimum(findall(c0 * rand() .< c_cum))[1]
             # compute waiting time
+            drxn = rand() * c0
+            psm = 0.0
+            reaction = 0
+            while psm < drxn
+                reaction = reaction + 1
+                psm = psm + c[reaction]
+            end
             dt = -log(rand())/c0
             # update species after reaction
             for k = 1:4
