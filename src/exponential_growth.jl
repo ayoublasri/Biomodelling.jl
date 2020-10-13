@@ -1,6 +1,6 @@
-function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
+function exponential_growth(temp_data,div_noise::Float64,alg::Function,Ni::Float64)
 
-    temp_data = deepcopy(data)
+    #temp_data = deepcopy(data)
 
     output_V = zeros(temp_data.NoJ + 1,temp_data.NoC)
     output_X = zeros(Int,temp_data.NoJ +1, temp_data.NoC, temp_data.N)
@@ -37,10 +37,10 @@ function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
     return output_t, output_V, output_X
 end
 
-function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64,data)
+function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64,temp_data)
     V_D = []
     expression_D = []
-    temp_data = deepcopy(data)
+    #temp_data = deepcopy(data)
     temp_expression = copy(expression)
     temp_V = copy(V)
     out = V .> V_f
@@ -73,8 +73,8 @@ function replace_cells(V,V_D,expression,expression_D)
     return V, expression
 end
 
-function genexpression(data,expression,alg::Function)
-    temp_data = deepcopy(data)
+function genexpression(temp_data,expression,alg::Function)
+    #temp_data = deepcopy(data)
     temp_data.T = temp_data.tau
     temp_data.NoJ = 1
     output_expression = zeros(Int,temp_data.NoC,temp_data.N)
