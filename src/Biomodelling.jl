@@ -29,6 +29,7 @@ include("exponential_growth.jl")
 include("tauleap.jl")
 include("tauleapswitch.jl")
 include("ssa.jl")
+include("ssa2.jl")
 include("ssa_switch.jl")
 include("ssa_switch2.jl")
 include("ssa_switch3.jl")
@@ -47,6 +48,7 @@ export exponential_growth
 export tauleap
 export tauleapswitch
 export ssa
+export ssa2
 export ssa_switch
 export ssa_switch2
 export ssa_switch3
