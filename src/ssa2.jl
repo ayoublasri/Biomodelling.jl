@@ -1,4 +1,4 @@
-function ssa(temp_data)
+function ssa2(temp_data)
 
     output_species_ts = zeros(Int,temp_data.NoJ + 1, temp_data.N)
     output_t = zeros(temp_data.NoJ + 1)
