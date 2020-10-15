@@ -19,7 +19,7 @@ function exponential_growth(temp_data,div_noise::Float64,alg::Function,Ni::Float
     expression[:,aa] .= 1 .- expression[:,bb]
 
     V = ones(temp_data.NoC) .+ (Ni .* ones(temp_data.NoC)) .*rand(temp_data.NoC)
-
+    V_f = 2 .+ 0.001 .* randn(temp_data.NoC)
     output_V[1,:] = V
     i = 1
     for tt = temp_data.tau:temp_data.tau:temp_data.T
@@ -27,7 +27,7 @@ function exponential_growth(temp_data,div_noise::Float64,alg::Function,Ni::Float
         i = i + 1
         output_expression = genexpression(temp_data,expression,alg::Function)
         V = V .* exp(temp_data.growth_rate*temp_data.tau)
-        V1 , V_D, I1, I2= division(V,2.0,output_expression,div_noise,temp_data)
+        V1 , V_D, I1, I2= division(V,V_f,output_expression,div_noise,temp_data)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
         output_V[i,:] = V
         output_X[i,:,:] = output_expression
@@ -37,7 +37,7 @@ function exponential_growth(temp_data,div_noise::Float64,alg::Function,Ni::Float
     return output_t, output_V, output_X
 end
 
-function division(V::Array{Float64,1},V_f::Float64,expression,div_noise::Float64,temp_data)
+function division(V::Array{Float64,1},V_f::Array{Float64,1},expression,div_noise::Float64,temp_data)
     V_D = []
     expression_D = []
     #temp_data = deepcopy(data)
