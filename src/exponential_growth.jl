@@ -1,4 +1,4 @@
-function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
+function exponential_growth(data,trans_index::Array{Int64,1},div_noise::Float64,alg::Function,Ni::Float64)
 
     temp_data = deepcopy(data)
 
@@ -25,7 +25,7 @@ function exponential_growth(data,div_noise::Float64,alg::Function,Ni::Float64)
     for tt = temp_data.tau:temp_data.tau:temp_data.T
         # iterate
         i = i + 1
-        output_expression = genexpression(temp_data,expression,alg::Function)
+        output_expression = genexpression(temp_data,expression,trans_index,V,alg::Function)
         V = V .* exp(temp_data.growth_rate*temp_data.tau)
         V1 , V_D, I1, I2= division(V,V_f,output_expression,div_noise,temp_data)
         V, output_expression = replace_cells(V1,V_D,I1,I2)
@@ -73,12 +73,13 @@ function replace_cells(V,V_D,expression,expression_D)
     return V, expression
 end
 
-function genexpression(data,expression,alg::Function)
+function genexpression(data,expression,trans_index::Array{Int64,1},V::Array{Float64,1},alg::Function)
     temp_data = deepcopy(data)
     temp_data.T = temp_data.tau
     temp_data.NoJ = 1
     output_expression = zeros(Int,temp_data.NoC,temp_data.N)
     for i = 1:temp_data.NoC
+        temp_data.kr[trans_index,1] = V[i] * temp_data.kr[trans_index,1] 
         temp_data.X[:,1] = expression[i,:]
         if alg == Biomodelling.tauleapswitch
             temps, valeur = alg(temp_data,100)
