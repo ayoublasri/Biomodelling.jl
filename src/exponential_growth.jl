@@ -80,9 +80,7 @@ function genexpression(data,expression,trans_index::Array{Int64,1},V::Array{Floa
     output_expression = zeros(Int,temp_data.NoC,temp_data.N)
     trans_rates = temp_data.kr[trans_index,1]
     for i = 1:temp_data.NoC
-        @show V[i]
         temp_data.kr[trans_index,1] = V[i] * trans_rates
-        @show temp_data.kr[trans_index,1] 
         temp_data.X[:,1] = expression[i,:]
         if alg == Biomodelling.tauleapswitch
             temps, valeur = alg(temp_data,100)
