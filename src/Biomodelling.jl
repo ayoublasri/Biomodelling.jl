@@ -9,7 +9,6 @@ using NetworkInference
 using LightGraphs
 using GraphPlot
 using DelimitedFiles
-using bayNormJL
 using StringDistances
 using GraphRecipes
 using LinearAlgebra
@@ -34,7 +33,6 @@ include("ssa_switch.jl")
 include("ssa_switch2.jl")
 include("ssa_switch3.jl")
 include("adaptive_tauleap.jl")
-include("network_inference.jl")
 include("random_network.jl")
 
 export comp_g
