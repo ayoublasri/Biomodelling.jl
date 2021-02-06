@@ -5,12 +5,8 @@ using StatsBase
 using PoissonRandom
 using LsqFit
 using Random
-using NetworkInference
-using LightGraphs
-using GraphPlot
 using DelimitedFiles
 using StringDistances
-using GraphRecipes
 using LinearAlgebra
 using SparseArrays
 
@@ -54,7 +50,6 @@ export adaptive_tauleap
 export comp_non_tau
 export compute_L
 export non_negative_Poisson_tauleap
-export network_inference
 export random_network
 
 end # module
