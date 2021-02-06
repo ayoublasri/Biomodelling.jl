@@ -21,8 +21,8 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 GraphPlot = "0.4"
-GraphRecipes = "0.5"
-LightGraphs = "1.3"
+GraphRecipes = "≥ 0.5"
+LightGraphs = "≥ 1.3"
 LsqFit = "≥ 0.8"
 NetworkInference = "0.1"
 PoissonRandom = "≥ 0.4"
