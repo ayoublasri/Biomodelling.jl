@@ -19,8 +19,8 @@ mutable struct Donne
     cm_spe::Matrix{Int64}
     hor::Matrix{Int64}
     mrr::Matrix{Int64}
+    model:: Any
 
-    # ---- OUTPUT PARAMETERS ----
     #   data.M: number of reactions, [1x1]
     #   data.N: number of species, [1x1]
     #   data.X: initial population of the system(), [Nx1]
@@ -56,9 +56,9 @@ mutable struct Donne
         #### load reaction rate constants #####
         #######################################
 
-        kr = zeros(M, 1)
+        kr = zeros(M, 3)
         for i = 1:M
-            kr[i,1] = model[i].rate
+            kr[i,:] .= model[i].rate
         end
 
         ############################################
@@ -120,22 +120,22 @@ mutable struct Donne
         hor = zeros(Int64, N, 1)
         mrr = zeros(Int64, N, 1)
 
-        for j = 1:M # run for all reactions
+        for j = 1:M 
 
-            for i = 1:2 # for the reactant species
+            for i = 1:2 
 
-                spe_i = cm_rea[j, i] # species index
+                spe_i = cm_rea[j, i] 
 
-                max_reac_order = maximum(abs.(stoichio[j , 1:2])) # maximum order of reactants of reaction j
-                reac_order = abs(stoichio[j , i]) # order of species i in reaction j
+                max_reac_order = maximum(abs.(stoichio[j , 1:2])) 
+                reac_order = abs(stoichio[j , i]) 
 
-                if spe_i !== 0 && spe_i !== 1 # if i-th species is not zero or NULL
+                if spe_i !== 0 && spe_i !== 1 
 
-                    if hor[spe_i] < max_reac_order # compare the required reactants
+                    if hor[spe_i] < max_reac_order
                         hor[spe_i] = max_reac_order
                     end
 
-                    if mrr[spe_i] < reac_order # compare the required reactants
+                    if mrr[spe_i] < reac_order 
                         mrr[spe_i] = reac_order
                     end
                 end
@@ -146,7 +146,7 @@ mutable struct Donne
         else
             growth_rate = growth_estimate(growth_data)
         end
-        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr)
+        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr,model)
     end
 end
 

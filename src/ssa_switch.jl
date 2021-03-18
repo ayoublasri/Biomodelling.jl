@@ -1,6 +1,6 @@
-function ssa_switch(data,count)
+function ssa_switch(temp_data,count)
 
-    temp_data = deepcopy(data)
+    #temp_data = deepcopy(data)
 
     temp_species_ts = zeros(temp_data.switch_steps, temp_data.N)
     temp_t = zeros(temp_data.switch_steps, 1)
@@ -15,15 +15,15 @@ function ssa_switch(data,count)
     c_cum = cumsum(c,dims=1)
     c0 = c_cum[end]
 
-    new_t = temp_data.start-temp_data.tau
+    new_t = temp_data.start
     old_t = temp_data.start
     i = 0
-    for tt = temp_data.start:temp_data.tau:temp_data.switch_steps + temp_data.start - temp_data.tau
+    for tt = temp_data.start:temp_data.tau:temp_data.switch_steps*temp_data.tau + temp_data.start-temp_data.tau
         # iterate
         i = i + 1
         while new_t <= tt
             old_t = new_t
-            old_species_t = new_species_ts
+            old_species_ts = new_species_ts
 
             if iszero(c0)
                 println("System reached a degenerate point. Exiting...")
@@ -32,8 +32,13 @@ function ssa_switch(data,count)
             end
 
             # find which reaction will fire
-            reaction = minimum(findall(c0 * rand() .< c_cum))[1] #test
-
+            drxn = rand() * c0
+            psm = 0.0
+            reaction = 0
+            while psm < drxn
+                reaction = reaction + 1
+                psm = psm + c[reaction]
+            end
             # compute waiting time
             dt = -log(rand()) / c0
 
@@ -54,7 +59,8 @@ function ssa_switch(data,count)
             new_species_ts = temp_data.X
             new_t = old_t + dt
         end
-        temp_species_ts[i,:] = old_species_ts'
+
+        temp_species_ts[i,:] = old_species_ts[:]
         temp_t[i] = count*temp_data.tau
         count = count + 1
     end

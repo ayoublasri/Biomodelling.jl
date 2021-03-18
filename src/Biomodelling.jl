@@ -52,4 +52,4 @@ export compute_L
 export non_negative_Poisson_tauleap
 export random_network
 
-end # module
+end 

@@ -1,5 +1,5 @@
-function tauleapswitch(data,ssa_steps)
-    temp_data = deepcopy(data)
+function tauleapswitch(temp_data,ssa_steps)
+    #temp_data = deepcopy(data)
     temp_X = temp_data.X
 
     species_ts = zeros(temp_data.NoJ +1, temp_data.N)
@@ -51,8 +51,7 @@ function tauleapswitch(data,ssa_steps)
             t_tau = t[1:count]
             temp_data.start = t_tau[end]
             temp_data.switch_steps = min(ssa_steps,temp_data.NoJ-count+1)
-
-            temp_data.X = species_ts[count,:]'
+            temp_data.X[1:end] = species_ts[count,:]
             species_tau = species_ts[1:count,1:temp_data.N]
 
             output_t, output_species_ts=ssa_switch(temp_data,count)
