@@ -18,6 +18,6 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 [compat]
 LsqFit = "≥ 0.8"
 PoissonRandom = "≥ 0.4"
-StatsBase = "≥ 0.3.0"
-StringDistances = "≥ 0.6"
+StatsBase = "≥ 0.3"
+StringDistances = "0.6,0.7,0.8"
 julia = "≥ 1.3"
