@@ -60,5 +60,5 @@ function ssa_switch4(temp_data,count)
         temp_t = count*temp_data.tau
         count = count + 1
     end
-    return temp_t, old_species_ts
+    return temp_t, new_species_ts
 end
