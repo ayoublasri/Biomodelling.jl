@@ -3,6 +3,8 @@ function ssa_switch4(temp_data,count)
     new_species_ts = temp_data.X
     old_species_ts = temp_data.X
 
+    temp_t = zeros(temp_data.switch_steps, 1)
+
     c = zeros(temp_data.M, 1)
     for k = 1:temp_data.M
         c[k] = rates(temp_data, k)
