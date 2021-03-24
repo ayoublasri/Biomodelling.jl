@@ -48,7 +48,7 @@ function tauleapswitch2(temp_data,ssa_steps)
             temp_data.X[1:end] = species_ts
             i = i + temp_data.switch_steps
             if i > temp_data.NoJ +1
-                return t, species_ts
+                return species_ts
             end
         else
             temp_data.X = temp_X
