@@ -43,7 +43,7 @@ function tauleapswitch2(temp_data,ssa_steps)
             temp_data.X[1:end] = species_ts
 
             output_t, output_species_ts=ssa_switch4(temp_data,count)
-            t = output_t
+            t = t + output_t
             species_ts = output_species_ts
             temp_data.X[1:end] = species_ts
             i = i + temp_data.switch_steps
