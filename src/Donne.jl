@@ -56,9 +56,9 @@ mutable struct Donne
         #### load reaction rate constants #####
         #######################################
 
-        kr = zeros(M, 3)
+        kr = zeros(M, 4)
         for i = 1:M
-            kr[i,:] .= model[i].rate
+            kr[i,1:3] .= model[i].rate
         end
 
         ############################################

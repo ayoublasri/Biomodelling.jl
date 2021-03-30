@@ -192,7 +192,7 @@ function genexpression(temp_data,expression,trans_index::Array{Int64,1},V::Array
     output_expression = zeros(Int,temp_data.NoC,temp_data.N)
     trans_rates = temp_data.kr[trans_index,1]
     for i = 1:temp_data.NoC
-        temp_data.kr[trans_index,1] = V[i] * trans_rates
+        temp_data.kr[trans_index,4] .= V[i]
         temp_data.X[1:end] = expression[i,:]
         if alg == Biomodelling.tauleapswitch || alg == Biomodelling.non_negative_Poisson_tauleap
             temps, valeur = alg(temp_data,1)

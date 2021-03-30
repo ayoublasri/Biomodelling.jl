@@ -13,9 +13,9 @@ function rates(data, reaction)
                 rate = 0
             else
                 if contains(data.model[reaction].name, "act") 
-                    rate = rate[1] * data.X[species]^(rate[2]) / (rate[3]^(rate[2]) + data.X[species]^(rate[2]))
+                    rate = rate[1] * rate[4] * ((data.X[species]/rate[4])^(rate[2])) / (rate[3]^(rate[2]) + (data.X[species]/rate[4])^(rate[2]))
                 elseif contains(data.model[reaction].name, "inhib") 
-                    rate = rate[1] * rate[3]^(rate[2]) / (rate[3]^(rate[2]) + data.X[species]^(rate[2]))
+                    rate = rate[1] * rate[4] * (rate[3]^(rate[2])) / (rate[3]^(rate[2]) + (data.X[species]/rate[4])^(rate[2]))
                 else
                     if abs(data.stoichio2[reaction,j]) == 0
                         rate = rate[1]
