@@ -20,6 +20,7 @@ mutable struct Donne
     hor::Matrix{Int64}
     mrr::Matrix{Int64}
     model:: Any
+    matrix::Matrix{Int64}
 
     #   data.M: number of reactions, [1x1]
     #   data.N: number of species, [1x1]
@@ -30,7 +31,7 @@ mutable struct Donne
     #   data.cm_rea: connectivity matrix for the reactions, [Mx4]
     #   data.cm_spe: connectivity matrix for the species, [MxK+1]
 
-    function Donne(model, initiale, T, tau, NoC, growth_data, epsilon=0.03)
+    function Donne(model,matrix, initiale, T, tau, NoC, growth_data, epsilon=0.03)
 
         M = length(model)
         species = getSpecies(model)
@@ -38,19 +39,19 @@ mutable struct Donne
         #### load stoichoimetric matrix #####
         #####################################
 
-        N = length(getSpecies(model))
+        N = length(species)
 
         tmp_stoichio = getStoichio(model)
         tmp_stoichio2 = getStoichio2(model)
 
-        stoichio = zeros(M, 4)
-        stoichio2 = zeros(M,4)
+        stoichio = zeros(M, 10)
+        stoichio2 = zeros(M,10)
 
         for m = 1:M
-            stoichio[tmp_stoichio[m,1], :] = tmp_stoichio[m, 2:5]
+            stoichio[tmp_stoichio[m,1], :] = tmp_stoichio[m, 2:11]
         end
         for m = 1:M
-            stoichio2[tmp_stoichio2[m,1], :] = tmp_stoichio2[m, 2:5]
+            stoichio2[tmp_stoichio2[m,1], :] = tmp_stoichio2[m, 2:11]
         end
         #######################################
         #### load reaction rate constants #####
@@ -67,9 +68,9 @@ mutable struct Donne
         species = getSpecies(model)
         tmp_cm_rea = getConnectivity(model,species)
 
-        cm_rea = zeros(Int64, M, 4)
+        cm_rea = zeros(Int64, M, 10)
         for m = 1:M
-            cm_rea[tmp_cm_rea[m,1], :] = tmp_cm_rea[m, 2:5]
+            cm_rea[tmp_cm_rea[m,1], :] = tmp_cm_rea[m, 2:11]
         end
 
 
@@ -89,12 +90,12 @@ mutable struct Donne
         #############################################
         #### create species connectivity matrix #####
         #############################################
-        K = 10
+        K = 50
 
         cm_spe = zeros(Int64, N, K)
         no_rea = zeros(Int64, N, 1)
         for m = 1:M
-            for k = 1:4
+            for k = 1:10
                 if cm_rea[m,k] !== 0 && cm_rea[m,k] !== 1
 
                     cm_spe[cm_rea[m,k], no_rea[cm_rea[m,k]] + 2] = m
@@ -122,11 +123,11 @@ mutable struct Donne
 
         for j = 1:M 
 
-            for i = 1:2 
+            for i = 1:5 
 
                 spe_i = cm_rea[j, i] 
 
-                max_reac_order = maximum(abs.(stoichio[j , 1:2])) 
+                max_reac_order = maximum(abs.(stoichio[j , 1:5])) 
                 reac_order = abs(stoichio[j , i]) 
 
                 if spe_i !== 0 && spe_i !== 1 
@@ -146,7 +147,7 @@ mutable struct Donne
         else
             growth_rate = growth_estimate(growth_data)
         end
-        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr,model)
+        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr,model,matrix)
     end
 end
 
@@ -154,8 +155,8 @@ end
 function getSpecies(model)
     n = length(model)
     for i = 1:n
-        if length(model[i].reactants) > 2 || length(model[i].products) > 2
-            error("max: 2 reactants and 2 products ")
+        if length(model[i].reactants) > 5 || length(model[i].products) > 5
+            error("max: 5 reactants and 5 products ")
         end
     end
 
@@ -177,65 +178,51 @@ end
 
 function getStoichio(model)
     n = length(model)
-    stoichio = zeros(Int64, n, 5)
+    stoichio = zeros(Int64, n, 11)
     for i = 1:n
         stoichio[i,1] = i
         if :NULL in model[i].reactants
             stoichio[i,2] = 0
             stoichio[i,3] = 0
+            stoichio[i,4] = 0
+            stoichio[i,5] = 0
+            stoichio[i,6] = 0
         else
-            if model[i].reactants[1] in model[i].products
-                ind = findfirst(x -> x == model[i].reactants[1],model[i].products)
-                if model[i].coeff_rea[1] > model[i].coeff_pro[ind]
-                    stoichio[i,2] = - (model[i].coeff_rea[1] - model[i].coeff_pro[ind])
-                elseif model[i].coeff_rea[1] <= model[i].coeff_pro[ind]
-                    stoichio[i,2] = 0
-                end
-            else
-                stoichio[i,2] = - model[i].coeff_rea[1]
-            end
-            if length(model[i].reactants) > 1
-                if model[i].reactants[2] in model[i].products
-                    ind = findfirst(x -> x == model[i].reactants[2],model[i].products)
-                    if model[i].coeff_rea[2] > model[i].coeff_pro[ind]
-                        stoichio[i,3] = - (model[i].coeff_rea[2] - model[i].coeff_pro[ind])
-                    elseif model[i].coeff_rea[2] <= model[i].coeff_pro[ind]
-                        stoichio[i,3] = 0
+            if length(model[i].reactants) >= 1
+                for j = 1:length(model[i].reactants)
+                    if model[i].reactants[j] in model[i].products
+                        ind = findfirst(x -> x == model[i].reactants[j],model[i].products)
+                        if model[i].coeff_rea[j] > model[i].coeff_pro[ind]
+                            stoichio[i,j+1] = - (model[i].coeff_rea[j] - model[i].coeff_pro[ind])
+                        elseif model[i].coeff_rea[j] <= model[i].coeff_pro[ind]
+                            stoichio[i,j+1] = 0
+                        end
+                    else
+                        stoichio[i,j+1] = - model[i].coeff_rea[j]
                     end
-                else
-                    stoichio[i,3] = - model[i].coeff_rea[2]
                 end
-            else
-                stoichio[i,3] = 0
             end
         end
         if :NULL in model[i].products
-            stoichio[i,4] = 0
-            stoichio[i,5] = 0
+            stoichio[i,7] = 0
+            stoichio[i,8] = 0
+            stoichio[i,9] = 0
+            stoichio[i,10] = 0
+            stoichio[i,11] = 0
         else
-            if model[i].products[1] in model[i].reactants
-                ind = findfirst(x -> x == model[i].products[1],model[i].reactants)
-                if model[i].coeff_pro[1] > model[i].coeff_rea[ind]
-                    stoichio[i,4] = model[i].coeff_pro[1] - model[i].coeff_rea[ind]
-                elseif model[i].coeff_pro[1] <= model[i].coeff_rea[ind]
-                    stoichio[i,4] = 0
-                end
-            else
-                stoichio[i,4] = model[i].coeff_pro[1]
-            end
-            if length(model[i].products) > 1
-                if model[i].products[2] in model[i].reactants
-                    ind = findfirst(x -> x == model[i].products[2],model[i].reactants)
-                    if model[i].coeff_pro[2] > model[i].coeff_rea[ind]
-                        stoichio[i,5] = model[i].coeff_pro[2] - model[i].coeff_rea[ind]
-                    elseif model[i].coeff_pro[2] <= model[i].coeff_rea[ind]
-                        stoichio[i,5] = 0
+            if length(model[i].products) >= 1
+                for j = 1:length(model[i].products)
+                    if model[i].products[j] in model[i].reactants
+                        ind = findfirst(x -> x == model[i].products[j],model[i].reactants)
+                        if model[i].coeff_pro[j] > model[i].coeff_rea[ind]
+                            stoichio[i,6+j] = model[i].coeff_pro[j] - model[i].coeff_rea[ind]
+                        elseif model[i].coeff_pro[j] <= model[i].coeff_rea[ind]
+                            stoichio[i,6+j] = 0
+                        end
+                    else
+                        stoichio[i,6+j] =  model[i].coeff_pro[j]
                     end
-                else
-                    stoichio[i,5] =  model[i].coeff_pro[2]
                 end
-            else
-                stoichio[i,5] = 0
             end
         end
     end
@@ -244,28 +231,63 @@ end
 
 function getStoichio2(model)
     n = length(model)
-    stoichio2 = zeros(Int64, n, 5)
+    stoichio2 = zeros(Int64, n, 11)
     for i = 1:n
         stoichio2[i,1] = i
         if :NULL in model[i].reactants
             stoichio2[i,2] = 0
             stoichio2[i,3] = 0
-        elseif length(model[i].reactants) == 1
-            stoichio2[i,2] = - model[i].coeff_rea[1]
-            stoichio2[i,3] = 0
-        else
-            stoichio2[i,2] = - model[i].coeff_rea[1]
-            stoichio2[i,3] = - model[i].coeff_rea[2]
-        end
-        if :NULL in model[i].products
             stoichio2[i,4] = 0
             stoichio2[i,5] = 0
+            stoichio2[i,6] = 0
+        elseif length(model[i].reactants) == 1
+            stoichio2[i,2] = - model[i].coeff_rea[1]
+        elseif length(model[i].reactants) == 2
+            stoichio2[i,2] = - model[i].coeff_rea[1]
+            stoichio2[i,3] = - model[i].coeff_rea[2]
+        elseif length(model[i].reactants) == 3
+            stoichio2[i,2] = - model[i].coeff_rea[1]
+            stoichio2[i,3] = - model[i].coeff_rea[2]
+            stoichio2[i,4] = - model[i].coeff_rea[3]
+        elseif length(model[i].reactants) == 4
+            stoichio2[i,2] = - model[i].coeff_rea[1]
+            stoichio2[i,3] = - model[i].coeff_rea[2]
+            stoichio2[i,4] = - model[i].coeff_rea[3]
+            stoichio2[i,5] = - model[i].coeff_rea[4]
+        elseif length(model[i].reactants) == 5
+            stoichio2[i,2] = - model[i].coeff_rea[1]
+            stoichio2[i,3] = - model[i].coeff_rea[2]
+            stoichio2[i,4] = - model[i].coeff_rea[3]
+            stoichio2[i,5] = - model[i].coeff_rea[4]
+            stoichio2[i,6] = - model[i].coeff_rea[5]
+        end
+
+        if :NULL in model[i].products
+            stoichio2[i,7] = 0
+            stoichio2[i,8] = 0
+            stoichio2[i,9] = 0
+            stoichio2[i,10] = 0
+            stoichio2[i,11] = 0
         elseif length(model[i].products) == 1
-            stoichio2[i,4] = model[i].coeff_pro[1]
-            stoichio2[i,5] = 0
-        else
-            stoichio2[i,4] = model[i].coeff_pro[1]
-            stoichio2[i,5] = model[i].coeff_pro[2]
+            stoichio2[i,7] = model[i].coeff_pro[1]
+        elseif length(model[i].products) == 2
+            stoichio2[i,7] = model[i].coeff_pro[1]
+            stoichio2[i,8] = model[i].coeff_pro[2]
+        elseif length(model[i].products) == 3
+            stoichio2[i,7] = model[i].coeff_pro[1]
+            stoichio2[i,8] = model[i].coeff_pro[2]
+            stoichio2[i,9] = model[i].coeff_pro[3]
+        elseif length(model[i].products) == 4
+            stoichio2[i,7] = model[i].coeff_pro[1]
+            stoichio2[i,8] = model[i].coeff_pro[2]
+            stoichio2[i,9] = model[i].coeff_pro[3]
+            stoichio2[i,10] = model[i].coeff_pro[4]
+        elseif length(model[i].products) == 5
+            stoichio2[i,7] = model[i].coeff_pro[1]
+            stoichio2[i,8] = model[i].coeff_pro[2]
+            stoichio2[i,9] = model[i].coeff_pro[3]
+            stoichio2[i,10] = model[i].coeff_pro[4]
+            stoichio2[i,11] = model[i].coeff_pro[5]
         end
     end
     return stoichio2
@@ -274,22 +296,51 @@ end
 
 function getConnectivity(model,species)
     n = length(model)
-    connectivity = zeros(Int64, n, 5)
+    connectivity = zeros(Int64, n, 11)
     for i = 1:n
         connectivity[i,1] = i
         if length(model[i].reactants) == 1
             connectivity[i,2] = findfirst(x -> x == model[i].reactants[1], species)
-            connectivity[i,3] = 0
-        else
+        elseif length(model[i].reactants) == 2
             connectivity[i,2] = findfirst(x -> x == model[i].reactants[1], species)
             connectivity[i,3] = findfirst(x -> x == model[i].reactants[2], species)
+        elseif length(model[i].reactants) == 3
+            connectivity[i,2] = findfirst(x -> x == model[i].reactants[1], species)
+            connectivity[i,3] = findfirst(x -> x == model[i].reactants[2], species)
+            connectivity[i,4] = findfirst(x -> x == model[i].reactants[3], species)
+        elseif length(model[i].reactants) == 4
+            connectivity[i,2] = findfirst(x -> x == model[i].reactants[1], species)
+            connectivity[i,3] = findfirst(x -> x == model[i].reactants[2], species)
+            connectivity[i,4] = findfirst(x -> x == model[i].reactants[3], species)
+            connectivity[i,5] = findfirst(x -> x == model[i].reactants[4], species)
+        elseif length(model[i].reactants) == 5
+            connectivity[i,2] = findfirst(x -> x == model[i].reactants[1], species)
+            connectivity[i,3] = findfirst(x -> x == model[i].reactants[2], species)
+            connectivity[i,4] = findfirst(x -> x == model[i].reactants[3], species)
+            connectivity[i,5] = findfirst(x -> x == model[i].reactants[4], species)
+            connectivity[i,6] = findfirst(x -> x == model[i].reactants[5], species)
         end
+
         if length(model[i].products) == 1
-            connectivity[i,4] = findfirst(x -> x == model[i].products[1], species)
-            connectivity[i,5] = 0
-        else
-            connectivity[i,4] = findfirst(x -> x == model[i].products[1], species)
-            connectivity[i,5] = findfirst(x -> x == model[i].products[2], species)
+            connectivity[i,7] = findfirst(x -> x == model[i].products[1], species)
+        elseif length(model[i].products) == 2
+            connectivity[i,7] = findfirst(x -> x == model[i].products[1], species)
+            connectivity[i,8] = findfirst(x -> x == model[i].products[2], species)
+        elseif length(model[i].products) == 3
+            connectivity[i,7] = findfirst(x -> x == model[i].products[1], species)
+            connectivity[i,8] = findfirst(x -> x == model[i].products[2], species)
+            connectivity[i,9] = findfirst(x -> x == model[i].products[3], species)
+        elseif length(model[i].products) == 4
+            connectivity[i,7] = findfirst(x -> x == model[i].products[1], species)
+            connectivity[i,8] = findfirst(x -> x == model[i].products[2], species)
+            connectivity[i,9] = findfirst(x -> x == model[i].products[3], species)
+            connectivity[i,10] = findfirst(x -> x == model[i].products[4], species)
+        elseif length(model[i].products) == 5
+            connectivity[i,7] = findfirst(x -> x == model[i].products[1], species)
+            connectivity[i,8] = findfirst(x -> x == model[i].products[2], species)
+            connectivity[i,9] = findfirst(x -> x == model[i].products[3], species)
+            connectivity[i,10] = findfirst(x -> x == model[i].products[4], species)
+            connectivity[i,11] = findfirst(x -> x == model[i].products[5], species)
         end
     end
     return connectivity

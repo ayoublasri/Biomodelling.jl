@@ -4,7 +4,7 @@ function update_rates(c, data, k_rea)
     BOOL = ones(data.M, 1)
 
 # loop over all species in "k_rea" reaction
-    for i = 1:4
+    for i = 1:10
 
         spe_i = data.cm_rea[k_rea, i]
 

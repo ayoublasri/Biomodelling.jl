@@ -37,7 +37,7 @@ function tauleapswitch(temp_data,ssa_steps)
         # update species after reaction
         for reaction = 1:temp_data.M
             if !iszero(r[reaction])                # if is not zero we update the reaction
-                for k = 1:4
+                for k = 1:10
                     ind = temp_data.cm_rea[reaction,k]
                     if !iszero(temp_data.cm_rea[reaction,k])
                         temp_X[ind] = temp_data.X[ind] + r[reaction] * temp_data.stoichio[reaction,k]
