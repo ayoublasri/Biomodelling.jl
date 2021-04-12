@@ -9,7 +9,7 @@ function comp_tau(c, data)
         hi = max(1, data.epsilon * data.X[i] / g[i])
 
     # find reactions where species i is involved
-        rxns = data.cm_spe[i, 2:1 + data.cm_spe[i,1]]
+        rxns = data.cm_spe[i, 5:1 + data.cm_spe[i,1]]
         rxns1 = unique(rxns)
 
     # find the respective stoichiometric elements [not optimized]

@@ -49,7 +49,7 @@ function adaptive_tauleap(data)
             # update species after reaction
             for reaction = 1:temp_data.M
                 if !iszero(r[reaction])
-                    for k = 1:4
+                    for k = 1:10
                         ind = temp_data.cm_rea[reaction,k]
                         if !iszero(temp_data.cm_rea[reaction,k])
                             temp_data.X[ind] = temp_data.X[ind] + r[reaction] * temp_data.stoichio[reaction,k]
