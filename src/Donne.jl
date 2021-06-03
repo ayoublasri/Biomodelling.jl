@@ -149,8 +149,127 @@ mutable struct Donne
         end
         new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr,model,matrix)
     end
-end
 
+
+    function Donne(model, initiale, T, tau, NoC, growth_data, epsilon=0.03)
+
+        M = length(model)
+        species = getSpecies(model)
+        #####################################
+        #### load stoichoimetric matrix #####
+        #####################################
+
+        N = length(species)
+
+        tmp_stoichio = getStoichio(model)
+        tmp_stoichio2 = getStoichio2(model)
+
+        stoichio = zeros(M, 10)
+        stoichio2 = zeros(M,10)
+
+        for m = 1:M
+            stoichio[tmp_stoichio[m,1], :] = tmp_stoichio[m, 2:11]
+        end
+        for m = 1:M
+            stoichio2[tmp_stoichio2[m,1], :] = tmp_stoichio2[m, 2:11]
+        end
+        #######################################
+        #### load reaction rate constants #####
+        #######################################
+
+        kr = zeros(M, 4)
+        for i = 1:M
+            kr[i,1:3] .= model[i].rate
+        end
+
+        ############################################
+        #### load reaction connectivity matrix #####
+        ############################################
+        species = getSpecies(model)
+        tmp_cm_rea = getConnectivity(model,species)
+
+        cm_rea = zeros(Int64, M, 10)
+        for m = 1:M
+            cm_rea[tmp_cm_rea[m,1], :] = tmp_cm_rea[m, 2:11]
+        end
+
+
+        ##################################
+        #### load initial population #####
+        ##################################
+        tmp_X = getInitiale(initiale,species)
+
+        X = zeros(N, 1)
+        for j = 1:N
+            if tmp_X[j,1] > N
+                println("Initial population input file is wrong!")
+            end
+            X[tmp_X[j,1]] = tmp_X[j, 2]
+        end
+
+        #############################################
+        #### create species connectivity matrix #####
+        #############################################
+        K = 50
+
+        cm_spe = zeros(Int64, N, K)
+        no_rea = zeros(Int64, N, 1)
+        for m = 1:M
+            for k = 1:10
+                if cm_rea[m,k] !== 0 && cm_rea[m,k] !== 1
+
+                    cm_spe[cm_rea[m,k], no_rea[cm_rea[m,k]] + 2] = m
+
+                    no_rea[cm_rea[m,k]] = no_rea[cm_rea[m,k]] + 1
+
+                    if no_rea[cm_rea[m,k]] > K
+                        cm_spe = [cm_spe, zeros(N, K)]
+                    end
+                end
+
+            end
+        end
+
+        cm_spe[:,1] = no_rea
+
+        maxK = maximum(no_rea)
+        cm_spe = cm_spe[:,1:maxK + 1]
+
+        NoJ =  Int(T / tau)
+        start = tau
+        switch_steps = 10
+        hor = zeros(Int64, N, 1)
+        mrr = zeros(Int64, N, 1)
+
+        for j = 1:M 
+
+            for i = 1:5 
+
+                spe_i = cm_rea[j, i] 
+
+                max_reac_order = maximum(abs.(stoichio[j , 1:5])) 
+                reac_order = abs(stoichio[j , i]) 
+
+                if spe_i !== 0 && spe_i !== 1 
+
+                    if hor[spe_i] < max_reac_order
+                        hor[spe_i] = max_reac_order
+                    end
+
+                    if mrr[spe_i] < reac_order 
+                        mrr[spe_i] = reac_order
+                    end
+                end
+            end
+        end
+        if typeof(growth_data) == Float64
+            growth_rate = growth_data
+        else
+            growth_rate = growth_estimate(growth_data)
+        end
+        new(M, N, T, tau, start, switch_steps, epsilon, NoJ, NoC, growth_rate, species, X, stoichio, stoichio2,kr, cm_rea, cm_spe, hor, mrr,model)
+    end
+end
 
 function getSpecies(model)
     n = length(model)

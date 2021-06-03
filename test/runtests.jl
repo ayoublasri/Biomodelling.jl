@@ -38,7 +38,7 @@ function test_2()
     return data.stoichio
 end
 
-@test test_2() == [0 -1 1 0; 0 0 1 0; -1 0 0 0; 0 0 1 0]
+@test test_2() == [0 -1 0 0 0 1 0 0 0 0; 0 0 0 0 0 1 0 0 0 0; -1 0 0 0 0 0 0 0 0 0; 0 0 0 0 0 1 0 0 0 0]
 
 function test_3(b,d)
 
