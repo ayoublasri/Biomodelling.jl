@@ -28,7 +28,7 @@ Usage questions can be posted in:
 add https://github.com/ayoublasri/Biomodelling.jl.git 
 ```
 
-# Sample Usage
+# Simple Usage
 
 Below outlines some typical way to define reactions
 
