@@ -46,8 +46,8 @@ Below outlines some typical way to define reactions
 Initial conditions and building the model
 
 ```julia 
-    initiale_population = [:NULL 0;:A 10;:B 10]
-    data = Biomodelling.Donne(model,initiale_population,1000,1.0, 1000, 0.38)
+    initiale_population = [:NULL 0;:mRNA 5;:protein 100]
+    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1,100,0.03,0.03)
 ```
 Model simulation: different algorithms were implemented, below an example using SSA.
 
