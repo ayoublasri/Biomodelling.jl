@@ -13,7 +13,7 @@ function test_1()
     model = (reaction1, reaction2, reaction3, reaction4)
 
     initiale_population = [:NULL 0;:mRNA 5;:protein 100]
-    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1, 100, 0.03,0.03)
+    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1,100,0.03,0.03)
     return data.M
 end
 
