@@ -32,10 +32,10 @@ add https://github.com/ayoublasri/Biomodelling.jl.git
 
 We describe how to simulate simple reactions, in this case:
 
-reaction1 describes transcription with a rate k1.
-reaction2 describes mRNA decay with a rate k2.
-reaction3 describes translation with a rate k3.
-reaction4 describes protein decay with a rate k4.
+- reaction1 describes transcription with a rate k1.
+- reaction2 describes mRNA decay with a rate k2.
+- reaction3 describes translation with a rate k3.
+- reaction4 describes protein decay with a rate k4.
 
 Each reaction is a Named Tuple that has six entries:
 
