@@ -30,7 +30,25 @@ add https://github.com/ayoublasri/Biomodelling.jl.git
 
 # Simple Usage
 
-Below outlines some typical way to define reactions
+We describe how to simulate simple reactions, in this case:
+
+reaction1 describes transcription with a rate k1.
+reaction2 describes mRNA decay with a rate k2.
+reaction3 describes translation with a rate k3.
+reaction4 describes protein decay with a rate k4.
+
+Each reaction is a Named Tuple that has six entries:
+
+```julia
+NamedTuple{(:name, :rate, :reactants, :products, :coeff_rea, :coeff_pro), Tuple{String, Int64, Vector{Symbol}, Vector{Symbol}, Vector{Int64}, Vector{Int64}}}
+```
+- name: the name of the reaction (String).
+- rate: rate of the reaction (Int64).
+- reactants: the reaction reactant(s) given as a vector of symbols.
+- products: the reaction product(s) given as a vector of symbols.
+- coeff_rea and coeff_pro refer to the coefficient of the reactants and the products respectively and given as vector of Int64.
+
+# Simple example
 
 ```julia 
     k1 = 1.0
@@ -41,15 +59,32 @@ Below outlines some typical way to define reactions
     reaction2 = (name = "mRNA decay", rate = k2, reactants = [:mRNA], products =[:NULL], coeff_rea = [1], coeff_pro = [1])
     reaction3 = (name = "translation", rate = k3, reactants = [:mRNA], products =[:mRNA,:protein], coeff_rea = [1] , coeff_pro = [1,1] )
     reaction4 = (name = "protein decay", rate = k4, reactants = [:protein], products = [:NULL], coeff_rea = [1] , coeff_pro = [1] )
+```
+
+The model is then definied as the combiantion of the reactions defined above
+
+```julia 
     model = (reaction1, reaction2, reaction3, reaction4)
 ```
-Initial conditions and building the model
+
+# Initial conditions
+
+Next step is to define the initial conditions, for this example we consider that at t=0, there are 5 mRNA molecules and 100 protein molecules. The initiale conditions should be given as Array{Any, 2} with the rows corresponding to model species including the NULL.
 
 ```julia 
     initiale_population = [:NULL 0;:mRNA 5;:protein 100]
-    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1,100,0.03,0.03)
 ```
-Model simulation: different algorithms were implemented, below an example using SSA.
+
+# Building the model
+
+The function Donne is then used to build a structure that contains information about the model and can be updated in time. The function Donne takes as inputs: the model, initial conditions, the simulation time (1000.0 in this example), time step (0.1 in this example), number of cells (100 in this example) and cells' growth rate (0.03 in this example).
+
+```julia 
+    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1,100,0.03)
+```
+# Model simulation
+
+Different algorithms were implemented, below an example using SSA. T is a vector of time steps. The species are sorted in the same order as the initial_population, for example to access the number of mRNA molecules for the entire simulation time: X[:,2].
 
 ```julia 
     T,X =Biomodelling.ssa(data)
