@@ -8,7 +8,7 @@ Authors:
 - Ayoub Lasri (lasriay@gmail.com)
 - Marc Sturrock
 
-Framework for stochastic modelling in systems biology
+Framework for stochastic modelling in systems biology as published in [BMC Bioinformatics](https://link.springer.com/article/10.1186/s12859-022-04778-9)
 
 Usage questions can be posted in:
 [Julia Community](https://julialang.org/community/)
