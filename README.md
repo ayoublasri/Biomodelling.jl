@@ -111,6 +111,12 @@ figure is regenerated from fixed seeds with `julia --project=paper
 paper/run_all.jl` followed by `python paper/plot_all.py`, and the document is
 rebuilt with `bash paper/manuscript/build.sh`.
 
+## Announcement assets
+
+`whitepaper/social/` holds the announcement card (`linkedin-card.png`, 1200 x
+1200) with the script that renders it from the schedule results, and the post
+text.
+
 ## Citation
 
 If you use Biomodelling.jl, please cite the white paper above and the version 1
