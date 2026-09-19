@@ -37,6 +37,9 @@ Table S1 lists the tests of the package test suite that validate the kernels: Ko
 | 5d | random GRN | 20 genes, 22 activations, 10 inhibitions; knockdown factor 0.05; 800 cells |
 | 6a-b | telegraph | truth $(0.3, 0.6, 20)$; priors log-uniform on $[0.01, 10]$, $[0.01, 10]$, $[1, 200]$; 200 (a) / 120 (b) particles |
 | 6c | resistance gene | truth $h_{\max} = 0.5$, $K = 150$; priors log-uniform on $[0.05, 5]$ and $[20, 1000]$; 100 particles |
+| 7 | resistance gene, hours | cell cycle 24 h (sizer, cv 0.1), $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$ per h, $K = 150$, $q = 4$, growth-arrest Hill coefficient 2; fitted: $k_{\mathrm{on}}$, $k_{\mathrm{off}} \in [10^{-3}, 0.3]$, $h_{\max} \in [0.005, 0.5]$ per h, $\mathrm{EC}_{50} \in [3, 40]$ µM, $m \in [1, 6]$, $\mathrm{IC}_{50} \in [1, 40]$ µM; 300 founders burnt in for 10 cycles, 48 h drug-free, 72 h drug; 160 Latin-hypercube points and 80 Nelder-Mead iterations with seed 1 |
+| 8a-d | melanoma-like | net doubling 4 weeks, memory 5 generations, pre-resistant fraction 0.005, $h_{\max} = 0.0023$ per h, $\mathrm{EC}_{50} = 0.3$, $m = 2$, protection $K = 150$, $q = 4$, growth arrest $\mathrm{IC}_{50} = 0.3$ with the same protection, $k_{\mathrm{off}} \to k_{\mathrm{off}}/(1 + 9d)$, fitness cost 0.5; 2 000 founders, 32 weeks, dt 4 h; progression at 1.73 × nadir after the 8-week lead-in |
+| 8e-g | MGMT model | net doubling 40 days, memory 4 generations, MGMT-expressing fraction 0.01 or 0.30, $h_{\max} = 0.03$ per h at peak, $\mathrm{EC}_{50} = 0.4$ of the standard bolus peak, $m = 2$, $K = 150$, $q = 4$; elimination half-life 2.1 h; 1 500 founders, six 28-day cycles, dt 1 h |
 
 # S4. Additional persister simulations
 
@@ -70,6 +73,25 @@ Table S2. Runtime of population simulations.
 
 {{runtime_table}}
 
-# S8. Migration from version 1
+# S8. Laboratory and clinical reference data
+
+Table S3. Reference values used for calibration and validation (transcribed from the cited articles; files in `paper/data/`).
+
+| Quantity | Value | Source |
+|---|---|---|
+| U2OS cells tracked at cisplatin addition (7 / 10 / 13 µM) | 232 / 240 / 296 | @iyer2025, Table 2 |
+| of which died within 72 h | 30 / 66 / 176 | same |
+| of which divided within 72 h | 100 / 75 / 67 | same |
+| of which survived without dividing | 102 / 99 / 53 | same |
+| HCT116 cells at drug addition; death fraction | 275; 0.64 | @iyer2025, Table 1 |
+| Plateau of the HCT116 kill curve | after ~100 h | @iyer2025, Fig 1b |
+| Lineage correlations of fate | present for sisters, first and second cousins; absent for third cousins | @iyer2025, Fig 5a |
+| Pre-resistant melanoma cells | 1:50 to 1:500 per marker; EGFR-high cells give 7.9 ± 0.9 fold more resistant colonies | @shaffer2017 |
+| N15-0385 glioblastoma doubling time | 50 h | @lasri2020 |
+| Temozolomide elimination half-life | 2.1 h | @ostermann2004 |
+| RTOG 0525 regimens | 150-200 mg/m² days 1-5 vs 75-100 mg/m² days 1-21 of 28-day cycles; median OS 16.6 vs 14.9 months | @gilbert2013 |
+| SWOG S1320 regimens | continuous vs 3 weeks off / 5 weeks on after an 8-week lead-in; median PFS 9.0 vs 5.5 months | @algazi2020 |
+
+# S9. Migration from version 1
 
 The v1 API (`Donne`, `ssa`, `tauleap`, `tauleapswitch`, `adaptive_tauleap`, `exponential_growth`, NamedTuple reactions) remains available through a deprecated compatibility layer that converts NamedTuple reactions to `ReactionModel`s (reactions whose names contain `act`, `inhib`, `comb_a` or `comb_i` become Hill kinetics with `rate = [k, n, K]`; species whose names contain `on`/`off` become promoter groups) and maps the algorithms onto the new kernels. Output shapes are preserved, including the leading `:NULL` column. See `docs/src/migration.md`.

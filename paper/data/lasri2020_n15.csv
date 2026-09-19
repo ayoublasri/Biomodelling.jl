@@ -1,0 +1,6 @@
+key,value,source
+doubling_time_h,49.956,"Lasri et al. 2020: doubling time of N15-0385 cells from 6-day growth curves"
+doubling_time_literature_range_h,"40-60","same, glioma cell lines"
+tmz_concentrations_uM,"75,150,300,600,800","cell viability (WST-1) at 72, 96, 120 and 144 h"
+response_summary,"resistant within clinically achievable concentrations at 144 h; modest response at higher concentrations 96-144 h","Results"
+steady_state_fraction_sustained_tmz,0.6,"simulation of the calibrated model: recovery to about 60% of the population under sustained TMZ"

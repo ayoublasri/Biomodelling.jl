@@ -1,0 +1,13 @@
+key,value,source
+cells_at_drug,275,"Iyer et al. 2025 Table 1: 65 lineages proliferate to 275 cells at cisplatin addition"
+cells_died,123,"Table 1"
+cells_divided_both_daughters_died,52,"Table 1"
+death_fraction,0.64,"Table 1: about 64% cell death"
+plateau_onset_h,100,"Fig 1b: first decay switches to a plateau after the 100th hour"
+correlated_relatives,"sisters, first cousins, second cousins","Fig 5a: correlations exist for first and second cousins; third cousins are like random pairs"
+uncorrelated_relatives,"third cousins","Fig 5a"
+state_inheritance_generations,"2-3","Abstract and Discussion: states inherited across at least 2-3 generations"
+fate_sensitive_die_divide_alive,"0.9125,0.05,0.0375","Model M3 fate matrix, approximate estimates"
+fate_preDTP_die_divide_alive,"0.35,0.1,0.55","Model M3 fate matrix, approximate estimates"
+decay_rate_ratio_high_low_u2os,3,"Results: a 3-fold change between High and Low concentrations"
+fitness_cost_of_preDTP_state,0,"Results: pre-DTP state has no fitness cost (single IMT distribution before drug)"

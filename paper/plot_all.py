@@ -321,8 +321,119 @@ def fig6():
     save(fig, "fig6_inference")
     fig2_ = plt.figure(figsize=(3.4, 2.4)); d(fig2_.add_subplot(111)); save(fig2_, "fig6d_ppc")
 
+# ------------------------------------------------------------------ Figure 7: calibration to laboratory data
+def fig7():
+    fig = plt.figure(figsize=(7.2, 4.6)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.6, wspace=0.5)
+    @panel
+    def a(ax):
+        d = load("fig7a_fates.csv")
+        doses = sorted(d.cisplatin_uM.unique()); x = np.arange(len(doses)); w = 0.13
+        fates = [("died", "obs_died", "died"), ("divided", "obs_divided", "divided"), ("survived", "obs_survived", "survived without dividing")]
+        for i, (m, o, lab) in enumerate(fates):
+            g = d.groupby("cisplatin_uM")
+            ax.bar(x + (i - 1) * 2.2 * w - w / 2, [g.get_group(dd)[o].iloc[0] for dd in doses], width=w, color=INK2, alpha=0.45, label="observed" if i == 0 else None)
+            ax.bar(x + (i - 1) * 2.2 * w + w / 2, [g.get_group(dd)[m].mean() for dd in doses], yerr=[g.get_group(dd)[m].std() for dd in doses], width=w, color=C[i], capsize=1.5, label=lab)
+        roles = {dd: d[d.cisplatin_uM == dd].role.iloc[0] for dd in doses}
+        ax.set_xticks(x); ax.set_xticklabels([f"{dd:g} µM\n({roles[dd]})" for dd in doses], fontsize=6); ax.set_ylabel("fraction of cells at drug addition"); ax.set_ylim(0, 0.95)
+        ax.legend(fontsize=5, ncol=2, loc="upper left"); label(ax, "a", "U2OS fates over 72 h of cisplatin")
+    @panel
+    def b(ax):
+        d = load("fig7b_killcurves.csv")
+        for i, (dd, g) in enumerate(d.groupby("cisplatin_uM")):
+            ax.plot(g.t_since_drug_h / 24, g.N_over_N0, color=C[i], label=f"{dd:g} µM" + (" (HCT116-like)" if abs(dd - 11.5) < 0.01 else ""))
+        ax.set_yscale("log"); ax.set_xlabel("days of cisplatin"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "b", "predicted kill curves")
+    @panel
+    def c(ax):
+        d = load("fig7c_kin_correlation.csv"); m = d.groupby(["generations_back", "relation"]).fate_correlation.agg(["mean", "std"]).reset_index().sort_values("generations_back")
+        order = ["sisters", "first cousins", "second cousins", "third cousins", "unrelated"]; m = m.set_index("relation").loc[order]
+        x = np.arange(len(order))
+        ax.bar(x, m["mean"], yerr=m["std"].fillna(0), color=[C[0]] * 4 + [INK2], capsize=2, width=0.6)
+        ax.axhline(0, color=INK, lw=0.6); ax.set_xticks(x); ax.set_xticklabels(["sisters", "1st\ncousins", "2nd\ncousins", "3rd\ncousins", "unrelated"], fontsize=6)
+        ax.set_ylabel("correlation of death fates"); label(ax, "c", "lineage correlations of fate")
+    @panel
+    def d(ax):
+        d = load("fig7d_timing.csv"); m = d.groupby(["event", "cisplatin_uM"]).agg(mean_h=("mean_h", "mean"), sd=("mean_h", "std")).reset_index()
+        for i, ev in enumerate(("division", "death")):
+            g = m[m.event == ev]
+            ax.errorbar(g.cisplatin_uM, g.mean_h, yerr=g.sd.fillna(0), marker="o", ms=4, color=C[i], capsize=2, label=f"{ev} time")
+        ax.set_ylim(0, None); ax.set_xlabel("cisplatin (µM)"); ax.set_ylabel("mean time (h)"); ax.legend(fontsize=5.5); label(ax, "d", "single-cell times are dose-invariant")
+    @panel
+    def e(ax):
+        t = load("fig7_calibration_table.csv").sort_values("distance")
+        ax.scatter(t.EC50, t.h_max, c=t.distance, cmap="viridis_r", s=10, lw=0)
+        best = t.iloc[0]; ax.plot([best.EC50], [best.h_max], marker="*", ms=10, color=C[7], lw=0, label="calibrated")
+        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("EC50 (µM)"); ax.set_ylabel("h_max (per h)"); ax.legend(fontsize=5.5); label(ax, "e", "calibration landscape")
+    @panel
+    def f(ax):
+        c = kv("fig7_calibration.csv")
+        rows = [("k_on (per h)", c["k_on"]), ("k_off (per h)", c["k_off"]), ("memory (generations)", c["memory_generations"]), ("fraction resistant", c["p_on"]), ("h_max (per h)", c["h_max"]), ("EC50 (µM)", c["EC50"]), ("Hill m", c["m_h"]), ("IC50 growth (µM)", c["IC50"]), ("distance", c["distance"])]
+        ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+        for i, (k, v) in enumerate(rows):
+            ax.text(0.02, 0.95 - i * 0.105, k, fontsize=6, va="top", color=INK2); ax.text(0.98, 0.95 - i * 0.105, f"{v:.3g}", fontsize=6, va="top", ha="right", color=INK)
+        label(ax, "f", "calibrated parameters")
+    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2]))
+    save(fig, "fig7_calibration")
+
+# ------------------------------------------------------------------ Figure 8: schedule optimisation against clinical regimens
+def fig8():
+    fig = plt.figure(figsize=(7.2, 6.8)); gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.65, wspace=0.5)
+    @panel
+    def a(ax):
+        d = load("fig8b_melanoma_trajectories.csv"); g = d[d.mechanism == "no fitness cost"]
+        for i, (s, gg) in enumerate(g.groupby("schedule", sort=False)):
+            ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=s)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "a", "melanoma, no fitness cost")
+    @panel
+    def b(ax):
+        d = load("fig8b_melanoma_trajectories.csv"); g = d[d.mechanism == "fitness cost"]
+        for i, (s, gg) in enumerate(g.groupby("schedule", sort=False)):
+            ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=s)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "b", "melanoma, resistant cells pay a fitness cost")
+    @panel
+    def c(ax):
+        d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"], sort=False).agg(ttp=("ttp_weeks", "mean"), sd=("ttp_weeks", "std"), dose=("cumulative_dose_weeks", "mean")).reset_index()
+        mechs = list(dict.fromkeys(m.mechanism)); scheds = list(dict.fromkeys(m.schedule)); x = np.arange(len(mechs)); w = 0.8 / len(scheds)
+        for i, s in enumerate(scheds):
+            g = m[m.schedule == s].set_index("mechanism").loc[mechs]
+            ax.bar(x + (i - (len(scheds) - 1) / 2) * w, g.ttp, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=s)
+        ax.set_xticks(x); ax.set_xticklabels(mechs, fontsize=6); ax.set_ylabel("time to progression (weeks)"); ax.legend(fontsize=5, loc="upper left"); label(ax, "c", "clinical schedules")
+    @panel
+    def d(cell):
+        sub = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=cell, wspace=0.15)
+        for i, tag in enumerate(("no_fitness_cost", "fitness_cost")):
+            ax = fig.add_subplot(sub[i]); t = load(f"fig8c_melanoma_optimum_{tag}.csv")
+            sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0)
+            best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0)
+            ax.set_xscale("log"); ax.set_xlabel("period (weeks)"); ax.set_title(tag.replace("_", " "), fontsize=6.5, color=INK2, pad=3)
+            if i == 0: ax.set_ylabel("duty cycle (fraction on)"); label(ax, "d", None)
+            else: ax.set_yticklabels([])
+        fig.colorbar(sc, ax=ax, fraction=0.08, pad=0.04, label="time to progression (weeks)")
+    @panel
+    def e(ax):
+        d = load("fig8d_gbm_trajectories.csv")
+        for i, ((pop, reg), g) in enumerate(d.groupby(["population", "regimen"], sort=False)):
+            ax.plot(g.t_weeks, g.N_over_N0, color=C[i % 3], ls="-" if pop.startswith("MGMT m") else "--", label=f"{reg}, {'methylated' if pop.startswith('MGMT m') else 'unmethylated'}")
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=4.6, ncol=1); label(ax, "e", "temozolomide regimens with pharmacokinetics")
+    @panel
+    def f(ax):
+        d = load("fig8d_gbm_regimens.csv"); m = d.groupby(["population", "regimen"], sort=False).agg(v=("log_kill", "mean"), sd=("log_kill", "std")).reset_index()
+        pops = list(dict.fromkeys(m.population)); regs = list(dict.fromkeys(m.regimen)); x = np.arange(len(pops)); w = 0.8 / len(regs)
+        for i, r in enumerate(regs):
+            g = m[m.regimen == r].set_index("population").loc[pops]
+            ax.bar(x + (i - (len(regs) - 1) / 2) * w, g.v, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=r)
+        ax.set_xticks(x); ax.set_xticklabels(["MGMT methylated", "MGMT unmethylated"], fontsize=6); ax.set_ylabel("log10 kill over 6 cycles"); ax.legend(fontsize=5); label(ax, "f", "depth of response")
+    @panel
+    def g(ax):
+        for i, tag in enumerate(("methylated", "unmethylated")):
+            t = load(f"fig8e_gbm_days_on_{tag}.csv").groupby("days_on").log_N_end_over_N0.mean().reset_index()
+            ax.plot(t.days_on, t.log_N_end_over_N0 / np.log(10), marker="o", ms=3, color=C[i], label=f"MGMT {tag}")
+        ax.axvline(5, color=INK2, ls=":", lw=0.8); ax.axvline(21, color=INK2, ls=":", lw=0.8); ax.text(5, ax.get_ylim()[1], " 5/28", fontsize=5.5, color=INK2, va="top"); ax.text(21, ax.get_ylim()[1], " 21/28", fontsize=5.5, color=INK2, va="top")
+        ax.set_xlabel("dosing days per 28-day cycle (equal cumulative dose)"); ax.set_ylabel("log10 N(end) / N(0)"); ax.legend(fontsize=5.5); label(ax, "g", "fractionation at equal cumulative dose")
+    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(gs[1, :2]); e(fig.add_subplot(gs[1, 2])); f(fig.add_subplot(gs[2, 0])); g(fig.add_subplot(gs[2, 1:]))
+    save(fig, "fig8_schedules")
+
 if __name__ == "__main__":
-    which = sys.argv[1:] or ["2", "3", "4", "5", "6"]
+    which = sys.argv[1:] or ["2", "3", "4", "5", "6", "7", "8"]
     for w in which:
         try: globals()[f"fig{w}"]()
         except Exception: traceback.print_exc()

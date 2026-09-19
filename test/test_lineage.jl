@@ -48,3 +48,21 @@
     @test issorted(λs; rev = true) && length(λs) <= 4
     @test powerlaw_tail_exponent(λs; k = 3) < 0
 end
+
+@testset "kin pairs" begin
+    lt = LineageTable()
+    function add!(lt, id, parent, gen)
+        push!(lt.id, id); push!(lt.parent, parent); push!(lt.clone, 1); push!(lt.generation, gen)
+        push!(lt.birth_time, float(gen)); push!(lt.end_time, NaN); push!(lt.fate, :alive)
+        push!(lt.V_birth, 1.0); push!(lt.V_end, NaN); push!(lt.x_birth, Int[]); push!(lt.x_end, Int[]); push!(lt.perturbed, false)
+    end
+    # founder 1 -> 2,3 ; 2 -> 4,5 ; 3 -> 6,7 ; 4 -> 8,9 ; 6 -> 10,11
+    add!(lt, 1, 0, 0)
+    for (id, p, gen) in ((2, 1, 1), (3, 1, 1), (4, 2, 2), (5, 2, 2), (6, 3, 2), (7, 3, 2), (8, 4, 3), (9, 4, 3), (10, 6, 3), (11, 6, 3))
+        add!(lt, id, p, gen)
+    end
+    @test Set(kin_pairs(lt, 1)) == Set([(2, 3), (4, 5), (6, 7), (8, 9), (10, 11)])
+    @test Set(kin_pairs(lt, 2)) == Set([(4, 6), (4, 7), (5, 6), (5, 7)])
+    @test Set(kin_pairs(lt, 3)) == Set([(8, 10), (8, 11), (9, 10), (9, 11)])
+    @test kin_pairs(lt, 2) == cousin_pairs(lt)
+end

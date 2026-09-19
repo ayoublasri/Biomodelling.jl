@@ -53,6 +53,7 @@ include("perturb/effects.jl")
 include("lineage/tree.jl")
 # ---- population loop -------------------------------------------------------
 include("cells/population.jl")
+include("perturb/optimize.jl")
 # ---- lineage statistics ----------------------------------------------------
 include("lineage/heritability.jl")
 include("lineage/fluctuation_test.jl")
@@ -83,10 +84,11 @@ export Cell, ExponentialGrowth, Sizer, Adder, AgeTimer, BinomialPartition, BetaB
 export Replication, ConstantN, FreeGrowth, LogisticGrowth, PopulationSettings, PopulationResult
 export simulate_population, snapshot, final_snapshot, popsize, concentrations
 # perturbation
-export DoseSchedule, ConstantDose, PulsedDose, PiecewiseDose, BolusPK, dose
+export DoseSchedule, ConstantDose, PulsedDose, PiecewiseDose, BolusPK, FunctionDose, AdaptiveDose, dose, daily_boluses, cycle_days, cumulative_dose
+export net_growth_rate, log_kill, time_to_progression, extinction_probability, optimize_schedule, ScheduleOptimum
 export DrugEffect, DeathHazard, GrowthInhibition, GrowthCost, RateModulation, GenePerturbation, Perturbation
 # lineage
-export LineageTable, children, sister_pairs, mother_daughter_pairs, lineage_of, follow_lineage
+export LineageTable, children, sister_pairs, cousin_pairs, kin_pairs, mother_daughter_pairs, lineage_of, follow_lineage
 export heritability, lineage_autocorrelation, memory_timescale, noise_decomposition
 export fluctuation_test, clonal_variance_scores, covariance_eigenspectrum, powerlaw_tail_exponent
 # observation

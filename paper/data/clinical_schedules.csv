@@ -1,0 +1,5 @@
+trial,nct,arm,drug,dose,days_on,cycle_days,cycles,outcome,source
+RTOG 0525,NCT00304031,standard,temozolomide,150-200 mg/m2 per day,5,28,6-12,"median OS 16.6 months; PFS 5.5 months","ClinicalTrials.gov NCT00304031; Gilbert et al. 2013 J Clin Oncol 31:4085"
+RTOG 0525,NCT00304031,dose-dense,temozolomide,75-100 mg/m2 per day,21,28,6-12,"median OS 14.9 months (HR 1.03, P = 0.63); PFS 6.7 months (HR 0.87, P = 0.06); more grade >= 3 toxicity","same"
+SWOG S1320,NCT02196181,continuous,dabrafenib + trametinib,standard,56,56,until progression,"median post-randomisation PFS 9.0 months","ClinicalTrials.gov NCT02196181; Algazi et al. 2020 Nat Med 26:1564"
+SWOG S1320,NCT02196181,intermittent,dabrafenib + trametinib,standard,35,56,until progression,"median PFS 5.5 months (3 weeks off, 5 weeks on); no OS difference","same"

@@ -1,0 +1,4 @@
+condition,cisplatin_uM,cells_at_drug,divided,died,survived_without_dividing,divided_twice,exposure_h,source
+Low,7,232,100,30,102,2,72,"Iyer et al. 2025 Table 2 (U2OS forward lineages); 3-day cisplatin exposure after 2 drug-free days, frames every 30 min"
+Medium,10,240,75,66,99,2,72,"Iyer et al. 2025 Table 2"
+High,13,296,67,176,53,1,72,"Iyer et al. 2025 Table 2"

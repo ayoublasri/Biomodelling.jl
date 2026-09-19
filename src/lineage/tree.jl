@@ -114,3 +114,24 @@ function cousin_pairs(lt::LineageTable)
     end
     out
 end
+
+"""
+    kin_pairs(lt, g) -> Vector{Tuple{Int,Int}}
+
+Pairs of cells whose most recent common ancestor is `g` generations back:
+`g = 1` sisters, `g = 2` first cousins, `g = 3` second cousins, and so on.
+Each pair is listed once.
+"""
+function kin_pairs(lt::LineageTable, g::Integer)
+    g >= 1 || throw(ArgumentError("g must be at least 1"))
+    cm = children_map(lt)
+    descendants(id, depth) = depth == 0 ? Int[id] : reduce(vcat, (descendants(c, depth - 1) for c in get(cm, id, Int[])); init = Int[])
+    out = Tuple{Int,Int}[]
+    for (a, b) in sister_pairs(lt)
+        da = descendants(a, g - 1); db = descendants(b, g - 1)
+        for i in da, j in db
+            push!(out, (i, j))
+        end
+    end
+    out
+end

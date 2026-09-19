@@ -85,8 +85,49 @@ def f6():
     b = kv("fig6b_summary.csv"); put("naive_b", f"k_on = {b['naive_k_on']:.2f}, k_off = {b['naive_k_off']:.2f}, k_tx = {b['naive_k_tx']:.1f}")
     put("abc_b", f"({b['abc_median_k_on']:.2f}, {b['abc_median_k_off']:.2f}, {b['abc_median_k_tx']:.1f})")
     c = kv("fig6c_summary.csv"); put("abc_c", f"({c['abc_median_h_max']:.2f}, {c['abc_median_K']:.0f})")
+    pc = load("fig6c_particles.csv"); lh, lK = np.log10(pc.h_max), np.log10(pc.K); w = pc.weight / pc.weight.sum()
+    cv = np.cov(np.vstack([lh, lK]), aweights=w); put("ridge_corr", f"{cv[0, 1] / np.sqrt(cv[0, 0] * cv[1, 1]):.2f}")
 
-for f in (f2, f3, f4, f5, f6): f()
+for f in (f2, f3, f4, f5, f6, f7, f8): f()
+@safe
+def f7():
+    c = kv("fig7_calibration.csv")
+    put("cal_memgen", f"{c['memory_generations']:.1f}"); put("cal_pon", f"{100 * c['p_on']:.1f}%"); put("cal_ec50", f"{c['EC50']:.1f}")
+    put("cal_hmax", f"{c['h_max']:.3f}"); put("cal_ic50", f"{c['IC50']:.1f}")
+    d = load("fig7a_fates.csv"); m = d.groupby("cisplatin_uM").mean(numeric_only=True)
+    err = lambda r: np.sqrt(np.mean([(r.died - r.obs_died) ** 2, (r.divided - r.obs_divided) ** 2, (r.survived - r.obs_survived) ** 2]))
+    put("rmse_train", f"{np.mean([err(m.loc[7.0]), err(m.loc[13.0])]):.3f}"); put("rmse_heldout", f"{err(m.loc[10.0]):.3f}")
+    r = m.loc[10.0]; put("obs_10", f"{r.obs_died:.2f}, {r.obs_divided:.2f} and {r.obs_survived:.2f}"); put("pred_10", f"{r.died:.2f}, {r.divided:.2f} and {r.survived:.2f}")
+    put("obs_died_7", f"{m.loc[7.0].obs_died:.2f}"); put("obs_died_13", f"{m.loc[13.0].obs_died:.2f}")
+    k = load("fig7c_kin_correlation.csv").groupby("relation").fate_correlation.mean()
+    for key, rel in (("phi_sis", "sisters"), ("phi_c1", "first cousins"), ("phi_c2", "second cousins"), ("phi_c3", "third cousins"), ("phi_unrel", "unrelated")): put(key, f"{k[rel]:.2f}")
+    t = load("fig7d_timing.csv").groupby(["event", "cisplatin_uM"]).mean_h.mean()
+    put("divtime_shift", f"{abs(t[('division', 13.0)] - t[('division', 7.0)]) / t[('division', 7.0)] * 100:.0f}%")
+    put("deathtime_shift", f"{abs(t[('death', 13.0)] - t[('death', 7.0)]) / t[('death', 7.0)] * 100:.0f}%")
+    kc = load("fig7b_killcurves.csv"); g = kc[np.isclose(kc.cisplatin_uM, 11.5)].reset_index(drop=True)
+    i = int(g.N_over_N0.idxmin()); put("plateau_days", f"{g.t_since_drug_h[i] / 24:.0f}")
+
+@safe
+def f8():
+    d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"]).mean(numeric_only=True)
+    for mech, mtag in (("no fitness cost", "nocost"), ("fitness cost", "cost")):
+        for sched, stag in (("continuous", "cont"), ("intermittent (S1320)", "int"), ("adaptive (50 %)", "adapt")):
+            put(f"ttp_{stag}_{mtag}", f"{m.loc[(mech, sched)].ttp_weeks:.1f}")
+        put(f"dose_adapt_{mtag}", f"{100 * m.loc[(mech, 'adaptive (50 %)')].cumulative_dose_weeks / m.loc[(mech, 'continuous')].cumulative_dose_weeks:.0f}%")
+    for tag, key in (("no_fitness_cost", "best_nocost"), ("fitness_cost", "best_cost")):
+        t = load(f"fig8c_melanoma_optimum_{tag}.csv"); b = t.loc[t.ttp_weeks.idxmax()]
+        put(key, f"a period of {b.period_weeks:.1f} weeks with {100 * b.duty:.0f}% of the time on drug (time to progression {b.ttp_weeks:.1f} weeks)")
+    g = load("fig8d_gbm_regimens.csv").groupby(["population", "regimen"]).mean(numeric_only=True)
+    parts = []
+    for pop, ptag in (("MGMT methylated (1 % expressing)", "methylated"), ("MGMT unmethylated (30 % expressing)", "unmethylated")):
+        s_, dd, eq = (g.loc[(pop, r)].log_kill for r in ("standard 5/28", "dose-dense 21/28", "dense, equal cumulative"))
+        parts.append(f"for the {ptag} population the depth of response over six cycles is {s_:.2f} log10 units under the standard regimen, {dd:.2f} under the dose-dense regimen and {eq:.2f} for 21 dosing days at the standard cumulative dose")
+    put("gbm_summary", "; ".join(parts))
+    days = []
+    for tag in ("methylated", "unmethylated"):
+        t = load(f"fig8e_gbm_days_on_{tag}.csv").groupby("days_on").log_N_end_over_N0.mean(); days.append(f"{int(t.idxmin())} ({tag})")
+    put("gbm_days_summary", "that minimises the final population is " + " and ".join(days))
+
 @safe
 def fsupp():
     t = os.path.join(HERE, "tableS_runtime.md")

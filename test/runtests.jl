@@ -19,6 +19,7 @@ end
     include("test_kernels.jl")
     include("test_population.jl")
     include("test_perturbation.jl")
+    include("test_optimize.jl")
     include("test_lineage.jl")
     include("test_observation.jl")
     include("test_inference.jl")

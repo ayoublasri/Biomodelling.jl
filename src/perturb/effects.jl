@@ -22,15 +22,24 @@ DeathHazard(; h_max, EC50, m=2.0, protect=nothing, K=1.0, q=2.0, concentration=t
     DeathHazard(Float64(h_max), Float64(EC50), Float64(m), protect, Float64(K), Float64(q), concentration)
 
 """
-    GrowthInhibition(; IC50, m=2.0)
+    GrowthInhibition(; IC50, m=2.0, protect=nothing, K=1.0, q=2.0, concentration=true)
 
-Multiplies the growth rate by `1 / (1 + (d / IC50)^m)`.
+Multiplies the growth rate by `1 / (1 + (d / IC50)^m)`. With a protective
+species (`protect`), the inhibition is reduced by the factor
+`K^q / (K^q + c^q)` of that species' concentration (or count), so that cells
+in the resistant state keep proliferating under drug.
 """
 struct GrowthInhibition <: DrugEffect
     IC50::Float64
     m::Float64
+    protect::Union{Nothing,Symbol}
+    K::Float64
+    q::Float64
+    concentration::Bool
 end
-GrowthInhibition(; IC50, m=2.0) = GrowthInhibition(Float64(IC50), Float64(m))
+GrowthInhibition(; IC50, m=2.0, protect=nothing, K=1.0, q=2.0, concentration=true) =
+    GrowthInhibition(Float64(IC50), Float64(m), protect, Float64(K), Float64(q), concentration)
+GrowthInhibition(IC50::Real, m::Real) = GrowthInhibition(Float64(IC50), Float64(m), nothing, 1.0, 2.0, true)
 
 """
     GrowthCost(species; K, q=2.0, max_cost=0.5, concentration=true)
@@ -106,22 +115,25 @@ end
 struct GenePerturbationC
     idx::Int; factor::Float64; fraction::Float64; t_start::Float64; t_end::Float64
 end
+struct GrowthInhibitionC
+    IC50::Float64; m::Float64; protect::Int; K::Float64; q::Float64; conc::Bool
+end
 struct CompiledPerturbation
     schedule::DoseSchedule
     deaths::Vector{DeathHazardC}
-    growth::Vector{GrowthInhibition}
+    growth::Vector{GrowthInhibitionC}
     rates::Vector{RateModulationC}
     genes::Vector{GenePerturbationC}
     costs::Vector{GrowthCostC}
 end
 
 function compile(pt::Perturbation, m::ReactionModel)
-    deaths = DeathHazardC[]; growth = GrowthInhibition[]; rates = RateModulationC[]; costs = GrowthCostC[]
+    deaths = DeathHazardC[]; growth = GrowthInhibitionC[]; rates = RateModulationC[]; costs = GrowthCostC[]
     for e in pt.effects
         if e isa DeathHazard
             push!(deaths, DeathHazardC(e.h_max, e.EC50, e.m, e.protect === nothing ? 0 : speciesindex(m, e.protect), e.K, e.q, e.concentration))
         elseif e isa GrowthInhibition
-            push!(growth, e)
+            push!(growth, GrowthInhibitionC(e.IC50, e.m, e.protect === nothing ? 0 : speciesindex(m, e.protect), e.K, e.q, e.concentration))
         elseif e isa RateModulation
             push!(rates, RateModulationC(paramindex(m, e.param), e.f))
         elseif e isa GrowthCost
@@ -164,7 +176,13 @@ function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vec
         end
     end
     for gi in cp.growth
-        gmult *= 1.0 / (1.0 + (d / gi.IC50)^gi.m)
+        inhib = 1.0 - 1.0 / (1.0 + (d / gi.IC50)^gi.m)
+        if gi.protect > 0
+            conc = gi.conc ? c.x[gi.protect] / c.V : float(c.x[gi.protect])
+            Kq = gi.K^gi.q
+            inhib *= Kq / (Kq + conc^gi.q)
+        end
+        gmult *= 1.0 - inhib
     end
     for gc in cp.costs
         conc = gc.conc ? c.x[gc.idx] / c.V : float(c.x[gc.idx])

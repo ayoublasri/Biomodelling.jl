@@ -242,11 +242,11 @@ function simulate_population(m::ReactionModel, x0::AbstractVecOrMat{<:Integer}, 
     wss = [Workspace(m) for _ in 1:nth]
     genes_assigned = cp === nothing || isempty(cp.genes)
     _record!(ts, counts, volume, ids, ages, gens, clones, copiesv, perturbed, popsizes, doses,
-             t0, cells, N0 * scale, cp === nothing ? 0.0 : dose(cp.schedule, t0), ns)
+             t0, cells, N0 * scale, cp === nothing ? 0.0 : dose(cp.schedule, t0, N0 * scale), ns)
     for step in 1:nsteps
         t = t0 + (step - 1) * dt
         tn = t + dt
-        d = cp === nothing ? 0.0 : dose(cp.schedule, t)
+        d = cp === nothing ? 0.0 : dose(cp.schedule, t, length(cells) * scale)
         if !genes_assigned && t >= minimum(g.t_start for g in cp.genes)
             for c in cells
                 c.perturbed = rand(c.rng) < cp.genes[1].fraction

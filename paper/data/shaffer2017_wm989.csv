@@ -1,0 +1,10 @@
+key,value,source
+preresistant_frequency_low,0.002,"Shaffer et al. 2017: rare cells at frequencies of 1:50 to 1:500 express resistance genes at high levels before drug"
+preresistant_frequency_high,0.02,"same"
+vemurafenib_uM,1,"fractional killing dose of vemurafenib 1 uM"
+egfr_high_sorted_fraction,0.001,"top 0.02-0.2% EGFR-stained cells sorted by FACS"
+egfr_high_colony_enrichment,7.9,"EGFR-high cells produced 7.9 +/- 0.92 fold more resistant colonies than EGFR-mixed cells after 3 weeks of vemurafenib"
+egfr_high_colony_enrichment_sd,0.92,"same"
+colony_assay_weeks,3,"vemurafenib applied for 3 weeks"
+reprogramming_weeks,4,"resistance genes progressively activated over 1-4 weeks in drug (stable resistance)"
+fluctuation_test_divisions,7.5,"single-cell clones expanded for 7-8 divisions before drug (Luria-Delbrück analysis)"

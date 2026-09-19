@@ -83,3 +83,18 @@ from fixed seeds (`julia --project=paper paper/run_all.jl`, then
 ## License
 
 MIT. See `LICENSE`.
+
+## Dose and schedule optimisation
+
+The perturbation layer includes clinical-style regimens (`PulsedDose` with a
+finite number of cycles, `daily_boluses` with one-compartment pharmacokinetics,
+`cycle_days`), feedback schedules (`AdaptiveDose`, adaptive therapy), treatment
+outcomes (`time_to_progression`, `log_kill`, `net_growth_rate`,
+`extinction_probability`, `cumulative_dose`) and a bounded optimiser with common
+random numbers (`optimize_schedule`) that minimises any outcome over schedule
+parameters. `paper/scripts/fig7_calibration.jl` calibrates the persister model
+to published time-lapse data and validates it on held-out drug concentrations;
+`paper/scripts/fig8_schedules.jl` compares continuous, intermittent (SWOG S1320)
+and adaptive dosing and the standard against dose-dense temozolomide regimens
+(RTOG 0525) and searches for better schedules. See the documentation tutorial
+"Dose and schedule optimisation".

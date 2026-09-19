@@ -1,0 +1,7 @@
+key,value,source
+elimination_half_life_h,2.1,"Ostermann et al. 2004 population PK in 35 glioma patients"
+oral_clearance_L_per_h,10,"same"
+volume_of_distribution_L,30.3,"same"
+absorption_rate_per_h,5.8,"same"
+csf_to_plasma_auc_ratio,0.2,"same"
+molecular_weight_g_per_mol,194.15,"temozolomide"
