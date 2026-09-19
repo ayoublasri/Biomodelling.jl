@@ -33,6 +33,8 @@
     res = abc_smc(dist, [Uniform(1.0, 80.0)]; n_particles = 80, generations = 5, rng = Xoshiro(3), names = [:k])
     pm = posterior_mean(res)[1]
     @test abs(pm - 20.0) < 3.0
+    med = posterior_median(res)[1]
+    @test abs(med - 20.0) < 3.0 && posterior_quantile(res, :k, 0.5) == med
     lo, hi = credible_interval(res, :k)
     @test lo < 20.0 < hi && hi - lo < 20.0
     @test length(res.epsilons) == 5 && issorted(res.epsilons[2:end]; rev = true)

@@ -119,6 +119,21 @@ end
 posterior_mean(r::ABCResult) = vec(sum(r.particles .* r.weights; dims = 1))
 
 """
+    posterior_quantile(result, k, q) -> Float64
+    posterior_median(result) -> Vector{Float64}
+
+Weighted quantiles of the particle approximation (`k` is an index or a name).
+"""
+function posterior_quantile(r::ABCResult, k, q::Real)
+    kk = k isa Integer ? Int(k) : findfirst(==(k), r.names)
+    x = r.particles[:, kk]
+    o = sortperm(x)
+    cw = cumsum(r.weights[o]) ./ sum(r.weights)
+    x[o[min(searchsortedfirst(cw, q), length(x))]]
+end
+posterior_median(r::ABCResult) = [posterior_quantile(r, k, 0.5) for k in 1:size(r.particles, 2)]
+
+"""
     credible_interval(result, k; level=0.95) -> (lo, hi)
 
 Weighted quantile interval of parameter `k` (index or name).

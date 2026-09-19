@@ -57,10 +57,10 @@ def f5():
 
 @safe
 def f6():
-    a = kv("fig6a_summary.csv"); put("abc_a", f"({a['abc_mean_k_on']:.2f}, {a['abc_mean_k_off']:.2f}, {a['abc_mean_k_tx']:.1f})")
+    a = kv("fig6a_summary.csv"); put("abc_a", f"({a['abc_median_k_on']:.2f}, {a['abc_median_k_off']:.2f}, {a['abc_median_k_tx']:.1f})")
     b = kv("fig6b_summary.csv"); put("naive_b", f"k_on = {b['naive_k_on']:.2f}, k_off = {b['naive_k_off']:.2f}, k_tx = {b['naive_k_tx']:.1f}")
-    put("abc_b", f"({b['abc_mean_k_on']:.2f}, {b['abc_mean_k_off']:.2f}, {b['abc_mean_k_tx']:.1f})")
-    c = kv("fig6c_summary.csv"); put("abc_c", f"({c['abc_mean_h_max']:.2f}, {c['abc_mean_K']:.0f})")
+    put("abc_b", f"({b['abc_median_k_on']:.2f}, {b['abc_median_k_off']:.2f}, {b['abc_median_k_tx']:.1f})")
+    c = kv("fig6c_summary.csv"); put("abc_c", f"({c['abc_median_h_max']:.2f}, {c['abc_median_K']:.0f})")
 
 for f in (f2, f3, f4, f5, f6): f()
 tpl = open(os.path.join(HERE, "02_results.template.md")).read()

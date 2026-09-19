@@ -92,7 +92,7 @@ export fluctuation_test, clonal_variance_scores, covariance_eigenspectrum, power
 # observation
 export SeqProtocol, sequence, smfish, timelapse, sample_cells
 # inference
-export moment_summaries, summary_distance, abc_smc, ABCResult, posterior_mean, credible_interval
+export moment_summaries, summary_distance, abc_smc, ABCResult, posterior_mean, posterior_median, posterior_quantile, credible_interval
 export telegraph_pmf, telegraph_loglik, fit_telegraph
 # generators & io
 export random_grn, write_counts_csv, write_lineage_csv, write_metadata_csv, newick, write_h5ad

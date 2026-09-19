@@ -277,6 +277,7 @@ def fig6():
             ax.hist(np.log10(p[k]), bins=25, weights=p.weight, color=C[0], alpha=0.8)
             ax.axvline(np.log10(s[f"true_{k}"]), color=INK, lw=1.2, label="truth")
             ax.axvline(np.log10(s[f"{ref_prefix}_{k}"]), color=C[7], lw=1.2, ls="--", label=ref_label)
+            if f"abc_median_{k}" in s: ax.axvline(np.log10(s[f"abc_median_{k}"]), color=C[0], lw=1.0, ls=":", label="posterior median")
             ax.set_xlabel(f"log₁₀ {k}"); ax.set_yticks([])
             if i == 0: label(ax, letter, title); ax.set_ylabel("posterior")
             if i == 2: ax.legend(fontsize=5.5)

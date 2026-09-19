@@ -9,15 +9,21 @@ x0 = initial_state(tm; G_off = 1)
 mi = speciesindex(tm, :mRNA)
 data = ensemble_final(tm, x0, 40.0, 2000; rng = Xoshiro(1))[:, mi]
 mle = fit_telegraph(data)
+const QS = 0.05:0.05:0.95
+"""Distance between simulated and observed counts: relative moment summaries plus the mean quantile gap."""
+function count_distance(sim, obs, sobs)
+    summary_distance(moment_summaries(sim), sobs) + mean(abs.(quantile(sim, QS) .- quantile(obs, QS))) / max(mean(obs), 1.0)
+end
 sobs = moment_summaries(data)
-dist_a(θ, rng) = summary_distance(moment_summaries(ensemble_final(tm, x0, 40.0, 400; p = set_params(tm; k_on = θ[1], k_off = θ[2], k_tx = θ[3]), rng = rng, threads = false)[:, mi]), sobs)
+dist_a(θ, rng) = count_distance(ensemble_final(tm, x0, 40.0, 600; p = set_params(tm; k_on = θ[1], k_off = θ[2], k_tx = θ[3]), rng = rng, threads = false)[:, mi], data, sobs)
 prior = [LogUniform(0.01, 10.0), LogUniform(0.01, 10.0), LogUniform(1.0, 200.0)]
-abc_a = abc_smc(dist_a, prior; n_particles = 200, generations = 7, rng = Xoshiro(2), names = [:k_on, :k_off, :k_tx], verbose = true)
+abc_a = abc_smc(dist_a, prior; n_particles = 200, generations = 8, rng = Xoshiro(2), names = [:k_on, :k_off, :k_tx], verbose = true)
 save_csv("fig6a_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_a.particles, abc_a.weights))
 save_csv("fig6a_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_a.epsilons), abc_a.epsilons, abc_a.acceptance))
 save_kv("fig6a_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
         "mle_k_on" => mle.k_on, "mle_k_off" => mle.k_off, "mle_k_tx" => mle.k_tx,
         "abc_mean_k_on" => posterior_mean(abc_a)[1], "abc_mean_k_off" => posterior_mean(abc_a)[2], "abc_mean_k_tx" => posterior_mean(abc_a)[3],
+        "abc_median_k_on" => posterior_median(abc_a)[1], "abc_median_k_off" => posterior_median(abc_a)[2], "abc_median_k_tx" => posterior_median(abc_a)[3],
         "abc_ci_k_tx_lo" => credible_interval(abc_a, :k_tx)[1], "abc_ci_k_tx_hi" => credible_interval(abc_a, :k_tx)[2], "final_epsilon" => abc_a.epsilons[end]])
 @printf("(a) MLE k_on %.3f k_off %.3f k_tx %.2f | ABC %.3f %.3f %.2f\n", mle.k_on, mle.k_off, mle.k_tx, posterior_mean(abc_a)...)
 
@@ -32,15 +38,16 @@ naive = fit_telegraph(counts_pop)
 sobs_b = moment_summaries(counts_pop)
 function dist_b(θ, rng)
     p = set_params(tmv; k_on = θ[1], k_off = θ[2], k_tx = θ[3])
-    r = simulate_population(tmv, x0, 200, (0.0, 80.0); settings = st, p = p, rng = rng)
-    summary_distance(moment_summaries(final_snapshot(r).counts[:, mi]), sobs_b)
+    r = simulate_population(tmv, x0, 250, (0.0, 80.0); settings = st, p = p, rng = rng)
+    count_distance(final_snapshot(r).counts[:, mi], counts_pop, sobs_b)
 end
-abc_b = abc_smc(dist_b, prior; n_particles = 120, generations = 5, rng = Xoshiro(4), names = [:k_on, :k_off, :k_tx], verbose = true)
+abc_b = abc_smc(dist_b, prior; n_particles = 120, generations = 6, rng = Xoshiro(4), names = [:k_on, :k_off, :k_tx], verbose = true)
 save_csv("fig6b_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_b.particles, abc_b.weights))
 save_csv("fig6b_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_b.epsilons), abc_b.epsilons, abc_b.acceptance))
 save_kv("fig6b_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
         "naive_k_on" => naive.k_on, "naive_k_off" => naive.k_off, "naive_k_tx" => naive.k_tx,
         "abc_mean_k_on" => posterior_mean(abc_b)[1], "abc_mean_k_off" => posterior_mean(abc_b)[2], "abc_mean_k_tx" => posterior_mean(abc_b)[3],
+        "abc_median_k_on" => posterior_median(abc_b)[1], "abc_median_k_off" => posterior_median(abc_b)[2], "abc_median_k_tx" => posterior_median(abc_b)[3],
         "abc_ci_k_tx_lo" => credible_interval(abc_b, :k_tx)[1], "abc_ci_k_tx_hi" => credible_interval(abc_b, :k_tx)[2],
         "mean_volume" => mean(snp.volume), "mean_copies" => mean(snp.copies), "final_epsilon" => abc_b.epsilons[end]])
 @printf("(b) naive k_on %.3f k_off %.3f k_tx %.2f | ABC %.3f %.3f %.2f\n", naive.k_on, naive.k_off, naive.k_tx, posterior_mean(abc_b)...)
@@ -51,9 +58,12 @@ xr = initial_state(rm_; R_off = 1)
 truth_c = (h_max = 0.5, K = 150.0)
 mkpert(h, K) = Perturbation(PiecewiseDose([0.0, 40.0], [0.0, 1.0]); effects = [DeathHazard(h_max = h, EC50 = 0.5, m = 2.0, protect = :P, K = K, q = 4.0)])
 stc = PopulationSettings(dt = 0.2, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.05), control = FreeGrowth(max_cells = 8000), record_every = 25)
+const TGRID_C = 40.0:2.5:100.0
 function summaries_c(r)
     i0 = argmin(abs.(r.t .- 40.0))
-    surv = log.(max.(r.popsize[i0:end], 1.0) ./ r.popsize[i0])
+    N0 = r.popsize[i0]
+    # survival on a fixed grid; times after extinction (no record) count as a floor of 1e-3
+    surv = [(i = findfirst(>=(t - 1e-9), r.t); i === nothing ? log(1e-3) : log(max(r.popsize[i], 1e-3 * N0) / N0)) for t in TGRID_C]
     lt = r.lineage
     same = 0; n = 0
     for (a, b) in sister_pairs(lt)
@@ -73,9 +83,10 @@ abc_c = abc_smc(dist_c, [LogUniform(0.05, 5.0), LogUniform(20.0, 1000.0)]; n_par
 save_csv("fig6c_particles.csv", ["h_max", "K", "weight"], hcat(abc_c.particles, abc_c.weights))
 save_csv("fig6c_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_c.epsilons), abc_c.epsilons, abc_c.acceptance))
 save_kv("fig6c_summary.csv", ["true_h_max" => truth_c.h_max, "true_K" => truth_c.K, "abc_mean_h_max" => posterior_mean(abc_c)[1], "abc_mean_K" => posterior_mean(abc_c)[2],
+        "abc_median_h_max" => posterior_median(abc_c)[1], "abc_median_K" => posterior_median(abc_c)[2],
         "ci_h_lo" => credible_interval(abc_c, :h_max)[1], "ci_h_hi" => credible_interval(abc_c, :h_max)[2], "ci_K_lo" => credible_interval(abc_c, :K)[1], "ci_K_hi" => credible_interval(abc_c, :K)[2]])
 # (d) posterior predictive kill curves from posterior-mean parameters versus the observed curve
-pm = posterior_mean(abc_c)
+pm = posterior_median(abc_c)
 pp = [simulate_population(rm_, xr, 400, (0.0, 100.0); settings = stc, perturbation = mkpert(pm[1], pm[2]), rng = Xoshiro(100 + s)) for s in 1:5]
 i0 = argmin(abs.(obs_c.t .- 40.0))
 save_csv("fig6d_ppc.csv", vcat(["t", "observed"], ["replicate_$s" for s in 1:5]),
