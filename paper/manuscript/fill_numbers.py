@@ -88,7 +88,6 @@ def f6():
     pc = load("fig6c_particles.csv"); lh, lK = np.log10(pc.h_max), np.log10(pc.K); w = pc.weight / pc.weight.sum()
     cv = np.cov(np.vstack([lh, lK]), aweights=w); put("ridge_corr", f"{cv[0, 1] / np.sqrt(cv[0, 0] * cv[1, 1]):.2f}")
 
-for f in (f2, f3, f4, f5, f6, f7, f8): f()
 @safe
 def f7():
     c = kv("fig7_calibration.csv")
@@ -102,10 +101,11 @@ def f7():
     k = load("fig7c_kin_correlation.csv").groupby("relation").fate_correlation.mean()
     for key, rel in (("phi_sis", "sisters"), ("phi_c1", "first cousins"), ("phi_c2", "second cousins"), ("phi_c3", "third cousins"), ("phi_unrel", "unrelated")): put(key, f"{k[rel]:.2f}")
     t = load("fig7d_timing.csv").groupby(["event", "cisplatin_uM"]).mean_h.mean()
-    put("divtime_shift", f"{abs(t[('division', 13.0)] - t[('division', 7.0)]) / t[('division', 7.0)] * 100:.0f}%")
     put("deathtime_shift", f"{abs(t[('death', 13.0)] - t[('death', 7.0)]) / t[('death', 7.0)] * 100:.0f}%")
-    kc = load("fig7b_killcurves.csv"); g = kc[np.isclose(kc.cisplatin_uM, 11.5)].reset_index(drop=True)
-    i = int(g.N_over_N0.idxmin()); put("plateau_days", f"{g.t_since_drug_h[i] / 24:.0f}")
+    kc = load("fig7b_killcurves.csv"); g = kc[np.isclose(kc.cisplatin_uM, 13.0)].reset_index(drop=True)
+    tt, N = g.t_since_drug_h.values, g.N_over_N0.values
+    sl = lambda a, b: np.log(N[np.argmin(abs(tt - b))] / N[np.argmin(abs(tt - a))]) / (b - a)
+    put("kc_ratio", f"{sl(0, 48) / sl(96, 168):.1f}")
 
 @safe
 def f8():
@@ -138,6 +138,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
+for f in (f2, f3, f4, f5, f6, f7, f8): f()
 fsupp()
 
 def fill(template, target):

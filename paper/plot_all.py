@@ -348,15 +348,15 @@ def fig7():
         order = ["sisters", "first cousins", "second cousins", "third cousins", "unrelated"]; m = m.set_index("relation").loc[order]
         x = np.arange(len(order))
         ax.bar(x, m["mean"], yerr=m["std"].fillna(0), color=[C[0]] * 4 + [INK2], capsize=2, width=0.6)
-        ax.axhline(0, color=INK, lw=0.6); ax.set_xticks(x); ax.set_xticklabels(["sisters", "1st\ncousins", "2nd\ncousins", "3rd\ncousins", "unrelated"], fontsize=6)
+        ax.axhline(0, color=INK, lw=0.6); ax.set_xticks(x); ax.set_xticklabels(["sisters", "1st cousins", "2nd cousins", "3rd cousins", "unrelated"], fontsize=6, rotation=30, ha="right", rotation_mode="anchor")
         ax.set_ylabel("correlation of death fates"); label(ax, "c", "lineage correlations of fate")
     @panel
     def d(ax):
-        d = load("fig7d_timing.csv"); m = d.groupby(["event", "cisplatin_uM"]).agg(mean_h=("mean_h", "mean"), sd=("mean_h", "std")).reset_index()
-        for i, ev in enumerate(("division", "death")):
+        d = load("fig7d_timing.csv"); d = d[d.n >= 20]; m = d.groupby(["event", "cisplatin_uM"]).agg(mean_h=("mean_h", "mean"), sd=("mean_h", "std"), n=("n", "mean")).reset_index()
+        for i, ev in enumerate(("death", "division")):
             g = m[m.event == ev]
-            ax.errorbar(g.cisplatin_uM, g.mean_h, yerr=g.sd.fillna(0), marker="o", ms=4, color=C[i], capsize=2, label=f"{ev} time")
-        ax.set_ylim(0, None); ax.set_xlabel("cisplatin (µM)"); ax.set_ylabel("mean time (h)"); ax.legend(fontsize=5.5); label(ax, "d", "single-cell times are dose-invariant")
+            if len(g): ax.errorbar(g.cisplatin_uM, g.mean_h, yerr=g.sd.fillna(0), marker="o", ms=4, color=C[i], capsize=2, label=f"time to {ev}")
+        ax.set_ylim(0, None); ax.set_xlim(6, 14); ax.set_xlabel("cisplatin (µM)"); ax.set_ylabel("mean time (h)"); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "d", "death times are dose-invariant")
     @panel
     def e(ax):
         t = load("fig7_calibration_table.csv").sort_values("distance")

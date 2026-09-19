@@ -15,7 +15,7 @@ if "melanoma" in parts
     const MEMORY_M = 5CYCLE_M                                # memory of the pre-resistant state ≈ 5 generations (MemorySeq)
     const P_ON = 0.005                                       # pre-resistant fraction ≈ 1:200
     k_off_m = (1 - P_ON) / MEMORY_M; k_on_m = P_ON / MEMORY_M
-    mel = telegraph_model(k_on = k_on_m, k_off = k_off_m, k_tx = 30.0, k_dm = 1.0, k_tl = 4.0, k_dp = 0.2, gene = :R, mrna = :mRNA, protein = :P)
+    mel = telegraph_model(k_on = k_on_m, k_off = k_off_m, k_tx = 3.0, k_dm = 0.1, k_tl = 0.4, k_dp = 0.02, gene = :R, mrna = :mRNA, protein = :P)
     xm = initial_state(mel; R_off = 1)
     # drug effects at dose 1 (fractional-killing dose): sensitive cells arrest and die with a half-life of about two weeks,
     # resistant (P-high) cells keep growing; the drug stabilises the resistant state ten-fold (drug-induced reprogramming)
@@ -66,7 +66,7 @@ if "gbm" in parts
     const λg = log(2) / CYCLE_G
     const K_E = log(2) / 2.1                                 # temozolomide elimination half-life 2.1 h (Ostermann et al. 2004)
     memory_g = 4CYCLE_G
-    mgmt(p_on) = telegraph_model(k_on = p_on / memory_g, k_off = (1 - p_on) / memory_g, k_tx = 30.0, k_dm = 1.0, k_tl = 4.0, k_dp = 0.2, gene = :MGMT, mrna = :mRNA, protein = :P)
+    mgmt(p_on) = telegraph_model(k_on = p_on / memory_g, k_off = (1 - p_on) / memory_g, k_tx = 3.0, k_dm = 0.1, k_tl = 0.4, k_dp = 0.02, gene = :MGMT, mrna = :mRNA, protein = :P)
     death_g = DeathHazard(h_max = 0.03, EC50 = 0.4, m = 2.0, protect = :P, K = 150.0, q = 4.0)   # dose in units of the standard daily bolus peak
     burn_g = PopulationSettings(dt = 4.0, growth = ExponentialGrowth(λg), size_control = Sizer(2.0; cv = 0.1), control = ConstantN(), track_lineage = false, record_every = 10_000)
     st_g = PopulationSettings(dt = 1.0, growth = ExponentialGrowth(λg), size_control = Sizer(2.0; cv = 0.1), control = FreeGrowth(max_cells = 20_000), track_lineage = false, record_every = 24)
