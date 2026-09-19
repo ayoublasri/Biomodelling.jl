@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: ""
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–9, Supplementary Figures 1–2 and Supplementary Tables 1–4.
+**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–10, Supplementary Figures 1–2 and Supplementary Tables 1–4.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -99,3 +99,20 @@ Supplementary Table 4. Reference values used for calibration and validation (tra
 # Supplementary Note 9: Migration from version 1
 
 The v1 API (`Donne`, `ssa`, `tauleap`, `tauleapswitch`, `adaptive_tauleap`, `exponential_growth`, NamedTuple reactions) remains available through a deprecated compatibility layer that converts NamedTuple reactions to `ReactionModel`s (reactions whose names contain `act`, `inhib`, `comb_a` or `comb_i` become Hill kinetics with `rate = [k, n, K]`; species whose names contain `on`/`off` become promoter groups) and maps the algorithms onto the new kernels. Output shapes are preserved, including the leading `:NULL` column. See `docs/src/migration.md`.
+
+# Supplementary Note 10: Relation to previous work
+
+The ingredients of this framework have precedents, and several of its results confirm conclusions reached earlier by other means. The table separates, claim by claim, what was already established from what this work adds. Prior results the framework reproduces are evidence that it is behaving correctly, not claims of novelty.
+
+| Result in this Article | Already established | What this work adds |
+|---|---|---|
+| Stochastic reaction kinetics inside growing, dividing cells (Fig. 3) | Simulators of stochastic expression with growth and division exist [@bertaux2018; @piho2025abm], including version 1 of this framework [@lasri2022] | Gene replication, promoter inheritance, a drug layer, lineage statistics, observation models and inference in one forward model, so that a resistance phenotype is a heritable expression state with measurable kinetics rather than an assumed compartment |
+| Simulation of division trees for lineage-tracing methods | TedSim couples expression to division history [@pan2022tedsim]; Cassiopeia simulates topologies, heritable fitness and CRISPR barcodes [@jones2020cassiopeia] | Molecular content on the same tree: partitioning at division, promoter states, drug-induced death, and per-cell fates with the molecules that caused them |
+| Heritable expression states decide which cells survive a drug (Fig. 4) | Measured directly in barcoded and time-lapse experiments [@shaffer2017; @harmange2023; @iyer2025; @oren2021] | A generative model in which memory is one promoter timescale, reproducing the reported signatures quantitatively and predicting which of them discriminate pre-existing from induced tolerance |
+| Cell-cycle-aware inference of transcriptional kinetics is necessary (Fig. 3f, Fig. 6b) | Established from data and theory [@sukys2025; @zhang2025; @okochi2026scdivide] | A simulator that generates the data such methods assume, and a quantification of the bias incurred by a division-blind fit |
+| Benchmarks of network inference from single-cell data | Extensive benchmarks exist [@pratapa2020; @dibaeinia2020; @lasri2022] | The growth and cell-cycle confound with known ground truth: how much accuracy is lost in a dividing population, and how much cell-cycle regression recovers (Fig. 5b) |
+| The benefit of treatment holidays depends on a cost of resistance and on turnover (Fig. 8a-e) | Compartment models of adaptive therapy [@zhang2017adaptive; @strobl2021] | The same dependence from single cells whose resistance is a heritable expression state; cost and degree of protection become cell properties that lineage experiments measure; partial protection reverses the ranking even without a cost |
+| Perturbing the retention of a resistant state changes the outcome (Fig. 4f) | Phenotypic-switching theory [@gunnarsson2020] and memory-disrupting compounds [@harmange2023] | The timing requirement (disruption must continue during exposure) and a lineage-resolved readout, the number of surviving clones |
+| An intermediate dose can be optimal against drug-induced tolerance (Fig. 4h) | Reported for induced persisters [@corigliano2025] | Reproduced; the accompanying benefit of release periods does not appear here, which the text attributes to the decay of the induced state in this model rather than to a disagreement about data |
+| MGMT expression selects glioblastoma cells under temozolomide (Fig. 8f-h) | Phenotypic selection with stable inheritance [@lasri2020] | Pharmacokinetics, the RTOG 0525 regimens, consumption of MGMT by the drug, and the fractionation that minimises the final population at fixed cumulative dose |
+| Dose-dense temozolomide does not improve survival | Clinical result [@gilbert2013] | A mechanistic account of why, and identification of the rate at which the drug consumes MGMT as the measurement that separates the regimens |

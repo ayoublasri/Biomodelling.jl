@@ -8,6 +8,9 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- Supplementary Note 10 of the white paper: a claim-by-claim table separating what prior
+  work established from what this work adds, with the comparison table in the main text
+  now citing every tool it compares.
 - `whitepaper/`: the version 2.0 white paper (PDF and DOCX) and its supplementary
   information, rebuilt from `paper/manuscript/` with the Nature citation style.
 - Schedule optimisation: `AdaptiveDose` feedback schedules, finite-cycle `PulsedDose`,
