@@ -8,6 +8,8 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- Every figure of the paper now sets in one typeface with one spacing scale, and
+  Figure 6 gained the posterior predictive panel its legend already described.
 - Supplementary Note 10 of the white paper: a claim-by-claim table separating what prior
   work established from what this work adds, with the comparison table in the main text
   now citing every tool it compares.

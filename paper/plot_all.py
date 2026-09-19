@@ -12,10 +12,41 @@ OUT = os.path.join(HERE, "output"); FIG = os.path.join(HERE, "figures"); os.make
 C = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 SEQ = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#1c5cab", "#104281"]
 INK, INK2, GRID = "#0b0b0b", "#52514e", "#e6e5e1"
-plt.rcParams.update({"font.size": 7.5, "axes.titlesize": 8, "axes.labelsize": 7.5, "legend.fontsize": 6.5, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5,
-                     "axes.spines.top": False, "axes.spines.right": False, "axes.linewidth": 0.6, "axes.edgecolor": INK2, "xtick.color": INK2, "ytick.color": INK2,
-                     "axes.labelcolor": INK, "text.color": INK, "legend.frameon": False, "lines.linewidth": 1.4, "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.5,
-                     "figure.dpi": 150, "savefig.dpi": 300, "pdf.fonttype": 42, "axes.axisbelow": True})
+
+# Inter, the typeface of Figure 1, so every figure of the paper sets in one family
+_FONTS = {"400": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+          "600": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+          "800": "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuDyYMZg.ttf"}
+def _use_inter():
+    import urllib.request
+    from matplotlib import font_manager
+    ok = False
+    for w, url in _FONTS.items():
+        path = os.path.join(FIG, "fonts", f"Inter-{w}.ttf")
+        if not os.path.exists(path):
+            try:
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                urllib.request.urlretrieve(url, path)
+            except Exception:
+                continue
+        try:
+            font_manager.fontManager.addfont(path); ok = True
+        except Exception:
+            pass
+    return ok
+
+FAMILY = "Inter" if _use_inter() else "DejaVu Sans"
+plt.rcParams.update({"font.family": FAMILY, "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8,
+                     "legend.fontsize": 7, "xtick.labelsize": 7, "ytick.labelsize": 7,
+                     "axes.spines.top": False, "axes.spines.right": False, "axes.linewidth": 0.7, "axes.edgecolor": INK2,
+                     "xtick.color": INK2, "ytick.color": INK2, "xtick.major.size": 2.6, "ytick.major.size": 2.6,
+                     "xtick.major.width": 0.7, "ytick.major.width": 0.7, "xtick.major.pad": 2.5, "ytick.major.pad": 2.5,
+                     "axes.labelcolor": INK, "text.color": INK, "axes.titlepad": 9, "axes.labelpad": 3.5,
+                     "legend.frameon": False, "legend.handlelength": 1.5, "legend.handletextpad": 0.5,
+                     "legend.columnspacing": 1.0, "legend.labelspacing": 0.35, "legend.borderaxespad": 0.25,
+                     "lines.linewidth": 1.4, "lines.solid_capstyle": "round", "axes.grid": True, "grid.color": GRID,
+                     "grid.linewidth": 0.45, "figure.dpi": 150, "savefig.dpi": 400, "pdf.fonttype": 42,
+                     "axes.axisbelow": True, "figure.facecolor": "white", "savefig.facecolor": "white"})
 
 def load(name):
     p = os.path.join(OUT, name)
@@ -24,8 +55,8 @@ def load(name):
 def kv(name):
     d = load(name); return dict(zip(d.key, d.value))
 def label(ax, letter, title=None):
-    ax.text(-0.18, 1.06, letter, transform=ax.transAxes, fontsize=10, fontweight="bold", va="bottom")
-    if title: ax.set_title(title, loc="left", fontsize=7.5, color=INK2)
+    ax.text(-0.19, 1.07, letter, transform=ax.transAxes, fontsize=11, fontweight="bold", va="bottom", color=INK)
+    if title: ax.set_title(title, loc="left", fontsize=8.2, color="#2a2a28", fontweight="semibold")
 def save(fig, name):
     fig.savefig(os.path.join(FIG, name + ".pdf"), bbox_inches="tight"); fig.savefig(os.path.join(FIG, name + ".png"), bbox_inches="tight"); plt.close(fig)
     print("saved", name)
@@ -37,7 +68,7 @@ def panel(fn):
 
 # ------------------------------------------------------------------ Figure 2
 def fig2():
-    fig = plt.figure(figsize=(7.2, 4.6)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.55, wspace=0.45)
+    fig = plt.figure(figsize=(7.2, 5.0)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.72, wspace=0.42)
     @panel
     def a(ax):
         d = load("fig2a_birthdeath.csv")
@@ -50,7 +81,9 @@ def fig2():
         for i, (reg, g) in enumerate(d.groupby("regime", sort=False)):
             ax.bar(g.n, g.empirical, color=C[i], width=0.8, alpha=0.75, label=f"simulation ({reg})")
             ax.plot(g.n, g.beta_poisson, color=INK if i == 0 else INK2, lw=1.0, ls="-" if i == 0 else "--", label=f"Beta-Poisson ({reg})")
-        ax.set_xlim(-0.5, 60); ax.set_xlabel("mRNA molecules"); ax.set_ylabel("probability"); ax.legend(); label(ax, "b", "telegraph model")
+        ax.set_xlim(-0.5, 60); ax.set_yscale("log"); ax.set_ylim(2e-4, 2.0)
+        ax.set_xlabel("mRNA molecules"); ax.set_ylabel("probability")
+        ax.legend(fontsize=5.8, loc="upper right", labelspacing=0.3); label(ax, "b", "telegraph model")
     @panel
     def c(ax):
         d = load("fig2c_bursty.csv")
@@ -64,18 +97,25 @@ def fig2():
         ax.barh(y - h/2, d.ks_telegraph, height=h, color=C[0], label="telegraph")
         ax.barh(y + h/2, d.ks_birthdeath, height=h, color=C[1], label="birth–death")
         crit = 1.63 / math.sqrt(20000); xmax = max(d.ks_telegraph.max(), d.ks_birthdeath.max(), crit)
-        ax.axvline(crit, color=INK2, ls=":", lw=0.9); ax.text(crit, -0.55, "99% critical ", color=INK2, fontsize=5.5, ha="right", va="bottom")
-        ax.set_xlim(0, xmax * 1.75); ax.set_yticks(y); ax.set_yticklabels(d.kernel); ax.invert_yaxis(); ax.set_xlabel("KS distance to exact law (n = 20 000)")
-        ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=2, fontsize=5.5, borderaxespad=0); label(ax, "d", "kernels")
-        for i, r in d.iterrows(): ax.text(xmax * 1.72, i, f"{r.sec_per_1e4_telegraph:.2f} s / 10⁴ cells", va="center", ha="right", fontsize=5.8, color=INK2)
+        ax.axvline(crit, color=INK2, ls=":", lw=0.9)
+        ax.text(crit, -0.72, "99% critical", color=INK2, fontsize=6.2, ha="center", va="bottom")
+        ax.set_xlim(0, xmax * 2.45); ax.set_yticks(y); ax.set_yticklabels(d.kernel); ax.invert_yaxis()
+        ax.set_xlabel("KS distance to exact law (n = 20 000)")
+        for i, r in d.iterrows():
+            ax.text(max(r.ks_telegraph, r.ks_birthdeath) + xmax * 0.09, i, f"{r.sec_per_1e4_telegraph:.2f} s / 10⁴ cells",
+                    va="center", ha="left", fontsize=6.2, color=INK2)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.46, -0.30), ncol=2, fontsize=6.4,
+                  columnspacing=1.4, handlelength=1.4); label(ax, "d", "kernels")
     @panel
     def e(ax):
         d = load("fig2e_crosscheck.csv"); s = kv("fig2e_crosscheck_stats.csv")
         ax.plot(d.n, d.exact, color=INK, lw=1.0, label="exact")
         ax.plot(d.n, d.biomodelling, color=C[0], lw=0, marker="o", ms=3, label="Biomodelling.jl")
         ax.plot(d.n, d.jumpprocesses, color=C[1], lw=0, marker="s", ms=2.5, mfc="none", label="JumpProcesses.jl")
-        ax.set_xlim(-0.5, 50); ax.set_xlabel("mRNA molecules"); ax.set_ylabel("probability"); ax.legend()
-        ax.text(0.98, 0.55, f"two-sample KS = {s['ks_two_sample']:.4f}\n(99% critical {s['ks_two_sample_crit99']:.4f})\n{s['time_biomodelling_serial_s']:.1f} s vs {s['time_jumpprocesses_serial_s']:.1f} s", transform=ax.transAxes, ha="right", va="top", fontsize=6, color=INK2)
+        ax.set_xlim(-0.5, 50); ax.set_xlabel("mRNA molecules"); ax.set_ylabel("probability")
+        ax.legend(loc="upper right", fontsize=6.6, labelspacing=0.3)
+        ax.text(0.97, 0.52, f"two-sample KS = {s['ks_two_sample']:.4f}\n99% critical {s['ks_two_sample_crit99']:.4f}\n{s['time_biomodelling_serial_s']:.1f} s vs {s['time_jumpprocesses_serial_s']:.1f} s serial",
+                transform=ax.transAxes, ha="right", va="top", fontsize=6.2, color=INK2, linespacing=1.5)
         label(ax, "e", "independent implementation")
     @panel
     def f(ax):
@@ -85,14 +125,16 @@ def fig2():
             ax.plot(g10.cells, g10.seconds, marker="o", ms=3, color=C[i], label=f"{k}, 10 genes")
             g1000 = g[g.cells == 1000].sort_values("genes")
             ax.plot(g1000.genes * 100, g1000.seconds, marker="s", ms=3, ls="--", color=C[i], label=f"{k}, 1000 cells (×100 genes)")
-        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("cells  (or 100 × genes)"); ax.set_ylabel("seconds for 200 steps"); ax.legend(fontsize=5, loc="lower right"); label(ax, "f", "runtime")
+        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("cells  (or 100 × genes)"); ax.set_ylabel("seconds for 200 steps")
+        ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.46, -0.30), ncol=2, columnspacing=0.8,
+                  handlelength=1.4, labelspacing=0.3); label(ax, "f", "runtime")
     for fn, pos in zip((a, b, c, d, e, f), range(6)):
         fn(fig.add_subplot(gs[pos // 3, pos % 3]))
     save(fig, "fig2_engine")
 
 # ------------------------------------------------------------------ Figure 3
 def fig3():
-    fig = plt.figure(figsize=(7.2, 5.0)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.6, wspace=0.45)
+    fig = plt.figure(figsize=(7.2, 5.2)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.72, wspace=0.5)
     @panel
     def a(cell):
         d = load("fig3a_trace.csv")
@@ -131,7 +173,7 @@ def fig3():
             g = g.sort_values("cycle_time_nominal")
             ax.plot(g.cycle_time_measured, g.tau_time, marker="o", ms=3.5, color=C[i], label=f"k = {k:g}  (1/2k = {1/(2*k):.0f})")
             ax.axhline(1 / (2 * k), color=C[i], ls=":", lw=0.8)
-        ax.set_ylim(0, None); ax.set_xlabel("cell-cycle time"); ax.set_ylabel("memory timescale (time units)"); ax.legend(fontsize=5.5); label(ax, "d", "memory timescale vs cell-cycle time")
+        ax.set_ylim(0, None); ax.set_xlabel("cell-cycle time"); ax.set_ylabel("memory timescale (time units)"); ax.legend(fontsize=5.5); label(ax, "d", "memory vs cell-cycle time")
     @panel
     def e(ax):
         d = load("fig3e_noise.csv"); d = d[d.partition_sigma == d.partition_sigma.max()]
@@ -147,7 +189,7 @@ def fig3():
         d = load("fig3f_copynumber.csv")
         x = np.arange(3); w = 0.26
         series = (("k_on", d.k_on.values, 0.5, "k_on (truth 0.5)"), ("k_off", d.k_off.values, 1.5, "k_off (truth 1.5)"),
-                  ("k_tx", d.k_tx.values / d.mean_volume.values / 20, 2.0, "k_tx / (V̄ · 20)  (truth 2 per allele)"))
+                  ("k_tx", d.k_tx.values / d.mean_volume.values / 20, 2.0, "k_tx per mean volume / 20  (truth 2 per allele)"))
         for i, (col, vals, tv, lab) in enumerate(series):
             ax.bar(x + (i - 1) * w, vals, width=w, color=C[i], label=lab)
             ax.hlines(tv, x[0] - 0.45, x[-1] + 0.45, colors=C[i], linestyles=":", lw=0.8)
@@ -286,7 +328,7 @@ def fig5():
 
 # ------------------------------------------------------------------ Figure 6
 def fig6():
-    fig = plt.figure(figsize=(7.2, 4.8)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.6, wspace=0.45)
+    fig = plt.figure(figsize=(7.2, 6.6)); gs = gridspec.GridSpec(3, 2, figure=fig, hspace=0.95, wspace=0.34)
     def posterior_panels(cell, particles_file, summary_file, letter, title, ref_prefix, ref_label):
         p = load(particles_file); s = kv(summary_file)
         sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.5)
@@ -298,7 +340,8 @@ def fig6():
             if f"abc_median_{k}" in s: ax.axvline(np.log10(s[f"abc_median_{k}"]), color=C[0], lw=1.0, ls=":", label="posterior median")
             ax.set_xlabel(f"log₁₀ {k}"); ax.set_yticks([])
             if i == 0: label(ax, letter, title); ax.set_ylabel("posterior")
-            if i == 2: ax.legend(fontsize=5.5)
+            if i == 1: ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.36), ncol=3, fontsize=6.4,
+                                 columnspacing=1.6, handlelength=1.6)
     @panel
     def a(cell): posterior_panels(cell, "fig6a_particles.csv", "fig6a_summary.csv", "a", "non-dividing cells: ABC vs exact MLE", "mle", "exact MLE")
     @panel
@@ -308,7 +351,9 @@ def fig6():
         p = load("fig6c_particles.csv"); s = kv("fig6c_summary.csv")
         ax.scatter(p.h_max, p.K, s=8 + 400 * p.weight, color=C[0], alpha=0.5, lw=0, label="posterior particles")
         ax.plot([s["true_h_max"]], [s["true_K"]], marker="*", ms=11, color=C[7], lw=0, label="truth")
-        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("h_max"); ax.set_ylabel("K (protection threshold)"); ax.legend(fontsize=5.5); label(ax, "c", "drug parameters from kill curve + sister fates")
+        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("h_max"); ax.set_ylabel("K (protection threshold)")
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2, fontsize=6.4, columnspacing=1.6)
+        label(ax, "c", "drug parameters from kill curve and sister fates")
     @panel
     def d(ax):
         d = load("fig6d_ppc.csv")
@@ -316,32 +361,36 @@ def fig6():
             ax.plot(d.t, d[c], color=C[0], alpha=0.5, lw=1.0)
         ax.plot(d.t, d.observed, color=INK, lw=1.6, label="observed")
         ax.plot([], [], color=C[0], alpha=0.5, label="posterior predictive")
-        ax.set_yscale("log"); ax.set_xlabel("time"); ax.set_ylabel("N(t)/N(drug start)"); ax.legend(fontsize=5.5); label(ax, "d", "posterior predictive check")
-    a(gs[0, :]); b(gs[1, :2]); c(fig.add_subplot(gs[1, 2]))
+        ax.set_yscale("log"); ax.set_xlabel("time since drug"); ax.set_ylabel("N(t) / N(drug start)")
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2, fontsize=6.4, columnspacing=1.6)
+        label(ax, "d", "posterior predictive check")
+    a(gs[0, :]); b(gs[1, :]); c(fig.add_subplot(gs[2, 0])); d(fig.add_subplot(gs[2, 1]))
     save(fig, "fig6_inference")
-    fig2_ = plt.figure(figsize=(3.4, 2.4)); d(fig2_.add_subplot(111)); save(fig2_, "fig6d_ppc")
 
 # ------------------------------------------------------------------ Figure 7: calibration to laboratory data
 def fig7():
-    fig = plt.figure(figsize=(7.2, 4.6)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.6, wspace=0.5)
+    fig = plt.figure(figsize=(7.2, 5.2)); gs = gridspec.GridSpec(2, 3, figure=fig, hspace=0.95, wspace=0.52)
     @panel
     def a(ax):
         d = load("fig7a_fates.csv")
         doses = sorted(d.cisplatin_uM.unique()); x = np.arange(len(doses)); w = 0.13
-        fates = [("died", "obs_died", "died"), ("divided", "obs_divided", "divided"), ("survived", "obs_survived", "survived without dividing")]
+        fates = [("died", "obs_died", "died"), ("divided", "obs_divided", "divided"), ("survived", "obs_survived", "survived, no division")]
         for i, (m, o, lab) in enumerate(fates):
             g = d.groupby("cisplatin_uM")
             ax.bar(x + (i - 1) * 2.2 * w - w / 2, [g.get_group(dd)[o].iloc[0] for dd in doses], width=w, color=INK2, alpha=0.45, label="observed" if i == 0 else None)
             ax.bar(x + (i - 1) * 2.2 * w + w / 2, [g.get_group(dd)[m].mean() for dd in doses], yerr=[g.get_group(dd)[m].std() for dd in doses], width=w, color=C[i], capsize=1.5, label=lab)
         roles = {dd: d[d.cisplatin_uM == dd].role.iloc[0] for dd in doses}
         ax.set_xticks(x); ax.set_xticklabels([f"{dd:g} µM\n({roles[dd]})" for dd in doses], fontsize=6); ax.set_ylabel("fraction of cells at drug addition"); ax.set_ylim(0, 0.95)
-        ax.legend(fontsize=5, ncol=2, loc="upper left"); label(ax, "a", "U2OS fates over 72 h of cisplatin")
+        ax.legend(loc="upper left", bbox_to_anchor=(-0.02, -0.26), ncol=2, fontsize=6.2, columnspacing=1.2,
+                  handlelength=1.2); label(ax, "a", "fates over 72 h of cisplatin")
     @panel
     def b(ax):
         d = load("fig7b_killcurves.csv")
         for i, (dd, g) in enumerate(d.groupby("cisplatin_uM")):
-            ax.plot(g.t_since_drug_h / 24, g.N_over_N0, color=C[i], label=f"{dd:g} µM" + (" (HCT116-like)" if abs(dd - 11.5) < 0.01 else ""))
-        ax.set_yscale("log"); ax.set_xlabel("days of cisplatin"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "b", "predicted kill curves")
+            ax.plot(g.t_since_drug_h / 24, g.N_over_N0, color=C[i], label=f"{dd:g} µM")
+        ax.set_yscale("log"); ax.set_xlabel("days of cisplatin"); ax.set_ylabel("N(t) / N(0)")
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=4, fontsize=6.2, columnspacing=1.0,
+                  handlelength=1.2); label(ax, "b", "predicted kill curves")
     @panel
     def c(ax):
         d = load("fig7c_kin_correlation.csv"); m = d.groupby(["generations_back", "relation"]).fate_correlation.agg(["mean", "std"]).reset_index().sort_values("generations_back")
@@ -356,13 +405,18 @@ def fig7():
         for i, ev in enumerate(("death", "division")):
             g = m[m.event == ev]
             if len(g): ax.errorbar(g.cisplatin_uM, g.mean_h, yerr=g.sd.fillna(0), marker="o", ms=4, color=C[i], capsize=2, label=f"time to {ev}")
-        ax.set_ylim(0, None); ax.set_xlim(6, 14); ax.set_xlabel("cisplatin (µM)"); ax.set_ylabel("mean time (h)"); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "d", "death times are dose-invariant")
+        ax.set_ylim(0, None); ax.set_xlim(6, 14); ax.set_xlabel("cisplatin (µM)"); ax.set_ylabel("mean time to death (h)")
+        label(ax, "d", "death times are dose-invariant")
     @panel
     def e(ax):
         t = load("fig7_calibration_table.csv").sort_values("distance")
-        ax.scatter(t.EC50, t.h_max, c=t.distance, cmap="viridis_r", s=10, lw=0)
+        sc = ax.scatter(t.EC50, t.h_max, c=t.distance, cmap="viridis_r", s=10, lw=0)
         best = t.iloc[0]; ax.plot([best.EC50], [best.h_max], marker="*", ms=10, color=C[7], lw=0, label="calibrated")
-        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("EC50 (µM)"); ax.set_ylabel("h_max (per h)"); ax.legend(fontsize=5.5); label(ax, "e", "calibration landscape")
+        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("EC50 (µM)"); ax.set_ylabel("h_max (per h)")
+        cb = fig.colorbar(sc, ax=ax, fraction=0.055, pad=0.03)
+        cb.set_label("distance to training data", fontsize=6.6); cb.ax.tick_params(labelsize=6)
+        cb.outline.set_linewidth(0.5)
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=2, fontsize=6.2); label(ax, "e", "calibration landscape")
     @panel
     def f(ax):
         c = kv("fig7_calibration.csv")
@@ -425,7 +479,7 @@ def fig8():
         for (pop, reg), g in d.groupby(["population", "regimen"], sort=False):
             meth = pop.startswith("MGMT m")
             ax.plot(g.t_weeks, g.N_over_N0, color=C[regs.index(reg)], ls="-" if meth else "--", lw=1.0)
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); label(ax, "f", "temozolomide, MGMT consumed")
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); label(ax, "f", "temozolomide regimens")
         h = [Line2D([], [], color=C[i], lw=1.0) for i in range(len(regs))] + [Line2D([], [], color=INK, ls="-", lw=1.0), Line2D([], [], color=INK, ls="--", lw=1.0)]
         ax.legend(h, regs + ["MGMT methylated (1 %)", "MGMT unmethylated (30 %)"], fontsize=5.5, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.32), handlelength=1.8, columnspacing=1.0)
     @panel
