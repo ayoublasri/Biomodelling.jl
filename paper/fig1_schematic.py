@@ -7,7 +7,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); FIG = os.path.join(HERE, "fig
 C = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
 INK, INK2, SURF = "#0b0b0b", "#52514e", "#f4f3ef"
 plt.rcParams.update({"font.size": 7, "pdf.fonttype": 42})
-fig = plt.figure(figsize=(7.2, 6.2)); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 100); ax.set_ylim(0, 86); ax.axis("off")
+fig = plt.figure(figsize=(7.2, 5.9)); ax = fig.add_axes([0, 0, 1, 1]); ax.set_xlim(0, 100); ax.set_ylim(4, 86); ax.axis("off")
 
 def box(x, y, w, h, title, lines, color, title_size=8):
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.4,rounding_size=1.2", fc=SURF, ec=color, lw=1.2))
@@ -41,11 +41,11 @@ box(48, 58, 50, 26, "Population · drug · lineage", [
     "dose d(t): constant · pulsed (holidays) · piecewise · bolus PK · function",
     "death hazard  h = h_max d^m/(EC50^m+d^m) · K^q/(K^q + c_P^q)",
     "growth inhibition · RateModulation(param, f(d)) · GenePerturbation",
-    "LineageTable: parent · clone · generation · birth/end time · fate ·",
-    "    state at birth and at division  →  Newick trees",
+    "LineageTable: parent · clone · generation · birth/end time ·",
+    "    fate · state at birth and at division → Newick",
 ], C[1])
 # tiny tree
-tx, ty = 84, 63.5
+tx, ty = 90, 60.0
 for (x1, y1, x2, y2) in ((0, 0, -4, 3), (0, 0, 4, 3), (-4, 3, -6, 6), (-4, 3, -2, 6), (4, 3, 2, 6), (4, 3, 6, 6)):
     ax.plot([tx + x1, tx + x2], [ty + y1, ty + y2], color=C[1], lw=1.0)
 for (x, y, c) in ((-6, 6, C[7]), (-2, 6, C[1]), (2, 6, C[1]), (6, 6, C[7])): ax.add_patch(Circle((tx + x, ty + y), 0.9, fc=c, ec="none"))
@@ -54,19 +54,21 @@ ax.text(tx, ty - 2.2, "fates: ● divided  ● died", ha="center", fontsize=5, c
 # (c) observation
 letter(1, 55, "c")
 box(2, 33, 42, 20, "Observation and output", [
-    "scRNA-seq: capture ~ Beta(mean, cv) · Poisson depth · dropout · batches",
-    "   library size ∝ cell volume (transcriptome-size confound)",
-    "smFISH: fixed detection efficiency       time-lapse: reporter along lineages",
-    "outputs: CSV · Newick · AnnData (.h5ad) with true volume, age, clone, copies",
+    "scRNA-seq: capture ~ Beta(mean, cv) · Poisson depth ·",
+    "   dropout · batches; library size ∝ cell volume",
+    "smFISH: fixed detection efficiency",
+    "time-lapse: reporter sampled along lineages",
+    "outputs: CSV · Newick · AnnData (.h5ad) with true",
+    "   volume, age, clone and copy number per cell",
 ], C[2])
 
 # (d) downstream
 letter(47, 55, "d")
 box(48, 33, 50, 20, "Downstream", [
-    "lineage statistics: mother–daughter, sister, cousin correlations ·",
-    "   lineage autocorrelation · memory timescale · population vs lineage noise",
-    "fluctuation tests (Luria–Delbrück) · clonal (MemorySeq-style) scores · eigenspectra",
-    "inference: ABC-SMC over any simulation · exact telegraph likelihood (Beta-Poisson)",
+    "lineage statistics: mother–daughter, sister and cousin correlations,",
+    "   lineage autocorrelation, memory timescale, population vs lineage noise",
+    "fluctuation tests (Luria–Delbrück) · clonal (MemorySeq-style) scores",
+    "inference: ABC-SMC over any simulation · exact telegraph likelihood",
     "generators: random GRNs (ER / scale-free) with known ground truth",
 ], C[6])
 arrow(23, 57.5, 23, 53.5); arrow(73, 57.5, 73, 53.5); arrow(44.5, 43, 47.5, 43)
@@ -83,7 +85,7 @@ st    = PopulationSettings(dt = 0.1, growth = ExponentialGrowth(log(2)/20), size
 res   = simulate_population(model, x0, 1000, (0.0, 200.0); settings = st, perturbation = pert, rng = Xoshiro(1))
 heritability(res, :protein; relation = :mother_daughter)              # memory across divisions
 Y     = sequence(sample_cells(res; n = 500).counts, SeqProtocol(capture = 0.15)).Y   # synthetic scRNA-seq"""
-ax.add_patch(FancyBboxPatch((2, 2), 96, 26, boxstyle="round,pad=0.4,rounding_size=1.2", fc="#fbfbfa", ec=INK2, lw=0.8))
-ax.text(3.2, 26.5, code, fontsize=5.6, family="monospace", va="top", color=INK)
+ax.add_patch(FancyBboxPatch((2, 6), 96, 22, boxstyle="round,pad=0.4,rounding_size=1.2", fc="#fbfbfa", ec=INK2, lw=0.8))
+ax.text(3.2, 26.8, code, fontsize=5.6, family="monospace", va="top", color=INK, linespacing=1.35)
 fig.savefig(os.path.join(FIG, "fig1_framework.pdf"), bbox_inches="tight"); fig.savefig(os.path.join(FIG, "fig1_framework.png"), bbox_inches="tight", dpi=300)
 print("saved fig1_framework")

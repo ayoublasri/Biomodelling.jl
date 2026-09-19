@@ -62,29 +62,7 @@ for (name, Y) in datasets
     save_csv("fig5b_scores_pearson_$name.csv", ["gene_$j" for j in 1:30], C)
     save_csv("fig5b_scores_spearman_$name.csv", ["gene_$j" for j in 1:30], S)
 end
-try
-    using NetworkInference
-    for (name, Y) in datasets
-        tmp = joinpath(OUT, "tmp_$name.txt")
-        open(tmp, "w") do io
-            for j in 1:30
-                println(io, "gene_$j\t", join(Y[:, j], "\t"))
-            end
-        end
-        nodes = get_nodes(tmp)
-        net = InferredNetwork(PIDCNetworkInference(), nodes)
-        M = zeros(30, 30)
-        for e in net.edges
-            i = parse(Int, replace(e.nodes[1].label, "gene_" => "")); j = parse(Int, replace(e.nodes[2].label, "gene_" => ""))
-            M[i, j] = e.weight; M[j, i] = e.weight
-        end
-        save_csv("fig5b_scores_pidc_$name.csv", ["gene_$j" for j in 1:30], M)
-        rm(tmp)
-    end
-    println("(b) PIDC done")
-catch err
-    println("(b) PIDC skipped: ", sprint(showerror, err)[1:min(end, 300)])
-end
+# PIDC scores are produced by pidc_scores.jl (separate environment, see paper/README.md)
 
 # (d) perturbation ground truth: knockdowns of the five strongest regulators
 g20, adj20 = random_grn(20; n_activations = 22, n_inhibitions = 10, telegraph = false, k_tx = (5.0, 30.0), K = (2.0, 10.0), n = 2.0, basal = 0.05, rng = Xoshiro(9))

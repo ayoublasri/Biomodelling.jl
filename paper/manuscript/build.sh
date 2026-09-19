@@ -2,6 +2,7 @@
 # Build the manuscript (PDF and DOCX) with pandoc. Run from the repository root or from paper/manuscript.
 set -e
 cd "$(dirname "$0")"
+python fill_numbers.py
 cat 00_frontmatter.md 01_intro.md 02_results.md 03_discussion.md 04_methods.md 05_legends.md 06_backmatter.md > manuscript.md
 pandoc manuscript.md --citeproc --bibliography=references.bib --csl=plos.csl -o manuscript.docx --resource-path=.:../figures 2>/dev/null || \
 pandoc manuscript.md --citeproc --bibliography=references.bib -o manuscript.docx --resource-path=.:../figures
