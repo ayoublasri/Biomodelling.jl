@@ -54,3 +54,13 @@ memory_timescale(res, :protein)                            # in generations and 
 follow_lineage(res, res.ids[end][1])                       # a single-cell trace
 newick(res.lineage; founder = 1, t_end = 200.0)
 ```
+
+## Founders and promoter states
+
+When `x0` is a single state vector, every founder starts from it but the promoter
+states are drawn uniformly at random (`randomize_promoters = true`), which is the
+stationary distribution only for symmetric switching. For slow, asymmetric
+switching, initialise the founders explicitly (a founders × species matrix, or the
+snapshot of a burn-in run) so that the resistant fraction starts at its
+stationary value: the memory of a state with `k_on + k_off = 1/3000` per hour is
+3000 hours, longer than most burn-ins.

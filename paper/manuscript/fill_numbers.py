@@ -110,23 +110,24 @@ def f7():
 @safe
 def f8():
     d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"]).mean(numeric_only=True)
-    for mech, mtag in (("no fitness cost", "nocost"), ("fitness cost", "cost")):
+    for mech, mtag in (("no fitness cost", "nocost"), ("fitness cost", "cost"), ("partial protection", "partial")):
         for sched, stag in (("continuous", "cont"), ("intermittent (S1320)", "int"), ("adaptive (50 %)", "adapt")):
-            put(f"ttp_{stag}_{mtag}", f"{m.loc[(mech, sched)].ttp_weeks:.1f}")
+            r = m.loc[(mech, sched)]
+            put(f"ttp_{stag}_{mtag}", f"{r.ttp_baseline_weeks:.0f}" + ("" if r.progressed_baseline > 0.99 else "+"))
+            put(f"ttpn_{stag}_{mtag}", f"{r.ttp_nadir_weeks:.0f}" + ("" if r.progressed_nadir > 0.99 else "+"))
         put(f"dose_adapt_{mtag}", f"{100 * m.loc[(mech, 'adaptive (50 %)')].cumulative_dose_weeks / m.loc[(mech, 'continuous')].cumulative_dose_weeks:.0f}%")
-    for tag, key in (("no_fitness_cost", "best_nocost"), ("fitness_cost", "best_cost")):
+        put(f"dose_int_{mtag}", f"{100 * m.loc[(mech, 'intermittent (S1320)')].cumulative_dose_weeks / m.loc[(mech, 'continuous')].cumulative_dose_weeks:.0f}%")
+    for tag, key in (("no_fitness_cost", "opt_nocost"), ("fitness_cost", "opt_cost"), ("partial_protection", "opt_partial")):
         t = load(f"fig8c_melanoma_optimum_{tag}.csv"); b = t.loc[t.ttp_weeks.idxmax()]
-        put(key, f"a period of {b.period_weeks:.1f} weeks with {100 * b.duty:.0f}% of the time on drug (time to progression {b.ttp_weeks:.1f} weeks)")
-    g = load("fig8d_gbm_regimens.csv").groupby(["population", "regimen"]).mean(numeric_only=True)
-    parts = []
-    for pop, ptag in (("MGMT methylated (1 % expressing)", "methylated"), ("MGMT unmethylated (30 % expressing)", "unmethylated")):
-        s_, dd, eq = (g.loc[(pop, r)].log_kill for r in ("standard 5/28", "dose-dense 21/28", "dense, equal cumulative"))
-        parts.append(f"for the {ptag} population the depth of response over six cycles is {s_:.2f} log10 units under the standard regimen, {dd:.2f} under the dose-dense regimen and {eq:.2f} for 21 dosing days at the standard cumulative dose")
-    put("gbm_summary", "; ".join(parts))
-    days = []
+        put(key, f"a period of {b.period_weeks:.1f} weeks with {100 * b.duty:.0f}% of the time on drug ({b.ttp_weeks:.0f} weeks to loss of control)")
+    g = load("fig8d_gbm_regimens.csv").groupby(["population", "mechanism", "regimen"]).mean(numeric_only=True)
+    for pop, ptag in (("MGMT methylated (1 % expressing)", "meth"), ("MGMT unmethylated (30 % expressing)", "unmeth")):
+        for mech, gtag in (("MGMT stable", "stable"), ("MGMT consumed by drug", "consumed")):
+            for reg, rtag in (("standard 5/28", "std"), ("dose-dense 21/28", "dense"), ("dense, equal cumulative", "equal")):
+                put(f"lk_{ptag}_{gtag}_{rtag}", f"{g.loc[(pop, mech, reg)].log_kill:.2f}")
     for tag in ("methylated", "unmethylated"):
-        t = load(f"fig8e_gbm_days_on_{tag}.csv").groupby("days_on").log_N_end_over_N0.mean(); days.append(f"{int(t.idxmin())} ({tag})")
-    put("gbm_days_summary", "that minimises the final population is " + " and ".join(days))
+        for mech in ("stable", "consumed"):
+            t = load(f"fig8e_gbm_days_on_{tag}_{mech}.csv").groupby("days_on").log_N_end_over_N0.mean(); put(f"days_{tag}_{mech}", f"{int(t.idxmin())}")
 
 @safe
 def fsupp():

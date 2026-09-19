@@ -376,60 +376,67 @@ def fig7():
 
 # ------------------------------------------------------------------ Figure 8: schedule optimisation against clinical regimens
 def fig8():
-    fig = plt.figure(figsize=(7.2, 6.8)); gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.65, wspace=0.5)
+    fig = plt.figure(figsize=(7.2, 7.2)); gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.7, wspace=0.5)
+    MECHS = [("no fitness cost", "no_fitness_cost"), ("fitness cost", "fitness_cost"), ("partial protection", "partial_protection")]
+    traj = load("fig8b_melanoma_trajectories.csv")
+    def trajectory_panel(ax, mech, letter, title):
+        g = traj[traj.mechanism == mech]
+        for i, (sname, gg) in enumerate(g.groupby("schedule", sort=False)):
+            ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=sname, lw=1.1)
+        ax.axhline(1.2, color=INK2, ls=":", lw=0.8); ax.axvline(8, color=INK2, ls="--", lw=0.6)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5, loc="lower right"); label(ax, letter, title)
     @panel
-    def a(ax):
-        d = load("fig8b_melanoma_trajectories.csv"); g = d[d.mechanism == "no fitness cost"]
-        for i, (s, gg) in enumerate(g.groupby("schedule", sort=False)):
-            ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=s)
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "a", "melanoma, no fitness cost")
+    def a(ax): trajectory_panel(ax, "no fitness cost", "a", "melanoma-like: no fitness cost")
     @panel
-    def b(ax):
-        d = load("fig8b_melanoma_trajectories.csv"); g = d[d.mechanism == "fitness cost"]
-        for i, (s, gg) in enumerate(g.groupby("schedule", sort=False)):
-            ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=s)
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5.5); label(ax, "b", "melanoma, resistant cells pay a fitness cost")
+    def b(ax): trajectory_panel(ax, "fitness cost", "b", "fitness cost of resistance")
     @panel
-    def c(ax):
-        d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"], sort=False).agg(ttp=("ttp_weeks", "mean"), sd=("ttp_weeks", "std"), dose=("cumulative_dose_weeks", "mean")).reset_index()
-        mechs = list(dict.fromkeys(m.mechanism)); scheds = list(dict.fromkeys(m.schedule)); x = np.arange(len(mechs)); w = 0.8 / len(scheds)
-        for i, s in enumerate(scheds):
-            g = m[m.schedule == s].set_index("mechanism").loc[mechs]
-            ax.bar(x + (i - (len(scheds) - 1) / 2) * w, g.ttp, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=s)
-        ax.set_xticks(x); ax.set_xticklabels(mechs, fontsize=6); ax.set_ylabel("time to progression (weeks)"); ax.legend(fontsize=5, loc="upper left"); label(ax, "c", "clinical schedules")
+    def c(ax): trajectory_panel(ax, "partial protection", "c", "resistant cells slowed by drug")
     @panel
-    def d(cell):
-        sub = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=cell, wspace=0.15)
-        for i, tag in enumerate(("no_fitness_cost", "fitness_cost")):
+    def d(ax):
+        d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"], sort=False).agg(ttp=("ttp_baseline_weeks", "mean"), sd=("ttp_baseline_weeks", "std")).reset_index()
+        mechs = [mm for mm, _ in MECHS]; scheds = list(dict.fromkeys(m.schedule)); x = np.arange(len(mechs)); w = 0.8 / len(scheds)
+        for i, sname in enumerate(scheds):
+            g = m[m.schedule == sname].set_index("mechanism").loc[mechs]
+            ax.bar(x + (i - (len(scheds) - 1) / 2) * w, g.ttp, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=sname)
+        ax.set_xticks(x); ax.set_xticklabels(["no fitness\ncost", "fitness\ncost", "partial\nprotection"], fontsize=6); ax.set_ylabel("weeks to loss of control"); ax.legend(fontsize=5, loc="upper left"); label(ax, "d", "clinical schedules")
+    @panel
+    def e(cell):
+        sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.15)
+        for i, (mech, tag) in enumerate(MECHS):
             ax = fig.add_subplot(sub[i]); t = load(f"fig8c_melanoma_optimum_{tag}.csv")
             sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0)
             best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0)
-            ax.set_xscale("log"); ax.set_xlabel("period (weeks)"); ax.set_title(tag.replace("_", " "), fontsize=6.5, color=INK2, pad=3)
-            if i == 0: ax.set_ylabel("duty cycle (fraction on)"); label(ax, "d", None)
+            ax.set_xscale("log"); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
+            if i == 0: ax.set_ylabel("fraction of time on drug"); label(ax, "e", None)
             else: ax.set_yticklabels([])
-        fig.colorbar(sc, ax=ax, fraction=0.08, pad=0.04, label="time to progression (weeks)")
-    @panel
-    def e(ax):
-        d = load("fig8d_gbm_trajectories.csv")
-        for i, ((pop, reg), g) in enumerate(d.groupby(["population", "regimen"], sort=False)):
-            ax.plot(g.t_weeks, g.N_over_N0, color=C[i % 3], ls="-" if pop.startswith("MGMT m") else "--", label=f"{reg}, {'methylated' if pop.startswith('MGMT m') else 'unmethylated'}")
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=4.6, ncol=1); label(ax, "e", "temozolomide regimens with pharmacokinetics")
+        fig.colorbar(sc, ax=ax, fraction=0.08, pad=0.04, label="weeks to loss of control")
     @panel
     def f(ax):
-        d = load("fig8d_gbm_regimens.csv"); m = d.groupby(["population", "regimen"], sort=False).agg(v=("log_kill", "mean"), sd=("log_kill", "std")).reset_index()
-        pops = list(dict.fromkeys(m.population)); regs = list(dict.fromkeys(m.regimen)); x = np.arange(len(pops)); w = 0.8 / len(regs)
-        for i, r in enumerate(regs):
-            g = m[m.regimen == r].set_index("population").loc[pops]
-            ax.bar(x + (i - (len(regs) - 1) / 2) * w, g.v, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=r)
-        ax.set_xticks(x); ax.set_xticklabels(["MGMT methylated", "MGMT unmethylated"], fontsize=6); ax.set_ylabel("log10 kill over 6 cycles"); ax.legend(fontsize=5); label(ax, "f", "depth of response")
+        d = load("fig8d_gbm_trajectories.csv"); d = d[d.mechanism == "MGMT consumed by drug"]
+        for i, ((pop, reg), g) in enumerate(d.groupby(["population", "regimen"], sort=False)):
+            ax.plot(g.t_weeks, g.N_over_N0, color=C[i % 3], ls="-" if pop.startswith("MGMT m") else "--", label=f"{reg}, {'methylated' if pop.startswith('MGMT m') else 'unmethylated'}", lw=1.0)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=4.4, ncol=1, loc="lower left"); label(ax, "f", "temozolomide with MGMT consumption")
     @panel
     def g(ax):
-        for i, tag in enumerate(("methylated", "unmethylated")):
-            t = load(f"fig8e_gbm_days_on_{tag}.csv").groupby("days_on").log_N_end_over_N0.mean().reset_index()
-            ax.plot(t.days_on, t.log_N_end_over_N0 / np.log(10), marker="o", ms=3, color=C[i], label=f"MGMT {tag}")
-        ax.axvline(5, color=INK2, ls=":", lw=0.8); ax.axvline(21, color=INK2, ls=":", lw=0.8); ax.text(5, ax.get_ylim()[1], " 5/28", fontsize=5.5, color=INK2, va="top"); ax.text(21, ax.get_ylim()[1], " 21/28", fontsize=5.5, color=INK2, va="top")
-        ax.set_xlabel("dosing days per 28-day cycle (equal cumulative dose)"); ax.set_ylabel("log10 N(end) / N(0)"); ax.legend(fontsize=5.5); label(ax, "g", "fractionation at equal cumulative dose")
-    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(gs[1, :2]); e(fig.add_subplot(gs[1, 2])); f(fig.add_subplot(gs[2, 0])); g(fig.add_subplot(gs[2, 1:]))
+        d = load("fig8d_gbm_regimens.csv"); m = d.groupby(["population", "mechanism", "regimen"], sort=False).agg(v=("log_kill", "mean"), sd=("log_kill", "std")).reset_index()
+        groups = list(dict.fromkeys(zip(m.population, m.mechanism))); regs = list(dict.fromkeys(m.regimen)); x = np.arange(len(groups)); w = 0.8 / len(regs)
+        for i, r in enumerate(regs):
+            vals = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].v.iloc[0] for p_, mm in groups]
+            sds = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].sd.fillna(0).iloc[0] for p_, mm in groups]
+            ax.bar(x + (i - (len(regs) - 1) / 2) * w, vals, yerr=sds, width=w, color=C[i], capsize=1.5, label=r)
+        ax.set_xticks(x); ax.set_xticklabels([f"{'methylated' if p_.startswith('MGMT m') else 'unmethylated'}\n{'stable' if mm.startswith('MGMT s') else 'consumed'}" for p_, mm in groups], fontsize=5.5)
+        ax.set_ylabel("log10 kill over 6 cycles"); ax.legend(fontsize=5, loc="upper left"); label(ax, "g", "depth of response")
+    @panel
+    def h(ax):
+        k = 0
+        for tag in ("methylated", "unmethylated"):
+            for mech, ls in (("stable", ":"), ("consumed", "-")):
+                t = load(f"fig8e_gbm_days_on_{tag}_{mech}.csv").groupby("days_on").log_N_end_over_N0.mean().reset_index()
+                ax.plot(t.days_on, t.log_N_end_over_N0 / np.log(10), marker="o", ms=2.5, ls=ls, color=C[0 if tag == "methylated" else 1], label=f"{tag}, MGMT {mech}", lw=1.0)
+        ax.axvline(5, color=INK2, ls=":", lw=0.8); ax.axvline(21, color=INK2, ls=":", lw=0.8)
+        yl = ax.get_ylim(); ax.text(5.3, yl[1], "5/28", fontsize=5.5, color=INK2, va="top"); ax.text(21.3, yl[1], "21/28", fontsize=5.5, color=INK2, va="top")
+        ax.set_xlabel("dosing days per 28-day cycle (equal cumulative dose)"); ax.set_ylabel("log10 N(end) / N(0)"); ax.legend(fontsize=4.6); label(ax, "h", "fractionation at equal cumulative dose")
+    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(gs[1, 1:]); f(fig.add_subplot(gs[2, 0])); g(fig.add_subplot(gs[2, 1])); h(fig.add_subplot(gs[2, 2]))
     save(fig, "fig8_schedules")
 
 if __name__ == "__main__":

@@ -7,6 +7,22 @@
 include(joinpath(@__DIR__, "common.jl"))
 const parts = isempty(ARGS) ? ["melanoma", "gbm"] : ARGS
 const HOUR = 1.0; const DAY = 24.0; const WEEK = 7DAY
+"""Founders with promoter states drawn from the stationary distribution (memory is long, so a burn-in from a
+common state would not reach it); a short burn-in then randomises volumes and ages."""
+function stationary_founders(m, N, p_on, burn, seed; cycle)
+    rng = Xoshiro(seed); X = zeros(Int, N, nspecies(m))
+    ioff, ion = m.promoter_groups[1][1], m.promoter_groups[1][2]        # promoter groups hold species indices, [off, on]
+    imr = speciesindex(m, :mRNA); ip = speciesindex(m, :P)
+    for i in 1:N
+        if rand(rng) < p_on
+            X[i, ion] = 1; X[i, imr] = 30; X[i, ip] = 600
+        else
+            X[i, ioff] = 1
+        end
+    end
+    final_snapshot(simulate_population(m, X, N, (0.0, 3cycle); settings = burn, rng = Xoshiro(seed + 1)))
+end
+
 
 # ---------------------------------------------------------------- melanoma (WM989-like; Shaffer et al. 2017, S1320)
 if "melanoma" in parts
@@ -23,28 +39,41 @@ if "melanoma" in parts
     arrest_m = GrowthInhibition(IC50 = 0.3, m = 2.0, protect = :P, K = 150.0, q = 4.0)
     stabilise = RateModulation(:k_off, d -> 1 / (1 + 9d))
     cost = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)  # drug addiction / fitness cost of resistant cells (Das Thakur et al. 2013)
-    mechanisms = [("no fitness cost", DrugEffect[death_m, arrest_m, stabilise]), ("fitness cost", DrugEffect[death_m, arrest_m, stabilise, cost])]
+    slow_all = GrowthInhibition(IC50 = 1.0, m = 2.0)             # partial protection: resistant cells still grow at half speed under drug
+    mechanisms = [("no fitness cost", DrugEffect[death_m, arrest_m, stabilise]), ("fitness cost", DrugEffect[death_m, arrest_m, stabilise, cost]),
+                  ("partial protection", DrugEffect[death_m, arrest_m, slow_all, stabilise])]
     burn_m = PopulationSettings(dt = 4.0, growth = ExponentialGrowth(λm), size_control = Sizer(2.0; cv = 0.1), control = ConstantN(), track_lineage = false, record_every = 10_000)
     st_m = PopulationSettings(dt = 4.0, growth = ExponentialGrowth(λm), size_control = Sizer(2.0; cv = 0.1), control = FreeGrowth(max_cells = 20_000), track_lineage = false, record_every = 6)
-    const N_M = 2000; const LEAD_IN = 8WEEK; const T_M = 32WEEK
-    founders = let b = simulate_population(mel, xm, N_M, (0.0, 10CYCLE_M); settings = burn_m, rng = Xoshiro(11)); final_snapshot(b) end
+    const N_M = 2000; const LEAD_IN = 8WEEK; const T_M = 60WEEK
+    founders = stationary_founders(mel, N_M, P_ON, burn_m, 11; cycle = CYCLE_M)
     function treat_m(sched, effects; seed = 1, T = T_M)
         simulate_population(mel, founders.counts, N_M, (0.0, T); settings = st_m, V0 = founders.volume, perturbation = Perturbation(sched; effects), rng = Xoshiro(seed))
     end
     ttp_m(r) = time_to_progression(r; from = LEAD_IN, threshold = 1.73)      # 20 % diameter increase from the nadir ≈ 1.73-fold in cell number, after randomisation
+    """Time after randomisation at which the population first exceeds 120 % of its pre-treatment size (loss of control),
+    the end point used for adaptive therapy; censored at the end of the simulation."""
+    function ttp_baseline(r)
+        i = findfirst(k -> r.t[k] >= LEAD_IN && r.popsize[k] >= 1.2 * r.popsize[1], eachindex(r.t))
+        i === nothing ? (r.t[end], false) : (r.t[i], true)
+    end
     # clinical schedules: continuous; S1320 intermittent = 8-week continuous lead-in, then 3 weeks off / 5 weeks on
     continuous = ConstantDose(1.0)
-    s1320 = PiecewiseDose([0.0, 8WEEK, 11WEEK, 16WEEK, 19WEEK, 24WEEK, 27WEEK], [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0])
+    s1320 = let ts = [0.0, LEAD_IN]; ds = [1.0, 0.0]; t = LEAD_IN
+        while t < T_M                                            # 3 weeks off, 5 weeks on, repeated
+            t += 3WEEK; push!(ts, t); push!(ds, 1.0); t += 5WEEK; push!(ts, t); push!(ds, 0.0)
+        end
+        PiecewiseDose(ts, ds)
+    end
     schedules = [("continuous", () -> continuous), ("intermittent (S1320)", () -> s1320), ("adaptive (50 %)", () -> AdaptiveDose(1.0; on_above = 1.0, off_below = 0.5))]
     rows = Any[]; rows_t = Any[]
     for (mtag, eff) in mechanisms, (stag, mk) in schedules, seed in 1:4
         r = treat_m(mk(), eff; seed = 20 + seed)
-        ttp, prog = ttp_m(r)
-        push!(rows, [mtag, stag, seed, (ttp - LEAD_IN) / WEEK, prog, r.popsize[end] / r.popsize[1], log_kill(r), cumulative_dose(r) / WEEK, minimum(r.popsize) / r.popsize[1]])
+        ttp, prog = ttp_m(r); tb, progb = ttp_baseline(r)
+        push!(rows, [mtag, stag, seed, (ttp - LEAD_IN) / WEEK, prog, (tb - LEAD_IN) / WEEK, progb, r.popsize[end] / r.popsize[1], log_kill(r), cumulative_dose(r) / WEEK, minimum(r.popsize) / r.popsize[1]])
         seed == 1 && for i in eachindex(r.t); push!(rows_t, [mtag, stag, r.t[i] / WEEK, r.popsize[i] / r.popsize[1], r.dose[i]]); end
-        @printf("(a) %-16s %-22s seed %d  TTP after randomisation %.1f weeks%s  N_end/N0 %.3f  nadir %.3f  cumulative dose %.1f weeks\n", mtag, stag, seed, (ttp - LEAD_IN) / WEEK, prog ? "" : " (censored)", r.popsize[end] / r.popsize[1], minimum(r.popsize) / r.popsize[1], cumulative_dose(r) / WEEK)
+        @printf("(a) %-18s %-22s seed %d  TTP nadir %.1f w%s  loss of control %.1f w%s  N_end/N0 %.3f  nadir %.3f  dose %.1f w\n", mtag, stag, seed, (ttp - LEAD_IN) / WEEK, prog ? "" : "*", (tb - LEAD_IN) / WEEK, progb ? "" : "*", r.popsize[end] / r.popsize[1], minimum(r.popsize) / r.popsize[1], cumulative_dose(r) / WEEK)
     end
-    save_csv("fig8a_melanoma_schedules.csv", ["mechanism", "schedule", "seed", "ttp_weeks", "progressed", "N_end_over_N0", "log_kill", "cumulative_dose_weeks", "nadir_over_N0"], permutedims(reduce(hcat, rows)))
+    save_csv("fig8a_melanoma_schedules.csv", ["mechanism", "schedule", "seed", "ttp_nadir_weeks", "progressed_nadir", "ttp_baseline_weeks", "progressed_baseline", "N_end_over_N0", "log_kill", "cumulative_dose_weeks", "nadir_over_N0"], permutedims(reduce(hcat, rows)))
     save_csv("fig8b_melanoma_trajectories.csv", ["mechanism", "schedule", "t_weeks", "N_over_N0", "dose"], permutedims(reduce(hcat, rows_t)))
     # (c) optimised intermittent schedule (period, duty cycle) after the lead-in, for each mechanism
     for (mtag, eff) in mechanisms
@@ -52,10 +81,10 @@ if "melanoma" in parts
             period, duty = θ
             pulses = PulsedDose(1.0; on = duty * period, off = (1 - duty) * period, start = LEAD_IN)
             r = treat_m(FunctionDose(t -> t < LEAD_IN ? 1.0 : dose(pulses, t)), eff; seed = 40 + seed)
-            -(ttp_m(r)[1] - LEAD_IN) / WEEK
+            -(ttp_baseline(r)[1] - LEAD_IN) / WEEK
         end
         opt = optimize_schedule(objective, [1WEEK, 0.2], [12WEEK, 1.0]; names = [:period_h, :duty], n_grid = 4, seeds = 1:1, maxiter = 16, log_scale = [true, false], rng = Xoshiro(5))
-        @printf("(c) %-16s best period %.1f weeks, duty %.2f → TTP %.1f weeks\n", mtag, opt.params[1] / WEEK, opt.params[2], -opt.value)
+        @printf("(c) %-18s best period %.1f weeks, duty %.2f → loss of control after %.1f weeks\n", mtag, opt.params[1] / WEEK, opt.params[2], -opt.value)
         save_csv("fig8c_melanoma_optimum_$(replace(mtag, " " => "_")).csv", ["period_weeks", "duty", "ttp_weeks"], permutedims(reduce(hcat, [[p[1] / WEEK, p[2], -v] for (p, v) in opt.table])))
     end
 end
@@ -74,16 +103,18 @@ if "gbm" in parts
     regimens = [("standard 5/28", daily_boluses(1.0, cycle_days(5, 28, N_CYCLES), K_E)),                      # 200 mg/m² days 1-5
                 ("dose-dense 21/28", daily_boluses(0.5, cycle_days(21, 28, N_CYCLES), K_E)),                  # 100 mg/m² days 1-21 (2.1× cumulative)
                 ("dense, equal cumulative", daily_boluses(5 / 21, cycle_days(21, 28, N_CYCLES), K_E))]         # 21 days at the standard cumulative dose
+    deplete = RateModulation(:k_dp, d -> 1 + 20d)               # MGMT is a suicide enzyme: consumed while repairing drug lesions
+    mechanisms_g = [("MGMT stable", DrugEffect[death_g]), ("MGMT consumed by drug", DrugEffect[death_g, deplete])]
     rows = Any[]; rows_t = Any[]
-    for (ptag, p_on) in (("MGMT methylated (1 % expressing)", 0.01), ("MGMT unmethylated (30 % expressing)", 0.30))
-        m = mgmt(p_on); x0 = initial_state(m; MGMT_off = 1)
-        founders_g = final_snapshot(simulate_population(m, x0, N_G, (0.0, 8CYCLE_G); settings = burn_g, rng = Xoshiro(13)))
-        run_g(sched; seed) = simulate_population(m, founders_g.counts, N_G, (0.0, T_G); settings = st_g, V0 = founders_g.volume, perturbation = Perturbation(sched; effects = [death_g]), rng = Xoshiro(seed))
+    for (ptag, p_on) in (("MGMT methylated (1 % expressing)", 0.01), ("MGMT unmethylated (30 % expressing)", 0.30)), (gtag, eff) in mechanisms_g
+        m = mgmt(p_on)
+        founders_g = stationary_founders(m, N_G, p_on, burn_g, 13; cycle = CYCLE_G)
+        run_g(sched; seed) = simulate_population(m, founders_g.counts, N_G, (0.0, T_G); settings = st_g, V0 = founders_g.volume, perturbation = Perturbation(sched; effects = eff), rng = Xoshiro(seed))
         for (rtag, sched) in regimens, seed in 1:2
             r = run_g(sched; seed = 60 + seed)
-            push!(rows, [ptag, rtag, seed, r.popsize[end] / r.popsize[1], log_kill(r), net_growth_rate(r) * WEEK, cumulative_dose(sched, 0.0, T_G) / DAY, time_to_progression(r; threshold = 1.73)[1] / WEEK])
-            seed == 1 && for i in eachindex(r.t); push!(rows_t, [ptag, rtag, r.t[i] / WEEK, r.popsize[i] / r.popsize[1], r.dose[i]]); end
-            @printf("(d) %-36s %-24s seed %d  N_end/N0 %.3f  log kill %.2f  cumulative %.1f bolus-days\n", ptag, rtag, seed, r.popsize[end] / r.popsize[1], log_kill(r), cumulative_dose(sched, 0.0, T_G) / DAY)
+            push!(rows, [ptag, gtag, rtag, seed, r.popsize[end] / r.popsize[1], log_kill(r), net_growth_rate(r) * WEEK, cumulative_dose(sched, 0.0, T_G) / DAY, time_to_progression(r; threshold = 1.73)[1] / WEEK])
+            seed == 1 && for i in eachindex(r.t); push!(rows_t, [ptag, gtag, rtag, r.t[i] / WEEK, r.popsize[i] / r.popsize[1], r.dose[i]]); end
+            @printf("(d) %-36s %-22s %-24s seed %d  N_end/N0 %.3f  log kill %.2f  cumulative %.1f bolus-days\n", ptag, gtag, rtag, seed, r.popsize[end] / r.popsize[1], log_kill(r), cumulative_dose(sched, 0.0, T_G) / DAY)
         end
         # (e) number of dosing days per 28-day cycle at the standard cumulative dose (5 bolus units per cycle)
         function objective(θ, seed)
@@ -93,10 +124,10 @@ if "gbm" in parts
             log(max(r.popsize[end], 1.0) / r.popsize[1])
         end
         opt = optimize_schedule(objective, [1.0], [28.0]; names = [:days_on], n_grid = 8, seeds = 1:1, refine = false, log_scale = false)
-        @printf("(e) %-36s best days on per cycle ≈ %.0f (log N_end/N0 %.2f)\n", ptag, opt.params[1], opt.value)
-        save_csv("fig8e_gbm_days_on_$(startswith(ptag, "MGMT m") ? "methylated" : "unmethylated").csv", ["days_on", "log_N_end_over_N0"], permutedims(reduce(hcat, [[round(p[1]), v] for (p, v) in opt.table])))
+        @printf("(e) %-36s %-22s best days on per cycle ≈ %.0f (log N_end/N0 %.2f)\n", ptag, gtag, opt.params[1], opt.value)
+        save_csv("fig8e_gbm_days_on_$(startswith(ptag, "MGMT m") ? "methylated" : "unmethylated")_$(startswith(gtag, "MGMT s") ? "stable" : "consumed").csv", ["days_on", "log_N_end_over_N0"], permutedims(reduce(hcat, [[round(p[1]), v] for (p, v) in opt.table])))
     end
-    save_csv("fig8d_gbm_regimens.csv", ["population", "regimen", "seed", "N_end_over_N0", "log_kill", "net_growth_per_week", "cumulative_bolus_days", "ttp_weeks"], permutedims(reduce(hcat, rows)))
-    save_csv("fig8d_gbm_trajectories.csv", ["population", "regimen", "t_weeks", "N_over_N0", "dose"], permutedims(reduce(hcat, rows_t)))
+    save_csv("fig8d_gbm_regimens.csv", ["population", "mechanism", "regimen", "seed", "N_end_over_N0", "log_kill", "net_growth_per_week", "cumulative_bolus_days", "ttp_weeks"], permutedims(reduce(hcat, rows)))
+    save_csv("fig8d_gbm_trajectories.csv", ["population", "mechanism", "regimen", "t_weeks", "N_over_N0", "dose"], permutedims(reduce(hcat, rows_t)))
 end
 println("fig8 done")

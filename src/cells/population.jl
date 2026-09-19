@@ -62,7 +62,7 @@ Base.@kwdef struct PopulationSettings
     background_death::Float64 = 0.0
     record_every::Int = 1
     track_lineage::Bool = true
-    randomize_promoters::Bool = true
+    randomize_promoters::Bool = true      # founders given as one state vector get promoter states drawn uniformly at random (use a founder matrix, e.g. a burnt-in snapshot, for the stationary distribution)
     threads::Bool = true
 end
 
