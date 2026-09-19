@@ -104,7 +104,7 @@ def fig3():
         axes[1].plot(d.t, d.mRNA, color=C[1]); axes[1].set_ylabel("mRNA")
         axes[2].plot(d.t, d.protein, color=C[2]); axes[2].set_ylabel("protein"); axes[2].set_xlabel("time")
         for ax in axes[:2]: ax.set_xticklabels([])
-        label(axes[0], "a", "single lineage (shading: promoter on)")
+        label(axes[0], "a", "single lineage (shaded: on)")
     @panel
     def b(ax):
         d0 = load("fig3b_scaling_no_replication.csv"); d1 = load("fig3b_scaling_replication.csv")
@@ -122,7 +122,7 @@ def fig3():
             ax.plot(d.k_switch, d[col], marker="o", ms=3, color=C[i], label=lab)
         ax.plot(d.k_switch, d.mother_daughter_mRNA, ls="--", color=C[0], lw=1.0, label="mother–daughter (mRNA)")
         ax.axvline(math.log(2) / 20, color=INK2, ls=":", lw=0.8); ax.text(math.log(2) / 20, 0.95, " 1/cycle time", fontsize=6, color=INK2, va="top")
-        ax.set_xscale("log"); ax.set_xlabel("promoter switching rate k_on = k_off"); ax.set_ylabel("correlation (protein at division)"); ax.set_ylim(-0.1, 1); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "c", "heritability")
+        ax.set_xscale("log"); ax.set_xlabel("switching rate k_on = k_off"); ax.set_ylabel("correlation (protein at division)"); ax.set_ylim(-0.1, 1); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "c", "heritability")
     @panel
     def d(ax):
         d = load("fig3d_memory_timescale.csv")
@@ -140,7 +140,7 @@ def fig3():
             ax.bar(x + (2*i - 1.5) * w, g.cv2_population, width=w, color=C[0], hatch=hatch, edgecolor="white", label=f"population, {part}")
             ax.bar(x + (2*i - 0.5) * w, g.cv2_lineage, width=w, color=C[1], hatch=hatch, edgecolor="white", label=f"single lineage, {part}")
         ax.set_xticks(x); ax.set_xticklabels([f"{c:g}" for c in cvs]); ax.set_xlabel("cell-cycle time CV (partition σ = 0.1)")
-        ax.set_ylabel("CV² of protein concentration"); ax.legend(fontsize=5); label(ax, "e", "population vs lineage noise")
+        ax.set_ylabel("CV² of protein concentration"); ax.set_ylim(0, d.cv2_population.max() * 1.9); ax.legend(fontsize=5, loc="upper left"); label(ax, "e", "population vs lineage noise")
     @panel
     def f(ax):
         d = load("fig3f_copynumber.csv")
@@ -150,9 +150,21 @@ def fig3():
         for i, (col, vals, tv, lab) in enumerate(series):
             ax.bar(x + (i - 1) * w, vals, width=w, color=C[i], label=lab)
             ax.hlines(tv, x[0] - 0.45, x[-1] + 0.45, colors=C[i], linestyles=":", lw=0.8)
-        ax.set_xticks(x); ax.set_xticklabels(["1 copy", "2 copies", "pooled"]); ax.set_ylabel("fitted telegraph parameters"); ax.legend(fontsize=5); label(ax, "f", "copy number and naive fits")
+        ax.set_xticks(x); ax.set_xticklabels(["1 copy", "2 copies", "pooled"]); ax.set_ylabel("fitted telegraph parameters"); ax.set_ylim(0, max(v.max() for _, v, _, _ in series) * 1.4); ax.legend(fontsize=5, loc="upper left"); label(ax, "f", "copy number and naive fits")
     a(gs[0, 0]); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2]))
     save(fig, "fig3_growth")
+
+def fate_enrichment(d):
+    """From pair counts (n_pairs, concordance, death_fraction) recover the number of pairs in which both, one or no
+    lineage survived, and hence P(survive | relative survived) against the marginal P(survive)."""
+    d = d.copy()
+    n = d.n_pairs.round().astype(int); same = (d.concordance * n).round().astype(int); disc = n - same
+    deaths = (d.death_fraction * 2 * n).round().astype(int); both_die = ((deaths - disc) / 2).round().astype(int)
+    both_survive = same - both_die
+    d["p_survive"] = (2 * both_survive + disc) / (2 * n)
+    d["p_survive_given_relative"] = (2 * both_survive) / np.maximum(2 * both_survive + disc, 1)
+    d["fold"] = d.p_survive_given_relative / d.p_survive.where(d.p_survive > 0, np.nan)
+    return d
 
 # ------------------------------------------------------------------ Figure 4
 def fig4():
@@ -175,53 +187,57 @@ def fig4():
     def c(ax):
         d = load("fig4c_decay_vs_dose.csv")
         ax.plot(d.dose, d.decay_rate, marker="o", ms=4, color=C[0]); ax.set_xlabel("dose"); ax.set_ylabel("population decay rate", color=C[0])
-        ax2 = ax.inset_axes([0.55, 0.55, 0.42, 0.4])
+        ax2 = ax.inset_axes([0.5, 0.12, 0.45, 0.36])
         ax2.plot(d.dose, d.division_time_mean, marker="s", ms=3, color=C[1]); ax2.set_title("division time", fontsize=6, color=INK2); ax2.tick_params(labelsize=5); ax2.set_ylim(0, d.division_time_mean.max() * 1.3)
         label(ax, "c", "decay vs single-cell timing")
     @panel
     def d(ax):
-        d = load("fig4d_fate_concordance.csv")
+        d = fate_enrichment(load("fig4d_fate_concordance.csv"))
         x = np.arange(len(d)); w = 0.38
-        ax.bar(x - w/2, d.concordance, width=w, color=C[0], label="observed")
-        ax.bar(x + w/2, d.expected_independent, width=w, color=INK2, alpha=0.5, label="independent fates")
-        ax.set_xticks(x); ax.set_xticklabels([f"{r.model}\n{r.relation}" for _, r in d.iterrows()], fontsize=6); ax.set_ylabel("fate concordance"); ax.set_ylim(0, 1); ax.legend(fontsize=5.5); label(ax, "d", "related cells share fates")
+        ax.bar(x - w/2, d.p_survive_given_relative, width=w, color=C[0], label="relative's lineage survived")
+        ax.bar(x + w/2, d.p_survive, width=w, color=INK2, alpha=0.5, label="all cells")
+        for i, r in d.iterrows(): ax.text(i - w/2, r.p_survive_given_relative + 0.01, f"×{r.fold:.1f}", ha="center", fontsize=5.5, color=INK)
+        ax.set_xticks(x); ax.set_xticklabels([f"{r.model}\n{r.relation}" for _, r in d.iterrows()], fontsize=6); ax.set_ylabel("P(lineage survives)"); ax.set_ylim(0, d.p_survive_given_relative.max() * 1.35); ax.legend(fontsize=5.5, loc="upper right"); label(ax, "d", "related cells share fates")
     @panel
     def e(ax):
         d = load("fig4e_clone_diversity.csv"); m = d.groupby("model").agg(["mean", "std"])
         x = np.arange(len(m)); w = 0.38
         ax.bar(x - w/2, m["effective_clones_before"]["mean"], yerr=m["effective_clones_before"]["std"], width=w, color=C[0], label="before drug", capsize=2)
         ax.bar(x + w/2, m["effective_clones_after"]["mean"], yerr=m["effective_clones_after"]["std"], width=w, color=C[1], label="after drug", capsize=2)
-        ax.set_xticks(x); ax.set_xticklabels([i.replace("_", " ") for i in m.index]); ax.set_ylabel("effective number of clones"); ax.legend(fontsize=5.5); label(ax, "e", "barcode diversity")
+        ax.set_xticks(x); ax.set_xticklabels([i.replace("_", "-") for i in m.index]); ax.set_ylabel("effective number of clones"); ax.set_ylim(0, m["effective_clones_before"]["mean"].max() * 1.4); ax.legend(fontsize=5.5, loc="upper center", ncol=2); label(ax, "e", "barcode diversity")
     @panel
-    def f(cell):
-        d = load("fig4f_schedules.csv")
-        sub = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=cell, wspace=0.15)
-        vmax = np.abs(d.long_term_growth_rate).max()
-        for i, model in enumerate(("pre_existing", "drug_induced")):
-            ax = fig.add_subplot(sub[i]); g = d[d.model == model]
-            piv = g.pivot(index="release_period", columns="dose", values="long_term_growth_rate")
-            im = ax.imshow(piv.values, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto", origin="lower")
-            ax.set_xticks(range(len(piv.columns))); ax.set_xticklabels([f"{c:g}" for c in piv.columns]); ax.set_yticks(range(len(piv.index))); ax.set_yticklabels([f"{r:g}" for r in piv.index])
-            ax.set_xlabel("dose"); ax.set_title(model.replace("_", " "), fontsize=7, color=INK2); ax.grid(False)
-            if i == 0: ax.set_ylabel("release period"); label(ax, "f", None)
-            else: ax.set_yticklabels([])
-            for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=INK)
-        fig.colorbar(im, ax=ax, fraction=0.08, pad=0.04, label="long-term growth rate")
+    def f(ax):
+        d = load("fig4g_memory_disruption.csv"); order = ["none", "before_drug", "before_and_during"]
+        m = d.groupby("treatment").agg(["mean", "std"]).loc[order]
+        x = np.arange(len(m))
+        ax.bar(x, m["surviving_clones"]["mean"], yerr=m["surviving_clones"]["std"], color=[INK2, C[0], C[1]], width=0.6, capsize=2)
+        for i in range(len(m)): ax.text(i, m["surviving_clones"]["mean"].iloc[i] + m["surviving_clones"]["std"].iloc[i] + 1, f"{m['surviving_clones']['mean'].iloc[i]:.0f}", ha="center", fontsize=6)
+        ax.set_xticks(x); ax.set_xticklabels(["none", "before\ndrug", "before and\nduring drug"], fontsize=6); ax.set_xlabel("memory disruption (switching × 20)"); ax.set_ylabel("surviving clones"); label(ax, "f", "memory disruption")
     @panel
     def g(ax):
-        d = load("fig4g_memory_disruption.csv"); m = d.groupby("treatment", sort=False).agg(["mean", "std"])
-        x = np.arange(len(m))
-        ax.bar(x, m["surviving_clones"]["mean"], yerr=m["surviving_clones"]["std"], color=[C[0], C[1]], width=0.6, capsize=2)
-        for i, t in enumerate(m.index): ax.text(i, m["surviving_clones"]["mean"].iloc[i] + m["surviving_clones"]["std"].iloc[i] + 1, f"{m['surviving_clones']['mean'].iloc[i]:.0f}", ha="center", fontsize=6)
-        ax.set_xticks(x); ax.set_xticklabels([t.replace("_", " ") for t in m.index]); ax.set_ylabel("surviving clones (resistant colonies)"); label(ax, "g", "memory disruption before drug")
-    @panel
-    def h(ax):
         d = load("fig4h_mgmt.csv")
         for i, (m, g) in enumerate(d.groupby("model", sort=False)):
             ax.plot(g.t, g.high_fraction, color=C[i], label=m.replace("_", " "))
         g = d[d.model == d.model.iloc[0]]; ax.fill_between(g.t, 0, 1, where=g.dose > 0, color=INK2, alpha=0.08, lw=0)
-        ax.set_xlabel("time"); ax.set_ylabel("fraction of high-expressing cells"); ax.set_ylim(0, 1); ax.legend(fontsize=5.5); label(ax, "h", "phenotypic selection persists with slow switching")
-    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(gs[1, 2]); g(fig.add_subplot(gs[2, 0])); h(fig.add_subplot(gs[2, 1]))
+        ax.set_xlabel("time"); ax.set_ylabel("fraction of high-expressing cells"); ax.set_ylim(0, 1); ax.legend(fontsize=5.5); label(ax, "g", "phenotypic selection persists")
+    @panel
+    def h(cell):
+        d = load("fig4f_schedules.csv")
+        models = [("pre_existing", "pre-existing"), ("pre_existing_cost", "pre-existing, fitness cost"), ("drug_induced", "drug-induced")]
+        sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.12)
+        vmax = np.abs(d.long_term_growth_rate).max()
+        for i, (model, title) in enumerate(models):
+            ax = fig.add_subplot(sub[i]); g = d[d.model == model]
+            piv = g.pivot(index="release_period", columns="dose", values="long_term_growth_rate")
+            im = ax.imshow(piv.values, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto", origin="lower")
+            ax.set_xticks(range(len(piv.columns))); ax.set_xticklabels([f"{c:g}" for c in piv.columns]); ax.set_yticks(range(len(piv.index))); ax.set_yticklabels([f"{r:g}" for r in piv.index])
+            ax.set_xlabel("dose"); ax.set_title(title, fontsize=6.5, color=INK2, pad=3); ax.grid(False)
+            if i == 0: ax.set_ylabel("release period"); label(ax, "h", None)
+            else: ax.set_yticklabels([])
+            for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=INK)
+            r0, c0 = np.unravel_index(np.nanargmin(piv.values), piv.values.shape); ax.add_patch(plt.Rectangle((c0 - 0.5, r0 - 0.5), 1, 1, fill=False, ec=INK, lw=1.2))
+        fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04, label="net growth rate")
+    a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2])); g(fig.add_subplot(gs[2, 0])); h(gs[2, 1:])
     save(fig, "fig4_persisters")
 
 # ------------------------------------------------------------------ Figure 5
@@ -232,7 +248,7 @@ def fig5():
         d = load("fig5a_memory_genes.csv")
         ax.plot(d.memory_time, d.score_true, marker="o", ms=3, lw=0, color=C[0], label="true concentrations")
         ax.plot(d.memory_time, d.score_seq, marker="s", ms=3, lw=0, mfc="none", color=C[1], label="sequenced counts")
-        ax.axvline(20, color=INK2, ls=":", lw=0.8); ax.text(20, ax.get_ylim()[1] if ax.get_ylim()[1] > 1 else 2, " cycle time", fontsize=6, color=INK2)
+        ax.axvline(20, color=INK2, ls=":", lw=0.8); ax.text(20, 0.62 * d.score_true.max(), " cycle time", fontsize=6, color=INK2)
         ax.axhline(1, color=INK2, lw=0.6); ax.set_xscale("log"); ax.set_xlabel("memory time 1/(k_on+k_off)"); ax.set_ylabel("clonal variance score"); ax.legend(fontsize=5.5); label(ax, "a", "memory genes are recoverable")
     @panel
     def b(ax):
@@ -244,7 +260,8 @@ def fig5():
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() if ((d.method == m) & (d.dataset == o)).any() else np.nan for o in order]
             ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=C[i], label=m)
         ax.axhline(d.random_aupr.mean(), color=INK2, ls=":", lw=0.8); ax.text(len(order) - 0.5, d.random_aupr.mean(), "random", fontsize=6, color=INK2, ha="right", va="bottom")
-        ax.set_xticks(x); ax.set_xticklabels([o.replace("_", "\n") for o in order], fontsize=5.5); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "b", "GRN inference under growth and division")
+        names = {"fixed_volume": "fixed volume", "population_counts": "dividing: counts", "population_concentration": "dividing: concentration", "population_cycle_regressed": "dividing: cycle-regressed", "sequenced_counts": "sequenced: counts", "sequenced_normalized": "sequenced: normalised"}
+        ax.set_xticks(x); ax.set_xticklabels([names[o] for o in order], fontsize=5.5, rotation=30, ha="right", rotation_mode="anchor"); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "b", "GRN inference under growth and division")
     @panel
     def c(ax):
         d = load("fig5bc_metrics.csv")
@@ -254,7 +271,7 @@ def fig5():
         for i, m in enumerate(methods):
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() for o in order]
             ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=C[i], label=m)
-        ax.set_xticks(x); ax.set_xticklabels([o.replace("imputed_", "").replace("_", "\n") for o in order], fontsize=5.5); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "c", "imputation before network inference")
+        ax.set_xticks(x); ax.set_xticklabels([{"sequenced_counts": "no imputation", "imputed_knn_smoothing": "kNN-smoothing", "imputed_magic": "MAGIC"}[o] for o in order], fontsize=6); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "c", "imputation before network inference")
     @panel
     def d(ax):
         d = load("fig5d_summary.csv")
@@ -262,7 +279,7 @@ def fig5():
         ax.bar(x - w/2, d.r2_zero_baseline, width=w, color=INK2, alpha=0.5, label="no-change baseline")
         ax.bar(x + w/2, d.r2_correlation_baseline, width=w, color=C[0], label="correlation propagation")
         ax.axhline(0, color=INK, lw=0.6)
-        ax.set_xticks(x); ax.set_xticklabels([f"KD gene {int(g)}" for g in d.knocked_gene], fontsize=6); ax.set_ylabel("R² of predicted log₂ fold changes"); ax.legend(fontsize=5.5); label(ax, "d", "perturbation ground truth")
+        ax.set_xticks(x); ax.set_xticklabels([f"{int(g)}" for g in d.knocked_gene], fontsize=6); ax.set_xlabel("knocked-down regulator (gene index)"); ax.set_ylabel("R² of predicted log₂ FC"); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "d", "perturbation ground truth")
     a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[1, 0])); d(fig.add_subplot(gs[1, 1]))
     save(fig, "fig5_benchmarks")
 

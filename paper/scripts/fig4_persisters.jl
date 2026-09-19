@@ -1,5 +1,7 @@
 # Figure 4: drug response and persisters from a rare, heritable resistance state.
+# Usage: julia fig4_persisters.jl [a] [b] [d] [e] [f] [g] [h]   (default: all panels; b also produces c)
 include(joinpath(@__DIR__, "common.jl"))
+const parts = isempty(ARGS) ? ["a", "b", "d", "e", "f", "g", "h"] : ARGS
 
 const λ = log(2) / 20
 const T_DRUG = 40.0          # drug start in the treatment stage (after a burn-in of the founder population)
@@ -44,9 +46,10 @@ from(t_on, d) = PiecewiseDose([0.0, t_on], [0.0, d])
 
 mem = resistance_model()                                   # p_on = 0.002/0.022 ≈ 9%, memory time 1/(k_on+k_off) ≈ 45
 fast = resistance_model(k_on = 0.05, k_off = 0.5)          # same p_on, memory time ≈ 1.8
-induced = resistance_model(k_on = 0.0002, k_off = 0.02)   # p_on ≈ 1% before drug; the drug raises k_on 1000-fold
-induction = RateModulation(:k_on, d -> 1 + 1000d)
+induced = resistance_model(k_on = 0.0002, k_off = 0.02)   # p_on ≈ 1% before drug; the drug raises k_on 100-fold at dose 1
+induction = RateModulation(:k_on, d -> 1 + 100d)
 
+if "a" in parts
 # (a) population trajectories under three schedules
 rows = Any[]
 for (tag, sched) in (("continuous_1.0", from(T_DRUG, 1.0)), ("pulsed_1.0_on20_off10", PulsedDose(1.0; on = 20.0, off = 10.0, start = T_DRUG)), ("continuous_0.4", from(T_DRUG, 0.4)))
@@ -57,7 +60,9 @@ for (tag, sched) in (("continuous_1.0", from(T_DRUG, 1.0)), ("pulsed_1.0_on20_of
     @printf("(a) %-24s N(drug) = %.0f  final N = %.0f\n", tag, r.popsize[argmin(abs.(r.t .- T_DRUG))], r.popsize[end])
 end
 save_csv("fig4a_trajectories.csv", ["schedule", "t", "popsize", "dose", "high_fraction"], permutedims(reduce(hcat, rows)))
+end
 
+if "b" in parts
 # (b)+(c) kill curves, decay rates and single-cell division / death times versus dose
 rows = Any[]; rows_c = Any[]; rows_ct = Any[]
 for d in (0.0, 0.25, 0.5, 1.0, 2.0)
@@ -80,7 +85,9 @@ end
 save_csv("fig4b_killcurves.csv", ["dose", "t_since_drug", "surviving_fraction"], permutedims(reduce(hcat, rows)))
 save_csv("fig4c_decay_vs_dose.csv", ["dose", "decay_rate", "n_divisions", "division_time_mean", "division_time_cv", "n_deaths", "death_time_mean", "death_time_cv"], permutedims(reduce(hcat, rows_c)))
 save_csv("fig4c_times.csv", ["dose", "event", "time"], permutedims(reduce(hcat, rows_ct)))
+end
 
+if "d" in parts
 # (d) fate correlations between related cells (memory gene versus fast-switching control). A cell's fate is the
 # fate of its lineage: it "survives" if any descendant is alive at the end of the run (colony formation), and
 # "dies" if its whole subtree is extinct.
@@ -117,7 +124,9 @@ for (tag, m) in (("memory", mem), ("fast", fast))
     end
 end
 save_csv("fig4d_fate_concordance.csv", ["model", "relation", "concordance", "expected_independent", "n_pairs", "death_fraction"], permutedims(reduce(hcat, rows)))
+end
 
+if "e" in parts
 # (e) clone (barcode) diversity before and after drug: pre-existing versus drug-induced tolerance
 effective_clones(clones) = (p = collect(values(countmap(clones))) ./ length(clones); exp(-sum(p .* log.(p))))
 rows = Any[]
@@ -130,7 +139,9 @@ for (tag, m, effects) in (("pre_existing", mem, [death()]), ("drug_induced", ind
     end
 end
 save_csv("fig4e_clone_diversity.csv", ["model", "seed", "effective_clones_before", "effective_clones_after", "cells_before", "cells_after", "high_fraction_before", "high_fraction_after"], permutedims(reduce(hcat, rows)))
+end
 
+if "f" in parts
 # (f) schedule optimisation: release period × dose for pre-existing tolerance (with and without a fitness cost) and drug-induced tolerance
 cost = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)
 rows = Any[]
@@ -146,19 +157,25 @@ for (tag, m, extra) in (("pre_existing", mem, DrugEffect[]), ("pre_existing_cost
     end
 end
 save_csv("fig4f_schedules.csv", ["model", "release_period", "dose", "long_term_growth_rate", "mean_exposure", "final_popsize"], permutedims(reduce(hcat, rows)))
+end
 
-# (g) memory disruption: accelerate switching for two cycles before the drug and count surviving clones
+if "g" in parts
+# (g) memory disruption: accelerate promoter switching 20-fold from two cell-cycle times before the drug, either
+# stopping when the drug arrives (pretreatment only) or continuing throughout the exposure (co-treatment)
 rows = Any[]
 for seed in 1:5
-    for (tag, m) in (("no_pretreatment", resistance_model()), ("pretreatment", resistance_model(pre_window = (0.0, T_DRUG), pre_factor = 20.0)))
+    for (tag, m) in (("none", resistance_model()), ("before_drug", resistance_model(pre_window = (0.0, T_DRUG), pre_factor = 20.0)),
+                     ("before_and_during", resistance_model(pre_window = (0.0, 120.0), pre_factor = 20.0)))
         r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death()]); seed = 20 + seed, T = 120.0, record_every = 100)
         pre = snapshot(r; t = T_DRUG); post = final_snapshot(r)
         push!(rows, [tag, seed, length(unique(post.clone)), size(post.counts, 1), high_fraction(pre, m), high_fraction(post, m)])
-        @printf("(g) %-16s seed %d surviving clones %d cells %d (high fraction before drug %.3f)\n", tag, seed, length(unique(post.clone)), size(post.counts, 1), high_fraction(pre, m))
+        @printf("(g) %-18s seed %d surviving clones %d cells %d (high fraction before drug %.3f)\n", tag, seed, length(unique(post.clone)), size(post.counts, 1), high_fraction(pre, m))
     end
 end
 save_csv("fig4g_memory_disruption.csv", ["treatment", "seed", "surviving_clones", "surviving_cells", "high_fraction_before_drug", "high_fraction_after"], permutedims(reduce(hcat, rows)))
+end
 
+if "h" in parts
 # (h) MGMT-like phenotypic selection: a drug pulse enriches high expressers; enrichment persists with slow switching
 rows = Any[]
 for (tag, m) in (("slow_switching", mem), ("fast_switching", fast))
@@ -169,4 +186,6 @@ for (tag, m) in (("slow_switching", mem), ("fast_switching", fast))
     end
 end
 save_csv("fig4h_mgmt.csv", ["model", "t", "dose", "popsize", "mean_P_concentration", "high_fraction"], permutedims(reduce(hcat, rows)))
+end
+
 println("fig4 done")

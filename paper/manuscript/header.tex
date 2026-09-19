@@ -11,3 +11,16 @@
 \usepackage{longtable}
 \usepackage{graphicx}
 \setkeys{Gin}{width=\linewidth}
+% pdflatex has no glyphs for these characters; map them to LaTeX equivalents
+\usepackage{pifont}
+\usepackage{newunicodechar}
+\newunicodechar{✓}{\ding{51}}
+\newunicodechar{○}{$\circ$}
+\newunicodechar{⁴}{\textsuperscript{4}}
+\newunicodechar{₂}{\textsubscript{2}}
+\newunicodechar{≥}{$\geq$}
+\newunicodechar{ε}{$\varepsilon$}
+\newunicodechar{α}{$\alpha$}
+\newunicodechar{λ}{$\lambda$}
+\newunicodechar{→}{$\rightarrow$}
+\newunicodechar{≈}{$\approx$}

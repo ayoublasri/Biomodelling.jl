@@ -9,8 +9,11 @@ def kv(n): d = load(n); return dict(zip(d.key, d.value))
 V = {}
 def put(k, v): V[k] = v
 def safe(fn):
-    try: fn()
-    except Exception as e: print(f"  [{fn.__name__}: {e}]")
+    def run():
+        try: fn()
+        except Exception as e: print(f"  [{fn.__name__}: {e}]")
+    run.__name__ = fn.__name__
+    return run
 
 @safe
 def f2():
@@ -30,21 +33,34 @@ def f3():
 
 @safe
 def f4():
-    put("mem_time", "50")
+    put("mem_time", f"{1 / (0.002 + 0.02):.0f}")
     d = load("fig4c_decay_vs_dose.csv").sort_values("dose")
     lo = d[d.dose == 0.5].decay_rate.iloc[0]; hi = d[d.dose == 2.0].decay_rate.iloc[0]
     put("decay_lo", f"{lo:.3f}"); put("decay_hi", f"{hi:.3f}"); put("decay_fold", f"{hi / lo:.1f}")
     dd = d[d.dose > 0]
     put("divtime_change", f"{abs(dd.division_time_mean.iloc[-1] - dd.division_time_mean.iloc[0]) / dd.division_time_mean.iloc[0] * 100:.1f}%")
     put("deathtime_range", f"{dd.death_time_mean.max():.1f} to {dd.death_time_mean.min():.1f}")
-    c = load("fig4d_fate_concordance.csv"); r = c[(c.model == "memory") & (c.relation == "sisters")].iloc[0]
-    put("sis_conc", f"{r.concordance:.2f}"); put("sis_exp", f"{r.expected_independent:.2f}")
-    rf = c[(c.model == "fast") & (c.relation == "sisters")].iloc[0]; put("sis_conc_fast", f"{rf.concordance:.2f}")
+    c = load("fig4d_fate_concordance.csv")
+    n = c.n_pairs.round().astype(int); same = (c.concordance * n).round().astype(int); disc = n - same
+    deaths = (c.death_fraction * 2 * n).round().astype(int); both_die = ((deaths - disc) / 2).round().astype(int); both_survive = same - both_die
+    c["p_survive"] = (2 * both_survive + disc) / (2 * n); c["p_cond"] = (2 * both_survive) / np.maximum(2 * both_survive + disc, 1)
+    for model, mtag in (("memory", ""), ("fast", "_fast")):
+        for rel, rtag in (("sisters", "sis"), ("cousins", "cous")):
+            r = c[(c.model == model) & (c.relation == rel)].iloc[0]
+            put(f"{rtag}_cond{mtag}", f"{r.p_cond:.2f}"); put(f"{rtag}_marg{mtag}", f"{r.p_survive:.2f}"); put(f"{rtag}_fold{mtag}", f"{r.p_cond / r.p_survive:.1f}")
+            put(f"{rtag}_n{mtag}", f"{int(r.n_pairs)}")
     e = load("fig4e_clone_diversity.csv"); m = e.groupby("model").mean(numeric_only=True)
     put("clones_before", f"{m.loc['pre_existing', 'effective_clones_before']:.0f}"); put("clones_after_pre", f"{m.loc['pre_existing', 'effective_clones_after']:.0f}")
     put("clones_after_ind", f"{m.loc['drug_induced', 'effective_clones_after']:.0f} of {m.loc['drug_induced', 'effective_clones_before']:.0f}")
+    f = load("fig4f_schedules.csv")
+    for model, tag in (("pre_existing", "pre"), ("pre_existing_cost", "cost"), ("drug_induced", "ind")):
+        g = f[f.model == model]; best = g.loc[g.long_term_growth_rate.idxmin()]
+        put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best.long_term_growth_rate:+.3f} per time unit)")
+        cont = g[(g.release_period == 0) & (g.dose == g.dose.max())].long_term_growth_rate.iloc[0]
+        put(f"cont_{tag}", f"{cont:+.3f}")
     g = load("fig4g_memory_disruption.csv").groupby("treatment").mean(numeric_only=True)
-    put("clones_np", f"{g.loc['no_pretreatment', 'surviving_clones']:.0f}"); put("clones_p", f"{g.loc['pretreatment', 'surviving_clones']:.0f}")
+    put("clones_none", f"{g.loc['none', 'surviving_clones']:.0f}"); put("clones_predrug", f"{g.loc['before_drug', 'surviving_clones']:.0f}"); put("clones_during", f"{g.loc['before_and_during', 'surviving_clones']:.0f}")
+    put("cells_none", f"{g.loc['none', 'surviving_cells']:.0f}"); put("cells_during", f"{g.loc['before_and_during', 'surviving_cells']:.0f}")
 
 @safe
 def f5():
@@ -53,6 +69,10 @@ def f5():
     y = (d.memory_time > 20).astype(int)
     put("auc_true", f"{roc_auc_score(y, d.score_true):.2f}"); put("auc_seq", f"{roc_auc_score(y, d.score_seq):.2f}")
     m = load("fig5bc_metrics.csv")
+    for meth in ("pearson", "genie3"):
+        for ds, tag in (("fixed_volume", "fixed"), ("population_counts", "counts"), ("population_concentration", "conc"), ("population_cycle_regressed", "reg"), ("sequenced_counts", "seq"), ("sequenced_normalized", "norm")):
+            put(f"aupr_{meth}_{tag}", f"{m[(m.method == meth) & (m.dataset == ds)].aupr.mean():.2f}")
+    put("aupr_random", f"{m.random_aupr.mean():.2f}")
     base = m[(m.method == "pearson") & (m.dataset == "sequenced_counts")].aupr.mean()
     imp = m[(m.method == "pearson") & (m.dataset.str.startswith("imputed"))].aupr
     put("imp_effect", f"{(imp.min() - base):+.2f} to {(imp.max() - base):+.2f} (Pearson correlation)")
@@ -67,8 +87,23 @@ def f6():
     c = kv("fig6c_summary.csv"); put("abc_c", f"({c['abc_median_h_max']:.2f}, {c['abc_median_K']:.0f})")
 
 for f in (f2, f3, f4, f5, f6): f()
-tpl = open(os.path.join(HERE, "02_results.template.md")).read()
-missing = sorted(set(re.findall(r"{{([a-z_0-9]+)}}", tpl)) - set(V))
-out = re.sub(r"{{([a-z_0-9]+)}}", lambda m: str(V.get(m.group(1), "[" + m.group(1) + "]")), tpl)
-open(os.path.join(HERE, "02_results.md"), "w").write(out)
-print("filled", len(V), "placeholders; missing:", missing)
+@safe
+def fsupp():
+    t = os.path.join(HERE, "tableS_runtime.md")
+    if os.path.exists(t): put("runtime_table", open(t).read().strip())
+    d = load("fig4c_times.csv")
+    for dose, g in d[d.event == "death"].groupby("dose"):
+        put(f"death_cv_{str(dose).replace('.', '_')}", f"{g.time.std() / g.time.mean():.2f}")
+    for tag in ("fig6a", "fig6b", "fig6c"):
+        sch = load(f"{tag}_schedule.csv")
+        put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
+fsupp()
+
+def fill(template, target):
+    tpl = open(os.path.join(HERE, template)).read()
+    missing = sorted(set(re.findall(r"{{([a-z_0-9]+)}}", tpl)) - set(V))
+    out = re.sub(r"{{([a-z_0-9]+)}}", lambda m: str(V.get(m.group(1), "[" + m.group(1) + "]")), tpl)
+    open(os.path.join(HERE, target), "w").write(out)
+    print(f"{target}: filled from {len(V)} values; missing:", missing)
+fill("02_results.template.md", "02_results.md")
+if os.path.exists(os.path.join(HERE, "supplement.template.md")): fill("supplement.template.md", "supplement.md")

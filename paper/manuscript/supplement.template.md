@@ -1,0 +1,75 @@
+---
+title: "Supplementary information for: Biomodelling.jl 2.0"
+author: "Ayoub Lasri and Marc Sturrock"
+date: ""
+---
+
+# S1. Stationary laws used for validation
+
+**Birth-death.** For $\emptyset \xrightarrow{k} X \xrightarrow{\gamma} \emptyset$ the stationary distribution is Poisson with mean $k/\gamma$.
+
+**Telegraph model.** With activation $k_{\mathrm{on}}$, inactivation $k_{\mathrm{off}}$, transcription $k_{\mathrm{tx}}$ from the active state and degradation $\gamma$, and $a = k_{\mathrm{on}}/\gamma$, $b = k_{\mathrm{off}}/\gamma$, $\lambda = k_{\mathrm{tx}}/\gamma$, the stationary distribution is the Beta-Poisson mixture
+$$P(n) = \frac{\lambda^n}{n!}\frac{\Gamma(a+n)\,\Gamma(a+b)}{\Gamma(a+b+n)\,\Gamma(a)}\,{}_1F_1(a+n;\,a+b+n;\,-\lambda),$$
+whose mean is $\lambda a/(a+b)$ and whose variance is $\mu + \lambda^2 ab/[(a+b)^2(a+b+1)]$. We evaluate ${}_1F_1(\alpha;\beta;-\lambda)$ through Kummer's transformation $e^{-\lambda}{}_1F_1(\beta-\alpha;\beta;\lambda)$, whose series has positive terms; partial sums are rescaled by $10^{-200}$ whenever they exceed $10^{200}$ so that the log of the sum is accumulated without overflow.
+
+**Bursty protein.** Protein produced in geometric bursts of mean size $b$ arriving at rate $a$ and degraded at rate $\gamma$ is negative binomial with shape $a/\gamma$ and success probability $1/(1+b)$. The package emulates bursts through an mRNA of lifetime $1/(200\gamma)$ translated at rate $200\gamma b$.
+
+# S2. Kernel details and correctness tests
+
+The direct method draws the waiting time from $\mathrm{Exp}(a_0)$ and the channel by linear search over the cumulative propensities; after each event only the propensities of reactions that depend on a changed species (the dependency graph) are recomputed, and the running total is refreshed every 512 events. Fixed-step tau-leaping draws $\mathrm{Poisson}(a_j\tau)$ firings for every channel; the strict variant errors when a species would become negative, the hybrid variant rejects the leap and simulates the interval with the direct method. Adaptive tau-leaping classifies as critical every channel within $n_c = 10$ firings of exhausting a reactant, selects $\tau$ from the non-critical channels through the bounds $\max(\varepsilon x_i/g_i, 1)/|\mu_i|$ and $\max(\varepsilon x_i/g_i, 1)^2/\sigma_i^2$, draws the time to the next critical event from $\mathrm{Exp}(a_0^{\mathrm{crit}})$, fires at most one critical channel, halves $\tau$ on rejection, and performs 100 exact events whenever $\tau < 10/a_0$.
+
+Table S1 lists the tests of the package test suite that validate the kernels: Kolmogorov-Smirnov distances below 0.015 (direct) or 0.02 (approximate kernels) to the Poisson, Beta-Poisson and negative-binomial laws with 8 000 to 12 000 cells; agreement of the adaptive kernel with the direct method on a stiff dimerisation network within 5% in the mean; identical results with one and with several threads.
+
+# S3. Parameters of all simulations
+
+| Figure | Model | Parameters |
+|---|---|---|
+| 2a | birth-death | $k = 12$, $\gamma = 1$, $T = 15$ |
+| 2b | telegraph | $(k_{\mathrm{on}}, k_{\mathrm{off}}, k_{\mathrm{tx}}) = (0.4, 0.6, 12)$ and $(0.05, 0.5, 40)$, $\gamma = 1$, $T = 40$ |
+| 2c | bursty protein | $a = 1.5$, $b = 6$, $\gamma = 1$, $T = 25$ |
+| 2d-e | telegraph | $(0.4, 0.6, 12)$, $n = 20\,000$ |
+| 2f | random telegraph GRNs | $n_{\mathrm{act}} = n_{\mathrm{genes}}$, $n_{\mathrm{inh}} = n_{\mathrm{genes}}/2$, $\lambda = \ln 2/20$, $dt = 0.1$, $T = 20$ |
+| 3 | telegraph gene with protein | $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$, $k_{\mathrm{on}} = k_{\mathrm{off}}$ as indicated; $\lambda = \ln 2/20$, sizer $V_{\mathrm{div}} = 2$ (cv 0.05), $\sigma_f = 0.02$, replication at 50% of the cycle where indicated |
+| 3e | stable protein | $k_{\mathrm{on}} = k_{\mathrm{off}} = 5$, $k_{\mathrm{tx}} = 20$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 2$, $k_{\mathrm{dp}} = 0.05$ |
+| 4 | resistance gene | as Figure 3 with $(k_{\mathrm{on}}, k_{\mathrm{off}}) = (0.002, 0.02)$ (memory, $p_{\mathrm{on}} \approx 9\%$) or $(0.05, 0.5)$ (fast, same $p_{\mathrm{on}}$); founders burnt in for 300 time units at constant size; death $h_{\max} = 0.15$, $\mathrm{EC}_{50} = 0.5$, $m = 2$, $K = 150$, $q = 4$; drug from $t = 40$ of the treatment stage; drug-induced variant $(0.0002, 0.02)$ with $k_{\mathrm{on}} \to k_{\mathrm{on}}(1 + 100 d)$; fitness cost variant: growth $\times (1 - 0.5\, c_P^4/(150^4 + c_P^4))$; memory disruption: switching $\times 20$ on $[0, 40)$ or $[0, 120)$; schedule scan: 300 founders, 240 time units, 20-time-unit exposures |
+| 5a | 40 independent telegraph genes | $k_{\mathrm{on}} = k_{\mathrm{off}} \in [10^{-3}, 1]$ (log-spaced), $k_{\mathrm{tx}} = 20$, $k_{\mathrm{dm}} = 0.5$; 40 founders, 6 doublings |
+| 5b-c | random GRN | 30 genes, 30 activations, 15 inhibitions, $k_{\mathrm{tx}} \in [5, 30]$, $K \in [2, 10]$, $n = 2$, basal 0.05; 1 500 cells; sequencing capture 0.15 (cv 0.3) |
+| 5d | random GRN | 20 genes, 22 activations, 10 inhibitions; knockdown factor 0.05; 800 cells |
+| 6a-b | telegraph | truth $(0.3, 0.6, 20)$; priors log-uniform on $[0.01, 10]$, $[0.01, 10]$, $[1, 200]$; 200 (a) / 120 (b) particles |
+| 6c | resistance gene | truth $h_{\max} = 0.5$, $K = 150$; priors log-uniform on $[0.05, 5]$ and $[20, 1000]$; 100 particles |
+
+# S4. Additional persister simulations
+
+![](figS1_timing.png)
+
+**Figure S1. Single-cell timing distributions underlying Figure 4c.** (a) Division times of cells born under drug and (b) times from drug start (or from birth, for cells born under drug) to death, per dose.
+
+The division-time distribution is set by the sizer and is the same at every dose, because in this model the drug kills but does not slow growth. Times to death are broad (coefficient of variation {{death_cv_0_5}} at dose 0.5 and {{death_cv_2_0}} at dose 2) and their mean shifts by much less than the population decay rate, because most deaths occur among low-expressing cells whose hazard is already close to $h_{\max}$ at dose 0.5 ($\mathrm{EC}_{50} = 0.5$, $m = 2$); raising the dose mainly shortens the survival of cells with intermediate protection. The dose dependence of population decay is therefore carried by the fraction of cells that are protected, not by the kinetics of death of unprotected cells, which is the interpretation @iyer2025 give of their single-cell tracking data.
+
+Under continuous dosing at the highest dose (release period 0, dose 2 in Figure 4f), the long-term growth rate is {{cont_pre}} per time unit for pre-existing tolerance, {{cont_cost}} when the resistant state carries a 50% growth cost and {{cont_ind}} for drug-induced tolerance; the schedules with the lowest long-term growth rate are {{best_pre}}, {{best_cost}} and {{best_ind}} respectively. For pre-existing tolerance without a cost, every release period raises the net growth rate; with the fitness cost, release periods of 5 and 10 time units are within 0.003 per time unit of continuous dosing at doses of 1 and 2; for drug-induced tolerance, dose 1 gives a lower net growth rate than dose 2 at every release period, and release periods of 20 time units or more raise the growth rate in every model. All values are single realisations with 300 founder cells.
+
+# S5. Benchmark details
+
+Network inference methods: absolute Pearson and Spearman correlations of $\log(1+x)$ (Pearson) or ranks (Spearman); GENIE3 as random-forest importances (200 trees, `sqrt` features) fitted on $\log(1+x)$ with scikit-learn. Imputation: kNN-smoothing (one step, $k = 15$, 10 principal components of the Freeman-Tukey transformed, library-size normalised counts) and MAGIC with default parameters on square-root normalised counts. Metrics: area under the precision-recall and receiver-operating curves against the undirected (correlation) or directed (GENIE3) ground-truth adjacency. The cell-cycle-regressed dataset is the residual of $\log(1+c)$ (concentration $c$) after ordinary least-squares regression on gene copy number, cell age and age squared, per gene.
+
+# S6. Inference diagnostics
+
+**Summary statistics and distances.** For Figures 6a and 6b the distance between a simulated and the observed sample of counts is their Wasserstein-1 distance [@bernton2019], computed as the mean absolute difference between the two empirical quantile functions on a grid of 201 probabilities, divided by the observed mean; each simulated sample contains 600 cells (a) or the final snapshot of 500 founders grown for 80 time units (b), against 2 000 observed cells. The distance between two independent samples at the true parameters (the noise floor) is reported in the summary tables of the repository. For Figure 6c the summaries of a treated population are the log surviving fraction on a grid of 25 time points from the start of the drug to 60 time units later (populations that went extinct contribute a floor of $10^{-3}$) and the concordance of death fates between sisters born in the 20 time units before the drug; the distance is the root-mean-square difference of these summaries. Each generation's tolerance is the median of the previous generation's accepted distances, particles are perturbed with a Gaussian kernel of variance twice the weighted variance of the previous generation, and the first generation samples the prior.
+
+![](figS2_abc_schedules.png)
+
+**Figure S2. ABC-SMC diagnostics.** (a) Tolerance and (b) acceptance rate per generation for the three runs of Figure 6.
+
+The run on non-dividing cells ({{fig6a_gens}} generations, 200 particles) reached a final tolerance of {{fig6a_eps}} with an acceptance rate of {{fig6a_acc}} in the last generation; the division-aware run ({{fig6b_gens}} generations, 120 particles, each particle simulating a population of 250 founders for 80 time units) reached {{fig6b_eps}} at {{fig6b_acc}}; the drug-parameter run ({{fig6c_gens}} generations, 100 particles, 200 founders each) reached {{fig6c_eps}} at {{fig6c_acc}}. Posterior predictive checks were made by simulating the forward model at the posterior median (Figure 6d for the drug parameters); the posterior median rather than the mean is reported throughout because the posteriors are asymmetric on the log scale.
+
+# S7. Runtime
+
+Table S2 lists the wall-clock times of the population simulations of Figure 2f (200 steps of $dt = 0.1$ for random telegraph networks of 10, 50 and 100 genes, four threads of an Intel Xeon processor at 2.1 GHz, Julia 1.10). Throughput in cell-steps per second falls with the number of reactions because every step of every cell has to sample the events of all channels; the hybrid kernel is 2 to 5 times faster than the direct method at these tolerances, the gap widening with the number of reactions. The single-cell interface used for the comparison with JumpProcesses.jl (Figure 2e) allocates a workspace per simulation and is slower in serial execution than JumpProcesses.jl on that one-gene model; the population interface reuses one workspace per thread.
+
+Table S2. Runtime of population simulations.
+
+{{runtime_table}}
+
+# S8. Migration from version 1
+
+The v1 API (`Donne`, `ssa`, `tauleap`, `tauleapswitch`, `adaptive_tauleap`, `exponential_growth`, NamedTuple reactions) remains available through a deprecated compatibility layer that converts NamedTuple reactions to `ReactionModel`s (reactions whose names contain `act`, `inhib`, `comb_a` or `comb_i` become Hill kinetics with `rate = [k, n, K]`; species whose names contain `on`/`off` become promoter groups) and maps the algorithms onto the new kernels. Output shapes are preserved, including the leading `:NULL` column. See `docs/src/migration.md`.

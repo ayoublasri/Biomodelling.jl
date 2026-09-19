@@ -30,7 +30,7 @@ True counts are converted to observations by a scRNA-seq model in which each cel
 
 ## Inference
 
-Snapshot counts of a gene in non-dividing cells follow the Beta-Poisson law of the telegraph model [@peccoud1995], which we evaluate through Kummer's confluent hypergeometric function with rescaled series summation, and maximise by a grid-initialised Nelder-Mead search in log-parameter space. For any model, including populations, we implement sequential Monte Carlo approximate Bayesian computation [@toni2009] with an adaptive tolerance schedule (the $\alpha$ quantile of the previous generation's distances), Gaussian perturbation kernels of variance twice the weighted population variance, importance weights against the prior, and parallel evaluation of the user-supplied distance function.
+Snapshot counts of a gene in non-dividing cells follow the Beta-Poisson law of the telegraph model [@peccoud1995], which we evaluate through Kummer's confluent hypergeometric function with rescaled series summation, and maximise by a grid-initialised Nelder-Mead search in log-parameter space. For any model, including populations, we implement sequential Monte Carlo approximate Bayesian computation [@toni2009] with an adaptive tolerance schedule (the $\alpha$ quantile of the previous generation's distances), Gaussian perturbation kernels of variance twice the weighted population variance, importance weights against the prior, and parallel evaluation of the user-supplied distance function; for count distributions we use the Wasserstein-1 distance between simulated and observed samples [@bernton2019].
 
 ## Random regulatory networks
 
