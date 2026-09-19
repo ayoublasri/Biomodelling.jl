@@ -11,9 +11,18 @@ end
 """
     HybridSSATau(τ)
 
-Fixed-step Poisson tau-leaping that falls back to the exact direct method for any
-leap interval in which a species would become negative (the "switching" scheme
-of the original package, made exact over the rejected interval).
+Fixed-step Poisson tau-leaping that falls back to the direct method for any leap
+interval in which a species would become negative (the "switching" scheme of the
+original package, with the rejected interval simulated exactly rather than clipped).
+
+This kernel is approximate, not exact. A leap is kept only when it leaves every
+species non-negative, so an accepted step is conditioned on that event and its
+distribution is the Poisson leap truncated to the non-negative region; only the
+rejected intervals are drawn from the exact process. The discrepancy falls with
+`τ` and with the copy numbers involved: in the validation of the accompanying
+paper it is undetectable at `τ = 0.05` and detectable at `τ = 0.2` by a
+Kolmogorov-Smirnov test with 20,000 cells. Use [`DirectSSA`](@ref) when
+exactness matters, and check the step size against a reference run otherwise.
 """
 struct HybridSSATau <: AbstractKernel
     τ::Float64

@@ -27,19 +27,19 @@ model(k_on, k_off) = telegraph_model(; k_on, k_off, k_tx = 30.0, k_dm = 1.0, k_t
 x0(m) = initial_state(m; R_off = 1)
 effects(h_max, EC50, mh, IC50) = [DeathHazard(h_max = h_max, EC50 = EC50, m = mh, protect = :P, K = 150.0, q = 4.0),
                                   GrowthInhibition(IC50 = IC50, m = 2.0)]
-burn_st = PopulationSettings(dt = 0.5, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
+burn_st_dt(dt) = PopulationSettings(dt = dt, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
                              control = ConstantN(), track_lineage = false, record_every = 10_000)
-treat_st(; record_every = 4) = PopulationSettings(dt = 0.5, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
+treat_st(; record_every = 4, dt = 0.5) = PopulationSettings(dt = dt, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
                                                   control = FreeGrowth(max_cells = 20_000), track_lineage = true, record_every = record_every)
 """Burn in a constant-size population (promoter states, sizes and ages at stationarity) and treat it: `t_free` hours
 without drug, then `t_drug` hours at concentration `d` (µM)."""
-function experiment(θ, d; N = 300, seed = 1, t_free = T_FREE, t_drug = T_DRUG, record_every = 4)
+function experiment(θ, d; N = 300, seed = 1, t_free = T_FREE, t_drug = T_DRUG, record_every = 4, dt = 0.5)
     k_on, k_off, h_max, EC50, mh, IC50 = θ
     m = model(k_on, k_off)
-    b = simulate_population(m, x0(m), N, (0.0, 10CYCLE); settings = burn_st, rng = Xoshiro(1000 + seed))
+    b = simulate_population(m, x0(m), N, (0.0, 10CYCLE); settings = burn_st_dt(dt), rng = Xoshiro(1000 + seed))
     sn = final_snapshot(b)
     pert = Perturbation(PiecewiseDose([0.0, t_free], [0.0, d]); effects = effects(h_max, EC50, mh, IC50))
-    simulate_population(m, sn.counts, N, (0.0, t_free + t_drug); settings = treat_st(; record_every), V0 = sn.volume, perturbation = pert, rng = Xoshiro(seed))
+    simulate_population(m, sn.counts, N, (0.0, t_free + t_drug); settings = treat_st(; record_every, dt), V0 = sn.volume, perturbation = pert, rng = Xoshiro(seed))
 end
 """Fates, over the drug window, of the cells present at drug addition: died, divided, or survived without dividing."""
 function fates(r; t_on = T_FREE, t_end = T_FREE + T_DRUG)
@@ -82,6 +82,57 @@ if "calibrate" in parts
     save_kv("fig7_calibration.csv", vcat([string(n) => v for (n, v) in zip(names, opt.params)], ["distance" => opt.value, "n_evaluations" => length(opt.table),
             "memory_generations" => 1 / (opt.params[1] + opt.params[2]) / CYCLE, "p_on" => opt.params[1] / (opt.params[1] + opt.params[2])]))
     save_csv("fig7_calibration_table.csv", vcat(string.(names), ["distance"]), permutedims(reduce(hcat, [vcat(p, v) for (p, v) in opt.table])))
+end
+
+# ---------------------------------------------------------------- identifiability and robustness
+"""Root-mean-square error of the fate fractions on the training concentrations, without the memory prior."""
+function fit_distance(θ, seed)
+    d2 = 0.0
+    for d in TRAIN
+        f = fates(experiment(θ, d; seed))
+        d2 += sum((fatevec(f) .- fatevec(obs[d])) .^ 2)
+    end
+    sqrt(d2 / (3 * length(TRAIN)))
+end
+θ_from(memgen, p_on, rest) = vcat([p_on / (memgen * CYCLE), (1 - p_on) / (memgen * CYCLE)], rest)
+
+if "profile" in parts
+    cal = Dict(String(k) => v for (k, v) in zip(readdlm(joinpath(OUT, "fig7_calibration.csv"), ','; skipstart = 1)[:, 1],
+                                                readdlm(joinpath(OUT, "fig7_calibration.csv"), ','; skipstart = 1)[:, 2]))
+    θ̂ = [cal[string(n)] for n in names]
+    # (a) conditional profile: one parameter moved, the others held at their fitted values
+    rows = Any[]
+    for (i, nm) in enumerate(names)
+        for v in exp10.(range(log10(lower[i]), log10(upper[i]), length = 11))
+            θ = copy(θ̂); θ[i] = v
+            push!(rows, [string(nm), v, fit_distance(θ, 1)])
+        end
+        println("conditional profile done: ", nm)
+    end
+    save_csv("fig7g_profile.csv", ["parameter", "value", "rmse"], permutedims(reduce(hcat, rows)))
+
+    # (b) how well the fate fractions determine the memory of the resistant state and the fraction of
+    #     cells in it: a two-dimensional slice with the death parameters held at their fitted values.
+    #     A slice avoids the local minima that a re-optimised profile falls into at this simulation cost.
+    rows_m = Any[]
+    for memgen in [1.0, 1.5, 2.0, 2.8, 4.0, 6.0, 9.0]
+        for p_on in [0.01, 0.02, 0.05, 0.10, 0.15, 0.25, 0.40]
+            θ = θ_from(memgen, p_on, θ̂[3:end])
+            push!(rows_m, [memgen, p_on, fit_distance(θ, 1)])
+        end
+        println("memory slice done: ", memgen, " generations")
+    end
+    save_csv("fig7h_memory_slice.csv", ["memory_generations", "p_on", "rmse"], permutedims(reduce(hcat, rows_m)))
+
+    # (c) robustness: halving the integration step, and seed-to-seed variability at the fitted parameters
+    rows_r = Any[]
+    for dt in (0.5, 0.25)
+        for seed in 1:3
+            f = fates(experiment(θ̂, TRAIN[end]; seed, dt))
+            push!(rows_r, [dt, seed, f.died, f.divided, f.survived])
+        end
+    end
+    save_csv("fig7i_stepsize.csv", ["dt_h", "seed", "died", "divided", "survived"], permutedims(reduce(hcat, rows_r)))
 end
 
 # ---------------------------------------------------------------- validation on held-out conditions

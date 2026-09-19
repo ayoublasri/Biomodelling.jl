@@ -53,3 +53,63 @@ try:
         for _, x in r.iterrows(): f.write(f"| {int(x.genes)} | {int(x.cells)} | {x.kernel} | {int(x.threads)} | {x.seconds:.2f} | {x.cell_steps_per_second:,.0f} |\n")
     print("runtime table written")
 except Exception as e: print("S3 skipped:", e)
+
+# S3: identifiability and numerical robustness of the calibration
+try:
+    import numpy as _np
+    prof = pd.read_csv(os.path.join(OUT, "fig7g_profile.csv"))
+    slic = pd.read_csv(os.path.join(OUT, "fig7h_memory_slice.csv"))
+    step = pd.read_csv(os.path.join(OUT, "fig7i_stepsize.csv"))
+    cal = pd.read_csv(os.path.join(OUT, "fig7_calibration.csv")).set_index("key").value
+    obs = pd.read_csv(os.path.join(HERE, "data", "iyer2025_u2os_fates.csv"))
+    ses = []
+    for _, r in obs.iterrows():
+        n = r["cells_at_drug"]
+        for k in ("died", "divided", "survived_without_dividing"):
+            q = r[k] / n; ses.append(_np.sqrt(q * (1 - q) / n))
+    se = float(_np.mean(ses))
+
+    fig = plt.figure(figsize=(7.2, 2.9))
+    gs = fig.add_gridspec(1, 3, width_ratios=[1.15, 1.0, 0.72], wspace=0.72)
+
+    ax = fig.add_subplot(gs[0])
+    best = prof.rmse.min()
+    for i, (par, g) in enumerate(prof.groupby("parameter", sort=False)):
+        g = g.sort_values("value")
+        ax.plot(g.value / float(cal[par]), g.rmse, marker="o", ms=2.2, lw=1.1, color=C[i % 8], label=par)
+    ax.axhline(best + se, color="#52514e", ls=":", lw=0.9)
+    ax.text(0.03, 0.93, "dotted: within one s.e. of the data", transform=ax.transAxes, fontsize=6, color="#52514e")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("parameter / fitted value"); ax.set_ylabel("RMSE of fate fractions")
+    ax.legend(fontsize=6, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.30), columnspacing=1.2, handlelength=1.2)
+    ax.set_title("a   one parameter at a time", loc="left", fontweight="semibold", color="#2a2a28")
+
+    ax = fig.add_subplot(gs[1])
+    piv = slic.pivot(index="p_on", columns="memory_generations", values="rmse")
+    im = ax.imshow(piv.values, origin="lower", aspect="auto", cmap="viridis_r",
+                   extent=[-0.5, piv.shape[1] - 0.5, -0.5, piv.shape[0] - 0.5])
+    for i in range(piv.shape[0]):
+        for j in range(piv.shape[1]):
+            if piv.values[i, j] <= slic.rmse.min() + se:
+                ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False, ec="#e34948", lw=1.0))
+    ax.set_xticks(range(piv.shape[1])); ax.set_xticklabels([f"{c:g}" for c in piv.columns], fontsize=6)
+    ax.set_yticks(range(piv.shape[0])); ax.set_yticklabels([f"{r:g}" for r in piv.index], fontsize=6)
+    ax.set_xlabel("memory (generations)"); ax.set_ylabel("fraction resistant")
+    ax.grid(False)
+    cb = fig.colorbar(im, ax=ax, fraction=0.045, pad=0.02); cb.set_label("RMSE", fontsize=6.5, labelpad=1); cb.ax.tick_params(labelsize=6)
+    ax.set_title("b   memory and resistant fraction", loc="left", fontweight="semibold", color="#2a2a28")
+
+    ax = fig.add_subplot(gs[2])
+    g = step.groupby("dt_h")[["died", "divided", "survived"]].agg(["mean", "std"])
+    x = _np.arange(3); w = 0.36
+    for k, dt in enumerate(sorted(step.dt_h.unique())):
+        ax.bar(x + (k - 0.5) * w, [g.loc[dt, (c, "mean")] for c in ("died", "divided", "survived")],
+               yerr=[g.loc[dt, (c, "std")] for c in ("died", "divided", "survived")],
+               width=w, color=C[k], capsize=1.5, label=f"dt = {dt:g} h")
+    ax.set_xticks(x); ax.set_xticklabels(["died", "divided", "survived"], fontsize=6, rotation=20, ha="right", rotation_mode="anchor")
+    ax.set_ylabel("fraction of cells at 13 µM")
+    ax.legend(fontsize=6, labelspacing=0.25)
+    ax.set_title("c   integration step", loc="left", fontweight="semibold", color="#2a2a28")
+    save(fig, "figS3_identifiability")
+except Exception as e:
+    print("S3 skipped:", e)

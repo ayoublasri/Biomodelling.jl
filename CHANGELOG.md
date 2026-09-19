@@ -8,6 +8,9 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- Identifiability and robustness analysis of the calibration (`fig7_calibration.jl profile`):
+  conditional parameter profiles, a memory/resistant-fraction slice and an integration-step
+  check, reported as Supplementary Note 11 and Supplementary Figure 3.
 - Every figure of the paper now sets in one typeface with one spacing scale, and
   Figure 6 gained the posterior predictive panel its legend already described.
 - Supplementary Note 10 of the white paper: a claim-by-claim table separating what prior

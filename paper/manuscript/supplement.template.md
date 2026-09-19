@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: ""
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–10, Supplementary Figures 1–2 and Supplementary Tables 1–4.
+**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–11, Supplementary Figures 1–3 and Supplementary Tables 1–4.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -18,7 +18,7 @@ whose mean is $\lambda a/(a+b)$ and whose variance is $\mu + \lambda^2 ab/[(a+b)
 
 # Supplementary Note 2: Kernel details and correctness tests
 
-The direct method draws the waiting time from $\mathrm{Exp}(a_0)$ and the channel by linear search over the cumulative propensities; after each event only the propensities of reactions that depend on a changed species (the dependency graph) are recomputed, and the running total is refreshed every 512 events. Fixed-step tau-leaping draws $\mathrm{Poisson}(a_j\tau)$ firings for every channel; the strict variant errors when a species would become negative, the hybrid variant rejects the leap and simulates the interval with the direct method. Adaptive tau-leaping classifies as critical every channel within $n_c = 10$ firings of exhausting a reactant, selects $\tau$ from the non-critical channels through the bounds $\max(\varepsilon x_i/g_i, 1)/|\mu_i|$ and $\max(\varepsilon x_i/g_i, 1)^2/\sigma_i^2$, draws the time to the next critical event from $\mathrm{Exp}(a_0^{\mathrm{crit}})$, fires at most one critical channel, halves $\tau$ on rejection, and performs 100 exact events whenever $\tau < 10/a_0$.
+The direct method draws the waiting time from $\mathrm{Exp}(a_0)$ and the channel by linear search over the cumulative propensities; after each event only the propensities of reactions that depend on a changed species (the dependency graph) are recomputed, and the running total is refreshed every 512 events. Fixed-step tau-leaping draws $\mathrm{Poisson}(a_j\tau)$ firings for every channel; the strict variant errors when a species would become negative, the hybrid variant discards the leap and simulates that interval with the direct method. Discarding is conditioned on the realised leap, so the accepted steps of the hybrid variant follow a truncated Poisson law and the kernel is approximate; Fig. 2d measures the resulting discrepancy against the exact stationary laws at two step sizes. Adaptive tau-leaping classifies as critical every channel within $n_c = 10$ firings of exhausting a reactant, selects $\tau$ from the non-critical channels through the bounds $\max(\varepsilon x_i/g_i, 1)/|\mu_i|$ and $\max(\varepsilon x_i/g_i, 1)^2/\sigma_i^2$, draws the time to the next critical event from $\mathrm{Exp}(a_0^{\mathrm{crit}})$, fires at most one critical channel, halves $\tau$ on rejection, and performs 100 exact events whenever $\tau < 10/a_0$.
 
 Supplementary Table 1 lists the tests of the package test suite that validate the kernels: Kolmogorov-Smirnov distances below 0.015 (direct) or 0.02 (approximate kernels) to the Poisson, Beta-Poisson and negative-binomial laws with 8 000 to 12 000 cells; agreement of the adaptive kernel with the direct method on a stiff dimerisation network within 5% in the mean; identical results with one and with several threads.
 
@@ -116,3 +116,17 @@ The ingredients of this framework have precedents, and several of its results co
 | An intermediate dose can be optimal against drug-induced tolerance (Fig. 4h) | Reported for induced persisters [@corigliano2025] | Reproduced; the accompanying benefit of release periods does not appear here, which the text attributes to the decay of the induced state in this model rather than to a disagreement about data |
 | MGMT expression selects glioblastoma cells under temozolomide (Fig. 8f-h) | Phenotypic selection with stable inheritance [@lasri2020] | Pharmacokinetics, the RTOG 0525 regimens, consumption of MGMT by the drug, and the fractionation that minimises the final population at fixed cumulative dose |
 | Dose-dense temozolomide does not improve survival | Clinical result [@gilbert2013] | A mechanistic account of why, and identification of the rate at which the drug consumes MGMT as the measurement that separates the regimens |
+
+# Supplementary Note 11: Identifiability and numerical robustness of the calibration
+
+Six parameters were fitted to six measured fractions, so the fit cannot determine all six. Three checks bound what the calibration does and does not establish.
+
+![](figS3_identifiability.png)
+
+**Supplementary Fig. 3 | What the fate fractions determine.** **a**, Root-mean-square error of the simulated fate fractions at the training concentrations when one parameter is moved away from its fitted value over its full range and the others are held at theirs, plotted against the ratio to the fitted value; the dotted line marks one binomial standard error of the measurement above the best fit. **b**, The same error over the memory of the resistant state and the fraction of cells in it, with the death parameters held at their fitted values; red outlines mark the combinations that lie within one standard error of the best. **c**, Simulated fates at 13 µM with the integration step halved (mean ± s.d. of three seeds).
+
+The death parameters are the better determined: the maximal death rate stays within one standard error of the best fit over about a twofold range, and the EC$_{50}$, Hill coefficient and growth-arrest IC$_{50}$ over narrower ranges still (Supplementary Fig. 3a). The two promoter switching rates are not determined: each can move by roughly sixfold with no penalty the data can detect. The two-dimensional slice shows why (Supplementary Fig. 3b). A short memory with many resistant cells and a long memory with few produce nearly the same fate fractions, so the error surface is flat along that direction, and a majority of the combinations tested, spanning one to nine generations of memory and 1% to 25% of cells resistant, fit within the noise of the measurement. The memory quoted in the main text is therefore set by the prior taken from the lineage correlations, not by the fate fractions, and the resistant fraction that accompanies it should not be read as a measurement.
+
+Halving the integration step from 0.5 h to 0.25 h changes each simulated fate fraction by less than the seed-to-seed spread (Supplementary Fig. 3c), so the discretisation of the death hazard is not a source of error at this step size.
+
+A profile in which the remaining parameters are re-optimised at each fixed memory would be preferable to a slice, but at seven seconds per objective evaluation the inner search could not be given enough budget to be reliable: it returned fits three times worse than the known solution at short memory, which reflects the optimiser rather than the data. The slice avoids that failure at the cost of conditioning on the fitted death parameters.

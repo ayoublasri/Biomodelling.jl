@@ -63,7 +63,7 @@ def f4():
     put("cells_none", f"{g.loc['none', 'surviving_cells']:.0f}"); put("cells_during", f"{g.loc['before_and_during', 'surviving_cells']:.0f}")
 
 @safe
-def f5():
+def f5a():
     d = load("fig5a_memory_genes.csv")
     put("score_min", f"{d[d.memory_time < 2].score_true.mean():.1f}"); put("score_max", f"{d[d.memory_time > 100].score_true.mean():.1f}")
     y = (d.memory_time > 20).astype(int)
@@ -72,12 +72,46 @@ def f5():
     for meth in ("pearson", "genie3"):
         for ds, tag in (("fixed_volume", "fixed"), ("population_counts", "counts"), ("population_concentration", "conc"), ("population_cycle_regressed", "reg"), ("sequenced_counts", "seq"), ("sequenced_normalized", "norm")):
             put(f"aupr_{meth}_{tag}", f"{m[(m.method == meth) & (m.dataset == ds)].aupr.mean():.2f}")
+
+@safe
+def f2b():
+    import math
+    k = load("fig2d_kernels.csv")
+    crit = 1.63 / math.sqrt(20000)
+    put("ks_crit20k", f"{crit:.4f}")
+    coarse = k[k.kernel.str.contains("HybridSSATau\\(0.2")]
+    put("ks_hybrid_coarse", f"{coarse.ks_telegraph.iloc[0]:.4f} and {coarse.ks_birthdeath.iloc[0]:.4f}")
+
+@safe
+def f4g():
+    from scipy import stats
+    d = load("fig4g_memory_disruption.csv")
+    none = d[d.treatment == "none"]; pre = d[d.treatment == "before_drug"]
+    t, pv = stats.ttest_ind(none.surviving_clones, pre.surviving_clones, equal_var=False)
+    put("clones_predrug_p", f"mean of {len(none)} seeds each, P = {pv:.3f}, Welch's t test")
+    put("resfrac_none", f"{none.high_fraction_before_drug.mean():.2f}")
+    put("resfrac_predrug", f"{pre.high_fraction_before_drug.mean():.2f}")
+
+@safe
+def f5():
+    """Random baselines, imputation and the perturbation baselines."""
+    m = load("fig5bc_metrics.csv")
+    # the random baseline differs between the directed (GENIE3) and undirected (correlation) evaluations
+    put("aupr_random_dir", f"{m[m.directed].random_aupr.mean():.2f}")
+    put("aupr_random_undir", f"{m[~m.directed].random_aupr.mean():.2f}")
     put("aupr_random", f"{m.random_aupr.mean():.2f}")
-    base = m[(m.method == "pearson") & (m.dataset == "sequenced_counts")].aupr.mean()
-    imp = m[(m.method == "pearson") & (m.dataset.str.startswith("imputed"))].aupr
-    put("imp_effect", f"{(imp.min() - base):+.2f} to {(imp.max() - base):+.2f} (Pearson correlation)")
+    for meth, tag in (("pearson", "p"), ("genie3", "g")):
+        base = m[(m.method == meth) & (m.dataset == "sequenced_counts")].aupr.mean()
+        for ds, dtag in (("imputed_knn_smoothing", "knn"), ("imputed_magic", "magic")):
+            put(f"aupr_{tag}_{dtag}", f"{m[(m.method == meth) & (m.dataset == ds)].aupr.mean():.2f}")
     s = load("fig5d_summary.csv")
-    put("r2_zero", f"{s.r2_zero_baseline.mean():.2f}"); put("r2_corr", f"{s.r2_correlation_baseline.mean():.2f}")
+    # the mean R² of the correlation baseline is dominated by a single failure, so report the spread too
+    z, c = s.r2_zero_baseline, s.r2_correlation_baseline
+    put("r2_zero", f"{z.mean():.2f}"); put("r2_corr", f"{c.mean():.2f}")
+    put("r2_zero_med", f"{z.median():.2f}"); put("r2_corr_med", f"{c.median():.2f}")
+    put("r2_corr_nwin", f"{int((c > z).sum())} of {len(c)}")
+    put("r2_corr_good", f"{c[c > 0].min():.2f} to {c.max():.2f}")
+    put("r2_corr_worst", f"{c.min():.2f}")
 
 @safe
 def f6():
@@ -106,6 +140,51 @@ def f7():
     tt, N = g.t_since_drug_h.values, g.N_over_N0.values
     sl = lambda a, b: np.log(N[np.argmin(abs(tt - b))] / N[np.argmin(abs(tt - a))]) / (b - a)
     put("kc_ratio", f"{sl(0, 48) / sl(96, 168):.1f}")
+
+@safe
+def f7b():
+    """Measurement precision, identifiability and step-size robustness of the calibration."""
+    import numpy as np
+    o = pd.read_csv(os.path.join(HERE, "..", "data", "iyer2025_u2os_fates.csv"))
+    ses = []
+    for _, r in o.iterrows():
+        n = r["cells_at_drug"]
+        for k in ("died", "divided", "survived_without_dividing"):
+            p_ = r[k] / n
+            ses.append(np.sqrt(p_ * (1 - p_) / n))
+    binom = float(np.mean(ses))
+    put("binom_se", f"{binom:.3f}")
+
+    st = load("fig7i_stepsize.csv")
+    sim = float(st[st.dt_h == st.dt_h.max()][["died", "divided", "survived"]].std().mean())
+    put("sim_se", f"{sim:.3f}")
+    rmse_train = float(V.get("rmse_train", "nan"))
+    put("rmse_train_in_se", f"{rmse_train / np.hypot(binom, sim):.1f}")
+    g = st.groupby("dt_h")[["died", "divided", "survived"]].mean()
+    put("dt_shift", f"{float((g.loc[g.index.min()] - g.loc[g.index.max()]).abs().max()):.3f}")
+
+    pr = load("fig7g_profile.csv")
+    best = pr.rmse.min()
+    def span(par):
+        ok = pr[(pr.parameter == par) & (pr.rmse <= best + binom)]
+        return ok.value.min(), ok.value.max()
+    lo, hi = span("h_max")
+    put("prof_hmax", f"a factor of {hi/lo:.0f}")
+    f1, f2 = [span(p_)[1] / span(p_)[0] for p_ in ("k_on", "k_off")]
+    lo_f, hi_f = round(min(f1, f2)), round(max(f1, f2))
+    put("prof_switch", f"a factor of {lo_f}" if lo_f == hi_f else f"a factor of {lo_f} to {hi_f}")
+
+    try:
+        sl = load("fig7h_memory_slice.csv")
+        b = sl.rmse.min(); ok = sl[sl.rmse <= b + binom]
+        put("memslice_sentence",
+            f"Holding the death parameters at their fitted values, memories from "
+            f"{ok.memory_generations.min():.1f} to {ok.memory_generations.max():.1f} generations paired with resistant "
+            f"fractions from {100*ok.p_on.min():.0f}% to {100*ok.p_on.max():.0f}% all describe the fate fractions within "
+            f"the noise of the measurement (Supplementary Fig. 3b), because a shorter memory with more resistant cells and "
+            f"a longer memory with fewer are hard to tell apart from fates alone.")
+    except Exception:
+        put("memslice_sentence", "")
 
 @safe
 def f8():
@@ -140,7 +219,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
-for f in (f2, f3, f4, f5, f6, f7, f8): f()
+for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f8): f()
 fsupp()
 
 def fill(template, target):
