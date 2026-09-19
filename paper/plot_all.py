@@ -376,19 +376,24 @@ def fig7():
 
 # ------------------------------------------------------------------ Figure 8: schedule optimisation against clinical regimens
 def fig8():
-    fig = plt.figure(figsize=(7.2, 7.2)); gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.7, wspace=0.5)
+    from matplotlib.lines import Line2D
+    fig = plt.figure(figsize=(7.2, 7.6)); gs = gridspec.GridSpec(3, 3, figure=fig, hspace=0.85, wspace=0.5)
     MECHS = [("no fitness cost", "no_fitness_cost"), ("fitness cost", "fitness_cost"), ("partial protection", "partial_protection")]
     traj = load("fig8b_melanoma_trajectories.csv")
-    def trajectory_panel(ax, mech, letter, title):
+    def trajectory_panel(ax, mech, letter, title, legend=False):
         g = traj[traj.mechanism == mech]
         for i, (sname, gg) in enumerate(g.groupby("schedule", sort=False)):
             ax.plot(gg.t_weeks, gg.N_over_N0, color=C[i], label=sname, lw=1.1)
         ax.axhline(1.2, color=INK2, ls=":", lw=0.8); ax.axvline(8, color=INK2, ls="--", lw=0.6)
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=5, loc="lower right"); label(ax, letter, title)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); label(ax, letter, title)
+        if legend:  # one shared legend for the row, below the middle panel
+            h = ax.get_legend_handles_labels()[0] + [Line2D([], [], color=INK2, ls="--", lw=0.6), Line2D([], [], color=INK2, ls=":", lw=0.8)]
+            l = ax.get_legend_handles_labels()[1] + ["end of lead-in (randomisation)", "loss of control (120 % of N(0))"]
+            ax.legend(h, l, fontsize=5.5, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.34), handlelength=1.8, columnspacing=1.2)
     @panel
     def a(ax): trajectory_panel(ax, "no fitness cost", "a", "melanoma-like: no fitness cost")
     @panel
-    def b(ax): trajectory_panel(ax, "fitness cost", "b", "fitness cost of resistance")
+    def b(ax): trajectory_panel(ax, "fitness cost", "b", "fitness cost of resistance", legend=True)
     @panel
     def c(ax): trajectory_panel(ax, "partial protection", "c", "resistant cells slowed by drug")
     @panel
@@ -398,24 +403,31 @@ def fig8():
         for i, sname in enumerate(scheds):
             g = m[m.schedule == sname].set_index("mechanism").loc[mechs]
             ax.bar(x + (i - (len(scheds) - 1) / 2) * w, g.ttp, yerr=g.sd, width=w, color=C[i], capsize=1.5, label=sname)
-        ax.set_xticks(x); ax.set_xticklabels(["no fitness\ncost", "fitness\ncost", "partial\nprotection"], fontsize=6); ax.set_ylabel("weeks to loss of control"); ax.legend(fontsize=5, loc="upper left"); label(ax, "d", "clinical schedules")
+        cens = d.ttp_baseline_weeks.max(); ax.axhline(cens, color=INK2, ls=":", lw=0.8); ax.text(len(mechs) - 0.6, cens + 1.5, "end of follow-up", fontsize=5.5, color=INK2, ha="right", va="bottom")
+        ax.set_ylim(0, cens * 1.75); ax.set_xticks(x); ax.set_xticklabels(["no fitness\ncost", "fitness\ncost", "partial\nprotection"], fontsize=6)
+        ax.set_ylabel("weeks to loss of control"); ax.legend(fontsize=5.5, loc="upper left", labelspacing=0.3); label(ax, "d", "clinical schedules")
     @panel
     def e(cell):
         sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.15)
         for i, (mech, tag) in enumerate(MECHS):
             ax = fig.add_subplot(sub[i]); t = load(f"fig8c_melanoma_optimum_{tag}.csv")
-            sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0)
-            best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0)
-            ax.set_xscale("log"); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
+            sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0, label="schedule evaluated")
+            best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0, label="optimum")
+            ax.set_xscale("log"); ax.set_ylim(0.1, 1.1); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
             if i == 0: ax.set_ylabel("fraction of time on drug"); label(ax, "e", None)
             else: ax.set_yticklabels([])
+            if i == 1: ax.legend(fontsize=5.5, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.36), handletextpad=0.4, columnspacing=1.5)
         fig.colorbar(sc, ax=ax, fraction=0.08, pad=0.04, label="weeks to loss of control")
     @panel
     def f(ax):
         d = load("fig8d_gbm_trajectories.csv"); d = d[d.mechanism == "MGMT consumed by drug"]
-        for i, ((pop, reg), g) in enumerate(d.groupby(["population", "regimen"], sort=False)):
-            ax.plot(g.t_weeks, g.N_over_N0, color=C[i % 3], ls="-" if pop.startswith("MGMT m") else "--", label=f"{reg}, {'methylated' if pop.startswith('MGMT m') else 'unmethylated'}", lw=1.0)
-        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); ax.legend(fontsize=4.4, ncol=1, loc="lower left"); label(ax, "f", "temozolomide with MGMT consumption")
+        regs = list(dict.fromkeys(d.regimen))
+        for (pop, reg), g in d.groupby(["population", "regimen"], sort=False):
+            meth = pop.startswith("MGMT m")
+            ax.plot(g.t_weeks, g.N_over_N0, color=C[regs.index(reg)], ls="-" if meth else "--", lw=1.0)
+        ax.set_yscale("log"); ax.set_xlabel("weeks"); ax.set_ylabel("N(t) / N(0)"); label(ax, "f", "temozolomide, MGMT consumed")
+        h = [Line2D([], [], color=C[i], lw=1.0) for i in range(len(regs))] + [Line2D([], [], color=INK, ls="-", lw=1.0), Line2D([], [], color=INK, ls="--", lw=1.0)]
+        ax.legend(h, regs + ["MGMT methylated (1 %)", "MGMT unmethylated (30 %)"], fontsize=5.5, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.32), handlelength=1.8, columnspacing=1.0)
     @panel
     def g(ax):
         d = load("fig8d_gbm_regimens.csv"); m = d.groupby(["population", "mechanism", "regimen"], sort=False).agg(v=("log_kill", "mean"), sd=("log_kill", "std")).reset_index()
@@ -424,18 +436,22 @@ def fig8():
             vals = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].v.iloc[0] for p_, mm in groups]
             sds = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].sd.fillna(0).iloc[0] for p_, mm in groups]
             ax.bar(x + (i - (len(regs) - 1) / 2) * w, vals, yerr=sds, width=w, color=C[i], capsize=1.5, label=r)
-        ax.set_xticks(x); ax.set_xticklabels([f"{'methylated' if p_.startswith('MGMT m') else 'unmethylated'}\n{'stable' if mm.startswith('MGMT s') else 'consumed'}" for p_, mm in groups], fontsize=5.5)
-        ax.set_ylabel("log10 kill over 6 cycles"); ax.legend(fontsize=5, loc="upper left"); label(ax, "g", "depth of response")
+        ax.set_xticks(x); ax.set_xticklabels(["stable" if mm.startswith("MGMT s") else "consumed" for _, mm in groups], fontsize=6, rotation=35, ha="right", rotation_mode="anchor")
+        for xc, txt in ((0.5, "methylated"), (2.5, "unmethylated")):
+            ax.text(xc, -0.3, txt, transform=ax.get_xaxis_transform(), fontsize=6.5, ha="center", va="top", color=INK)
+        ax.set_xlabel("MGMT promoter", labelpad=17); ax.set_ylim(0, 2.1); ax.set_ylabel("log10 kill over 6 cycles"); ax.legend(fontsize=5.5, loc="upper left", labelspacing=0.3); label(ax, "g", "depth of response")
     @panel
     def h(ax):
-        k = 0
         for tag in ("methylated", "unmethylated"):
             for mech, ls in (("stable", ":"), ("consumed", "-")):
                 t = load(f"fig8e_gbm_days_on_{tag}_{mech}.csv").groupby("days_on").log_N_end_over_N0.mean().reset_index()
-                ax.plot(t.days_on, t.log_N_end_over_N0 / np.log(10), marker="o", ms=2.5, ls=ls, color=C[0 if tag == "methylated" else 1], label=f"{tag}, MGMT {mech}", lw=1.0)
-        ax.axvline(5, color=INK2, ls=":", lw=0.8); ax.axvline(21, color=INK2, ls=":", lw=0.8)
-        yl = ax.get_ylim(); ax.text(5.3, yl[1], "5/28", fontsize=5.5, color=INK2, va="top"); ax.text(21.3, yl[1], "21/28", fontsize=5.5, color=INK2, va="top")
-        ax.set_xlabel("dosing days per 28-day cycle (equal cumulative dose)"); ax.set_ylabel("log10 N(end) / N(0)"); ax.legend(fontsize=4.6); label(ax, "h", "fractionation at equal cumulative dose")
+                ax.plot(t.days_on, t.log_N_end_over_N0 / np.log(10), marker="o", ms=2.5, ls=ls, color=C[0 if tag == "methylated" else 1], lw=1.0)
+        yl = ax.get_ylim(); span = yl[1] - yl[0]; ax.set_ylim(yl[0] - 0.25 * span, yl[1] + 0.9 * span)
+        hh = [Line2D([], [], color=C[0], lw=1.0), Line2D([], [], color=C[1], lw=1.0), Line2D([], [], color=INK, ls=":", lw=1.0, marker="o", ms=2.5), Line2D([], [], color=INK, ls="-", lw=1.0, marker="o", ms=2.5)]
+        ax.legend(hh, ["methylated (1 %)", "unmethylated (30 %)", "MGMT stable", "MGMT consumed"], fontsize=5.5, loc="upper right", ncol=1, labelspacing=0.3, handlelength=1.8)
+        for xv, txt in ((5, "5/28"), (21, "21/28")):
+            ax.axvline(xv, ymax=0.62, color=INK2, ls=":", lw=0.8); ax.text(xv + 0.4, yl[0] - 0.22 * span, txt, fontsize=5.5, color=INK2, va="bottom")
+        ax.set_xlabel("dosing days per 28-day cycle"); ax.set_ylabel("log10 N(end) / N(0)"); label(ax, "h", "fractionation, equal cumulative dose")
     a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(gs[1, 1:]); f(fig.add_subplot(gs[2, 0])); g(fig.add_subplot(gs[2, 1])); h(fig.add_subplot(gs[2, 2]))
     save(fig, "fig8_schedules")
 

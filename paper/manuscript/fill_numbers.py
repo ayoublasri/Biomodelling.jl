@@ -125,6 +125,7 @@ def f8():
         for mech, gtag in (("MGMT stable", "stable"), ("MGMT consumed by drug", "consumed")):
             for reg, rtag in (("standard 5/28", "std"), ("dose-dense 21/28", "dense"), ("dense, equal cumulative", "equal")):
                 put(f"lk_{ptag}_{gtag}_{rtag}", f"{g.loc[(pop, mech, reg)].log_kill:.2f}")
+                put(f"nend_{ptag}_{gtag}_{rtag}", f"{g.loc[(pop, mech, reg)].N_end_over_N0:.1f}")
     for tag in ("methylated", "unmethylated"):
         for mech in ("stable", "consumed"):
             t = load(f"fig8e_gbm_days_on_{tag}_{mech}.csv").groupby("days_on").log_N_end_over_N0.mean(); put(f"days_{tag}_{mech}", f"{int(t.idxmin())}")
