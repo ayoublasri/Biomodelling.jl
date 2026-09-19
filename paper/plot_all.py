@@ -122,7 +122,7 @@ def fig3():
             ax.plot(d.k_switch, d[col], marker="o", ms=3, color=C[i], label=lab)
         ax.plot(d.k_switch, d.mother_daughter_mRNA, ls="--", color=C[0], lw=1.0, label="mother–daughter (mRNA)")
         ax.axvline(math.log(2) / 20, color=INK2, ls=":", lw=0.8); ax.text(math.log(2) / 20, 0.95, " 1/cycle time", fontsize=6, color=INK2, va="top")
-        ax.set_xscale("log"); ax.set_xlabel("promoter switching rate k_on = k_off"); ax.set_ylabel("correlation (protein at division)"); ax.set_ylim(-0.1, 1); ax.legend(fontsize=5.5); label(ax, "c", "heritability")
+        ax.set_xscale("log"); ax.set_xlabel("promoter switching rate k_on = k_off"); ax.set_ylabel("correlation (protein at division)"); ax.set_ylim(-0.1, 1); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "c", "heritability")
     @panel
     def d(ax):
         d = load("fig3d_memory_timescale.csv")
@@ -130,24 +130,27 @@ def fig3():
             g = g.sort_values("cycle_time_nominal")
             ax.plot(g.cycle_time_measured, g.tau_time, marker="o", ms=3.5, color=C[i], label=f"k = {k:g}  (1/2k = {1/(2*k):.0f})")
             ax.axhline(1 / (2 * k), color=C[i], ls=":", lw=0.8)
-        ax.set_xlabel("cell-cycle time"); ax.set_ylabel("memory timescale (time units)"); ax.legend(fontsize=5.5); label(ax, "d", "memory is set by switching, not by division")
+        ax.set_ylim(0, None); ax.set_xlabel("cell-cycle time"); ax.set_ylabel("memory timescale (time units)"); ax.legend(fontsize=5.5); label(ax, "d", "memory timescale vs cell-cycle time")
     @panel
     def e(ax):
-        d = load("fig3e_noise.csv"); d = d[d.partitioning == "binomial"].sort_values(["partition_sigma", "cycle_cv"])
-        x = np.arange(len(d)); w = 0.38
-        ax.bar(x - w/2, d.cv2_population, width=w, color=C[0], label="population")
-        ax.bar(x + w/2, d.cv2_lineage, width=w, color=C[1], label="single lineage")
-        ax.set_xticks(x); ax.set_xticklabels([f"σ={r.partition_sigma:g}\ncv={r.cycle_cv:g}" for _, r in d.iterrows()], fontsize=5.5)
-        ax.set_ylabel("CV² of protein concentration"); ax.legend(); label(ax, "e", "population vs lineage noise")
+        d = load("fig3e_noise.csv"); d = d[d.partition_sigma == d.partition_sigma.max()]
+        cvs = sorted(d.cycle_cv.unique()); x = np.arange(len(cvs)); w = 0.2
+        for i, (part, hatch) in enumerate((("binomial", ""), ("betabinomial", "///"))):
+            g = d[d.partitioning == part].set_index("cycle_cv").loc[cvs]
+            ax.bar(x + (2*i - 1.5) * w, g.cv2_population, width=w, color=C[0], hatch=hatch, edgecolor="white", label=f"population, {part}")
+            ax.bar(x + (2*i - 0.5) * w, g.cv2_lineage, width=w, color=C[1], hatch=hatch, edgecolor="white", label=f"single lineage, {part}")
+        ax.set_xticks(x); ax.set_xticklabels([f"{c:g}" for c in cvs]); ax.set_xlabel("cell-cycle time CV (partition σ = 0.1)")
+        ax.set_ylabel("CV² of protein concentration"); ax.legend(fontsize=5); label(ax, "e", "population vs lineage noise")
     @panel
     def f(ax):
         d = load("fig3f_copynumber.csv")
         x = np.arange(3); w = 0.26
-        for i, (col, lab, tv) in enumerate((("k_on", "k_on", 0.5), ("k_off", "k_off", 1.5), ("k_tx", "k_tx / 20", 2.0))):
-            vals = d[col].values / (20 if col == "k_tx" else 1)
+        series = (("k_on", d.k_on.values, 0.5, "k_on (truth 0.5)"), ("k_off", d.k_off.values, 1.5, "k_off (truth 1.5)"),
+                  ("k_tx", d.k_tx.values / d.mean_volume.values / 20, 2.0, "k_tx / (V̄ · 20)  (truth 2 per allele)"))
+        for i, (col, vals, tv, lab) in enumerate(series):
             ax.bar(x + (i - 1) * w, vals, width=w, color=C[i], label=lab)
             ax.hlines(tv, x[0] - 0.45, x[-1] + 0.45, colors=C[i], linestyles=":", lw=0.8)
-        ax.set_xticks(x); ax.set_xticklabels(d.subset); ax.set_ylabel("fitted (dotted: per-allele truth)"); ax.legend(fontsize=5.5); label(ax, "f", "copy number and inferred bursting")
+        ax.set_xticks(x); ax.set_xticklabels(["1 copy", "2 copies", "pooled"]); ax.set_ylabel("fitted telegraph parameters"); ax.legend(fontsize=5); label(ax, "f", "copy number and naive fits")
     a(gs[0, 0]); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2]))
     save(fig, "fig3_growth")
 
@@ -235,7 +238,7 @@ def fig5():
     def b(ax):
         d = load("fig5bc_metrics.csv"); d = d[~d.dataset.str.startswith("imputed")]
         order = ["fixed_volume", "population_counts", "population_concentration", "sequenced_counts", "sequenced_normalized"]
-        methods = [m for m in ["pearson", "spearman", "pidc", "genie3"] if m in set(d.method)]
+        methods = [m for m in ["pearson", "spearman", "genie3"] if m in set(d.method)]
         x = np.arange(len(order)); w = 0.8 / len(methods)
         for i, m in enumerate(methods):
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() if ((d.method == m) & (d.dataset == o)).any() else np.nan for o in order]

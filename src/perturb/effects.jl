@@ -33,6 +33,24 @@ end
 GrowthInhibition(; IC50, m=2.0) = GrowthInhibition(Float64(IC50), Float64(m))
 
 """
+    GrowthCost(species; K, q=2.0, max_cost=0.5, concentration=true)
+
+Fitness cost of a cell state, independent of the dose: the growth rate is
+multiplied by `1 - max_cost · c^q / (K^q + c^q)`, where `c` is the concentration
+(or count) of `species`, so that cells expressing a resistance protein grow up
+to `max_cost` slower.
+"""
+struct GrowthCost <: DrugEffect
+    species::Symbol
+    K::Float64
+    q::Float64
+    max_cost::Float64
+    concentration::Bool
+end
+GrowthCost(species::Symbol; K, q=2.0, max_cost=0.5, concentration=true) =
+    GrowthCost(species, Float64(K), Float64(q), Float64(max_cost), concentration)
+
+"""
     RateModulation(param, f)
 
 Multiplies the model parameter `param` by `f(d)` at dose `d` (e.g. drug-induced
@@ -82,6 +100,9 @@ struct RateModulationC
     idx::Int
     f::Function
 end
+struct GrowthCostC
+    idx::Int; K::Float64; q::Float64; max_cost::Float64; conc::Bool
+end
 struct GenePerturbationC
     idx::Int; factor::Float64; fraction::Float64; t_start::Float64; t_end::Float64
 end
@@ -91,10 +112,11 @@ struct CompiledPerturbation
     growth::Vector{GrowthInhibition}
     rates::Vector{RateModulationC}
     genes::Vector{GenePerturbationC}
+    costs::Vector{GrowthCostC}
 end
 
 function compile(pt::Perturbation, m::ReactionModel)
-    deaths = DeathHazardC[]; growth = GrowthInhibition[]; rates = RateModulationC[]
+    deaths = DeathHazardC[]; growth = GrowthInhibition[]; rates = RateModulationC[]; costs = GrowthCostC[]
     for e in pt.effects
         if e isa DeathHazard
             push!(deaths, DeathHazardC(e.h_max, e.EC50, e.m, e.protect === nothing ? 0 : speciesindex(m, e.protect), e.K, e.q, e.concentration))
@@ -102,10 +124,12 @@ function compile(pt::Perturbation, m::ReactionModel)
             push!(growth, e)
         elseif e isa RateModulation
             push!(rates, RateModulationC(paramindex(m, e.param), e.f))
+        elseif e isa GrowthCost
+            push!(costs, GrowthCostC(speciesindex(m, e.species), e.K, e.q, e.max_cost, e.concentration))
         end
     end
     genes = [GenePerturbationC(paramindex(m, g.param), g.factor, g.fraction, g.t_start, g.t_end) for g in pt.gene_perturbations]
-    CompiledPerturbation(pt.schedule, deaths, growth, rates, genes)
+    CompiledPerturbation(pt.schedule, deaths, growth, rates, genes, costs)
 end
 
 @inline function hazard(e::DeathHazardC, d::Float64, x::AbstractVector{Int}, V::Float64)
@@ -141,6 +165,11 @@ function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vec
     end
     for gi in cp.growth
         gmult *= 1.0 / (1.0 + (d / gi.IC50)^gi.m)
+    end
+    for gc in cp.costs
+        c = gc.conc ? c.x[gc.idx] / c.V : float(c.x[gc.idx])
+        cq = c^gc.q
+        gmult *= 1.0 - gc.max_cost * cq / (gc.K^gc.q + cq)
     end
     for dh in cp.deaths
         h += hazard(dh, d, c.x, c.V)

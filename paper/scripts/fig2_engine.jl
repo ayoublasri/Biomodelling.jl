@@ -53,7 +53,7 @@ dprob = DiscreteProblem([1, 0, 0], (0.0, 40.0), [0.4, 0.6, 12.0, 1.0])
 jprob = JumpProblem(dprob, Direct(), jumps...; save_positions = (false, false), rng = Xoshiro(6))
 solve(EnsembleProblem(jprob), SSAStepper(), EnsembleSerial(); trajectories = 10, saveat = [40.0])
 tj = @elapsed sol = solve(EnsembleProblem(jprob), SSAStepper(), EnsembleSerial(); trajectories = n, saveat = [40.0])
-cj = [Int(s.u[end][3]) for s in sol]
+cj = [Int(sol.u[i].u[end][3]) for i in eachindex(sol.u)]   # EnsembleSolution iterates over states, not trajectories
 tb = @elapsed cb = ensemble_final(tm, x0, 40.0, n; rng = Xoshiro(7), threads = false)[:, 3]
 save_csv("fig2e_crosscheck.csv", ["n", "biomodelling", "jumpprocesses", "exact"], hcat(0:80, empirical_pmf(cb, 80), empirical_pmf(cj, 80), pm[1:81]))
 save_kv("fig2e_crosscheck_stats.csv", ["ks_biomodelling_exact" => ks_discrete(cb, pm), "ks_jumpprocesses_exact" => ks_discrete(cj, pm),

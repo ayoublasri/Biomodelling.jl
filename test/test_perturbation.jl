@@ -42,3 +42,17 @@
     @test 0.3 < mean(sn.perturbed) < 0.7
     @test mean(sn.counts[sn.perturbed, mi]) < 0.3 * mean(sn.counts[.!sn.perturbed, mi])
 end
+
+@testset "growth cost and per-cell initial states" begin
+    tm = telegraph_model(k_on = 0.02, k_off = 0.02, k_tx = 20.0, k_dm = 1.0, k_tl = 5.0, k_dp = 0.2)
+    x0 = initial_state(tm; G_off = 1)
+    st = PopulationSettings(dt = 0.1, growth = ExponentialGrowth(log(2) / 20), control = FreeGrowth(max_cells = 4000), threads = false)
+    burn = simulate_population(tm, x0, 200, (0.0, 40.0); settings = PopulationSettings(dt = 0.1, growth = ExponentialGrowth(log(2) / 20), threads = false), rng = Xoshiro(1))
+    sn = final_snapshot(burn)
+    r0 = simulate_population(tm, sn.counts, 200, (0.0, 30.0); settings = st, V0 = sn.volume, rng = Xoshiro(2))
+    @test r0.counts[1] == sn.counts && r0.volume[1] == sn.volume
+    @test_throws ArgumentError simulate_population(tm, sn.counts[1:10, :], 200, (0.0, 1.0); settings = st)
+    cost = Perturbation(; effects = [GrowthCost(:protein; K = 10.0, q = 4.0, max_cost = 0.9)])
+    r1 = simulate_population(tm, sn.counts, 200, (0.0, 30.0); settings = st, V0 = sn.volume, perturbation = cost, rng = Xoshiro(2))
+    @test r1.popsize[end] < 0.8 * r0.popsize[end]
+end

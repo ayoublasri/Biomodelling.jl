@@ -10,6 +10,7 @@ pert = Perturbation(PulsedDose(1.0; on = 40.0, off = 20.0, start = 50.0);
     effects = [
         DeathHazard(h_max = 0.5, EC50 = 0.3, m = 2.0, protect = :protein, K = 60.0, q = 4.0),
         GrowthInhibition(IC50 = 2.0),
+        GrowthCost(:protein; K = 60.0, q = 4.0, max_cost = 0.3),   # resistant cells grow slower
         RateModulation(:k_on, d -> 1 + 2d),     # drug-induced activation of the resistance gene
     ])
 st  = PopulationSettings(dt = 0.1, growth = ExponentialGrowth(log(2)/20), control = FreeGrowth(max_cells = 20_000))

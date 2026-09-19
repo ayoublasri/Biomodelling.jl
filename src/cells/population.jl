@@ -184,14 +184,16 @@ end
     simulate_population(model, x0, N0, tspan; settings=PopulationSettings(), p=model.p0,
                         perturbation=nothing, rng=Random.default_rng(), V0=nothing) -> PopulationResult
 
-Simulate `N0` initial cells with state `x0` from `tspan[1]` to `tspan[2]`. Each
+Simulate `N0` initial cells from `tspan[1]` to `tspan[2]`; `x0` is either one
+state vector shared by all founders or an `N0 × nspecies` matrix of per-founder
+states (for example `final_snapshot(previous).counts`, with `V0 = ...volume`). Each
 cell runs the stochastic kinetics of `model` at its current volume, grows,
 replicates its genes (optional), divides with partitioning of molecules, and may
 die under a [`Perturbation`](@ref). Every cell carries its own random number
 generator seeded from `rng`, so results are reproducible regardless of the
 number of threads.
 """
-function simulate_population(m::ReactionModel, x0::AbstractVector{<:Integer}, N0::Integer, tspan::Tuple{<:Real,<:Real};
+function simulate_population(m::ReactionModel, x0::AbstractVecOrMat{<:Integer}, N0::Integer, tspan::Tuple{<:Real,<:Real};
                              settings::PopulationSettings=PopulationSettings(), p::AbstractVector{<:Real}=m.p0,
                              perturbation::Union{Nothing,Perturbation}=nothing, rng::AbstractRNG=Random.default_rng(),
                              V0=nothing)
@@ -200,8 +202,17 @@ function simulate_population(m::ReactionModel, x0::AbstractVector{<:Integer}, N0
     nsteps = max(1, round(Int, (t1 - t0) / dt))
     kernel = settings.kernel === nothing ? HybridSSATau(dt) : settings.kernel
     pp = Vector{Float64}(p)
-    x0v = Vector{Int}(x0)
-    length(x0v) == nspecies(m) || throw(ArgumentError("x0 must have $(nspecies(m)) entries"))
+    # x0 may be one state vector (shared by all founders, promoters optionally randomised) or a
+    # founders × species matrix of per-cell states (e.g. a snapshot of a previous simulation)
+    percell = x0 isa AbstractMatrix
+    if percell
+        size(x0) == (N0, nspecies(m)) || throw(ArgumentError("x0 matrix must be $(N0) × $(nspecies(m))"))
+        x0rows = [Vector{Int}(view(x0, i, :)) for i in 1:N0]
+    else
+        length(x0) == nspecies(m) || throw(ArgumentError("x0 must have $(nspecies(m)) entries"))
+        x0rows = [Vector{Int}(x0) for _ in 1:N0]
+    end
+    x0v = x0rows[1]
     cp = perturbation === nothing ? nothing : compile(perturbation, m)
     base_copies = [sum(x0v[s] for s in g) for g in m.promoter_groups]
     any(==(0), base_copies) && throw(ArgumentError("every promoter group needs at least one copy in x0"))
@@ -212,8 +223,8 @@ function simulate_population(m::ReactionModel, x0::AbstractVector{<:Integer}, N0
     cells = Vector{Cell}(undef, N0)
     for i in 1:N0
         crng = Xoshiro(rand(rng, UInt64))
-        x = copy(x0v)
-        settings.randomize_promoters && randomize_promoters!(x, m, base_copies, crng)
+        x = x0rows[i]
+        (settings.randomize_promoters && !percell) && randomize_promoters!(x, m, base_copies, crng)
         target = sample_target(sc, Vb, crng)
         V = V0 === nothing ? _initial_volume(sc, Vb, target, crng) : Float64(V0[i])
         λ = sample_growth_rate(settings.growth, crng)

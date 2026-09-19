@@ -14,6 +14,7 @@ dist_a(θ, rng) = summary_distance(moment_summaries(ensemble_final(tm, x0, 40.0,
 prior = [LogUniform(0.01, 10.0), LogUniform(0.01, 10.0), LogUniform(1.0, 200.0)]
 abc_a = abc_smc(dist_a, prior; n_particles = 200, generations = 7, rng = Xoshiro(2), names = [:k_on, :k_off, :k_tx], verbose = true)
 save_csv("fig6a_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_a.particles, abc_a.weights))
+save_csv("fig6a_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_a.epsilons), abc_a.epsilons, abc_a.acceptance))
 save_kv("fig6a_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
         "mle_k_on" => mle.k_on, "mle_k_off" => mle.k_off, "mle_k_tx" => mle.k_tx,
         "abc_mean_k_on" => posterior_mean(abc_a)[1], "abc_mean_k_off" => posterior_mean(abc_a)[2], "abc_mean_k_tx" => posterior_mean(abc_a)[3],
@@ -36,6 +37,7 @@ function dist_b(θ, rng)
 end
 abc_b = abc_smc(dist_b, prior; n_particles = 120, generations = 5, rng = Xoshiro(4), names = [:k_on, :k_off, :k_tx], verbose = true)
 save_csv("fig6b_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_b.particles, abc_b.weights))
+save_csv("fig6b_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_b.epsilons), abc_b.epsilons, abc_b.acceptance))
 save_kv("fig6b_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
         "naive_k_on" => naive.k_on, "naive_k_off" => naive.k_off, "naive_k_tx" => naive.k_tx,
         "abc_mean_k_on" => posterior_mean(abc_b)[1], "abc_mean_k_off" => posterior_mean(abc_b)[2], "abc_mean_k_tx" => posterior_mean(abc_b)[3],
@@ -69,6 +71,7 @@ function dist_c(θ, rng)
 end
 abc_c = abc_smc(dist_c, [LogUniform(0.05, 5.0), LogUniform(20.0, 1000.0)]; n_particles = 100, generations = 5, rng = Xoshiro(6), names = [:h_max, :K], verbose = true)
 save_csv("fig6c_particles.csv", ["h_max", "K", "weight"], hcat(abc_c.particles, abc_c.weights))
+save_csv("fig6c_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_c.epsilons), abc_c.epsilons, abc_c.acceptance))
 save_kv("fig6c_summary.csv", ["true_h_max" => truth_c.h_max, "true_K" => truth_c.K, "abc_mean_h_max" => posterior_mean(abc_c)[1], "abc_mean_K" => posterior_mean(abc_c)[2],
         "ci_h_lo" => credible_interval(abc_c, :h_max)[1], "ci_h_hi" => credible_interval(abc_c, :h_max)[2], "ci_K_lo" => credible_interval(abc_c, :K)[1], "ci_K_hi" => credible_interval(abc_c, :K)[2]])
 # (d) posterior predictive kill curves from posterior-mean parameters versus the observed curve

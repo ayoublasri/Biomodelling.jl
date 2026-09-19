@@ -31,7 +31,7 @@ Table S1 lists the tests of the package test suite that validate the kernels: Ko
 | 2f | random telegraph GRNs | $n_{\mathrm{act}} = n_{\mathrm{genes}}$, $n_{\mathrm{inh}} = n_{\mathrm{genes}}/2$, $\lambda = \ln 2/20$, $dt = 0.1$, $T = 20$ |
 | 3 | telegraph gene with protein | $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$, $k_{\mathrm{on}} = k_{\mathrm{off}}$ as indicated; $\lambda = \ln 2/20$, sizer $V_{\mathrm{div}} = 2$ (cv 0.05), $\sigma_f = 0.02$, replication at 50% of the cycle where indicated |
 | 3e | stable protein | $k_{\mathrm{on}} = k_{\mathrm{off}} = 5$, $k_{\mathrm{tx}} = 20$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 2$, $k_{\mathrm{dp}} = 0.05$ |
-| 4 | resistance gene | as Figure 3 with $k_{\mathrm{on}} = k_{\mathrm{off}} = 0.01$ (memory) or 1 (fast); death $h_{\max} = 0.5$, $\mathrm{EC}_{50} = 0.5$, $m = 2$, $K = 150$, $q = 4$; drug from $t = 60$; drug-induced variant $k_{\mathrm{on}} = 0.0005$, $k_{\mathrm{off}} = 0.01$, $k_{\mathrm{on}} \to k_{\mathrm{on}}(1 + 200 d)$; pretreatment: switching $\times 20$ on $[20, 60)$ |
+| 4 | resistance gene | as Figure 3 with $(k_{\mathrm{on}}, k_{\mathrm{off}}) = (0.002, 0.02)$ (memory, $p_{\mathrm{on}} \approx 9\%$) or $(0.05, 0.5)$ (fast, same $p_{\mathrm{on}}$); founders burnt in for 300 time units at constant size; death $h_{\max} = 0.15$, $\mathrm{EC}_{50} = 0.5$, $m = 2$, $K = 150$, $q = 4$; drug from $t = 40$ of the treatment stage; drug-induced variant $(0.0002, 0.02)$ with $k_{\mathrm{on}} \to k_{\mathrm{on}}(1 + 1000 d)$; fitness cost variant: growth $\times (1 - 0.5\, c_P^4/(150^4 + c_P^4))$; pretreatment: switching $\times 20$ on $[0, 40)$ |
 | 5a | 40 independent telegraph genes | $k_{\mathrm{on}} = k_{\mathrm{off}} \in [10^{-3}, 1]$ (log-spaced), $k_{\mathrm{tx}} = 20$, $k_{\mathrm{dm}} = 0.5$; 40 founders, 6 doublings |
 | 5b-c | random GRN | 30 genes, 30 activations, 15 inhibitions, $k_{\mathrm{tx}} \in [5, 30]$, $K \in [2, 10]$, $n = 2$, basal 0.05; 1 500 cells; sequencing capture 0.15 (cv 0.3) |
 | 5d | random GRN | 20 genes, 22 activations, 10 inhibitions; knockdown factor 0.05; 800 cells |
@@ -44,7 +44,7 @@ Table S1 lists the tests of the package test suite that validate the kernels: Ko
 
 # S5. Benchmark details
 
-Network inference methods: absolute Pearson and Spearman correlations of $\log(1+x)$; PIDC as implemented in NetworkInference.jl; GENIE3 as random-forest importances (200 trees, `sqrt` features) fitted on $\log(1+x)$ with scikit-learn. Imputation: kNN-smoothing (one step, $k = 15$, 10 principal components of the Freeman-Tukey transformed, library-size normalised counts) and MAGIC with default parameters on square-root normalised counts. Metrics: area under the precision-recall and receiver-operating curves against the undirected (correlation, PIDC) or directed (GENIE3) ground-truth adjacency.
+Network inference methods: absolute Pearson and Spearman correlations of $\log(1+x)$ (Pearson) or ranks (Spearman); GENIE3 as random-forest importances (200 trees, `sqrt` features) fitted on $\log(1+x)$ with scikit-learn. Imputation: kNN-smoothing (one step, $k = 15$, 10 principal components of the Freeman-Tukey transformed, library-size normalised counts) and MAGIC with default parameters on square-root normalised counts. Metrics: area under the precision-recall and receiver-operating curves against the undirected (correlation, PIDC) or directed (GENIE3) ground-truth adjacency.
 
 # S6. Inference diagnostics
 

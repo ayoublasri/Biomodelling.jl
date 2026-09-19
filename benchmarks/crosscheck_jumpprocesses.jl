@@ -24,7 +24,7 @@ dprob = DiscreteProblem([1, 0, 0], (0.0, T), [k_on, k_off, k_tx, k_dm])
 jprob = JumpProblem(dprob, Direct(), jumps...; save_positions = (false, false), rng = Xoshiro(2))
 eprob = EnsembleProblem(jprob)
 tj = @elapsed sol = solve(eprob, SSAStepper(), EnsembleSerial(); trajectories = n, saveat = [T])
-cj = [Int(s.u[end][3]) for s in sol]
+cj = [Int(sol.u[i].u[end][3]) for i in eachindex(sol.u)]
 
 # --- comparison ----------------------------------------------------------------
 pmf = telegraph_pmf(0:100, k_on, k_off, k_tx, k_dm)

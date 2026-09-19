@@ -62,7 +62,7 @@ for (name, Y) in datasets
     save_csv("fig5b_scores_pearson_$name.csv", ["gene_$j" for j in 1:30], C)
     save_csv("fig5b_scores_spearman_$name.csv", ["gene_$j" for j in 1:30], S)
 end
-# PIDC scores are produced by pidc_scores.jl (separate environment, see paper/README.md)
+# (PIDC via NetworkInference.jl was dropped: that package cannot be installed on Julia ≥ 1.10.)
 
 # (d) perturbation ground truth: knockdowns of the five strongest regulators
 g20, adj20 = random_grn(20; n_activations = 22, n_inhibitions = 10, telegraph = false, k_tx = (5.0, 30.0), K = (2.0, 10.0), n = 2.0, basal = 0.05, rng = Xoshiro(9))

@@ -19,8 +19,9 @@ and `docs/src/migration.md` for the migration guide.
 - Lineage recording (`LineageTable`) with heritability statistics,
   fluctuation tests and Newick export.
 - Drug and perturbation layer: dose schedules, bolus pharmacokinetics,
-  state-dependent death hazards, growth inhibition, rate modulation and gene
-  perturbations.
+  state-dependent death hazards, growth inhibition, fitness costs of cell
+  states, rate modulation and gene perturbations; populations can start from
+  per-cell snapshots.
 - Observation models for scRNA-seq, smFISH and time-lapse reporters.
 - Inference: ABC-SMC and the exact telegraph (Beta-Poisson) likelihood.
 - Random gene regulatory network generator.

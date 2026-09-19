@@ -7,7 +7,7 @@ julia --project=paper -t 4 paper/run_all.jl        # simulations → paper/outpu
 python paper/plot_all.py                            # figures     → paper/figures/*.pdf|png
 ```
 
-PIDC scores (Figure 5b) come from `paper/scripts/pidc_scores.jl`, which needs NetworkInference.jl in its own environment (`julia --project=paper/pidc paper/scripts/pidc_scores.jl`) because that package pins older dependencies. `paper/Project.toml` pins the Julia dependencies (add the package itself with
+`paper/Project.toml` pins the Julia dependencies (add the package itself with
 `Pkg.develop(path=".")` from the repository root); `paper/requirements.txt`
 lists the Python plotting and benchmark tools.
 

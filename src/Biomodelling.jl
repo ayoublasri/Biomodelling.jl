@@ -84,7 +84,7 @@ export Replication, ConstantN, FreeGrowth, LogisticGrowth, PopulationSettings, P
 export simulate_population, snapshot, final_snapshot, popsize, concentrations
 # perturbation
 export DoseSchedule, ConstantDose, PulsedDose, PiecewiseDose, BolusPK, dose
-export DeathHazard, GrowthInhibition, RateModulation, GenePerturbation, Perturbation
+export DrugEffect, DeathHazard, GrowthInhibition, GrowthCost, RateModulation, GenePerturbation, Perturbation
 # lineage
 export LineageTable, children, sister_pairs, mother_daughter_pairs, lineage_of, follow_lineage
 export heritability, lineage_autocorrelation, memory_timescale, noise_decomposition

@@ -26,8 +26,8 @@ Version 1 of the framework was published in
   logistic population control, multithreaded and deterministic.
 * **Drug and perturbation layer**: dose schedules (constant, pulsed, piecewise,
   one-compartment pharmacokinetics), state-dependent death hazards protected by
-  resistance proteins, growth inhibition, drug-induced rate changes, gene
-  knockdown / overexpression in subsets of cells.
+  resistance proteins, growth inhibition, fitness costs of resistant states,
+  drug-induced rate changes, gene knockdown / overexpression in subsets of cells.
 * **Lineage**: the complete division tree; mother-daughter, sister and cousin
   correlations; lineage autocorrelation and memory timescales; lineage versus
   population noise; Luria-Delbrück fluctuation tests; MemorySeq-style clonal

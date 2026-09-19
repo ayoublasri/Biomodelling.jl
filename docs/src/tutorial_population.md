@@ -35,6 +35,9 @@ daughter (the original `exponential_growth` behaviour), `FreeGrowth()` keeps
 all cells (subsampling above `max_cells` while tracking the true size),
 `LogisticGrowth(K)` adds a density-dependent death hazard.
 
+Starting from a snapshot: pass an `N0 × nspecies` matrix of per-founder states as
+`x0` (for example `final_snapshot(previous).counts`) together with `V0 = ...volume`.
+
 Reproducibility: every cell carries its own random number generator seeded from
 `rng`, so results do not depend on the number of threads.
 
