@@ -11,13 +11,16 @@ slow = mk(0.005)
 x0 = initial_state(slow; G_off = 1)
 res = simulate_population(slow, x0, 300, (0.0, 240.0); settings = base_settings(replication = Replication(0.5)), rng = Xoshiro(1))
 # pick the surviving cell whose ancestral line switched promoter state most often (an informative trace)
-best = (-1, res.ids[end][1])
-for id in res.ids[end][1:min(60, end)]
-    t = follow_lineage(res, id)
-    nsw = count(i -> (t.X[i, 2] > 0) != (t.X[i - 1, 2] > 0), 2:size(t.X, 1))
-    nsw > best[1] && (best = (nsw, id))
+function informative_lineage(res)
+    best = (-1, res.ids[end][1])
+    for id in res.ids[end][1:min(60, end)]
+        t = follow_lineage(res, id)
+        nsw = count(i -> (t.X[i, 2] > 0) != (t.X[i - 1, 2] > 0), 2:size(t.X, 1))
+        nsw > best[1] && (best = (nsw, id))
+    end
+    best[2]
 end
-tr = follow_lineage(res, best[2])
+tr = follow_lineage(res, informative_lineage(res))
 save_csv("fig3a_trace.csv", ["t", "V", "G_on", "mRNA", "protein", "cell_id"], hcat(tr.t, tr.V, tr.X[:, 2], tr.X[:, 3], tr.X[:, 4], tr.ids))
 
 # (b) count-volume scaling with and without gene replication (fast gene → snapshot at steady state)

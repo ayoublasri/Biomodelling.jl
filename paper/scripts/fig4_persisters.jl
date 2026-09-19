@@ -81,12 +81,25 @@ save_csv("fig4b_killcurves.csv", ["dose", "t_since_drug", "surviving_fraction"],
 save_csv("fig4c_decay_vs_dose.csv", ["dose", "decay_rate", "n_divisions", "division_time_mean", "division_time_cv", "n_deaths", "death_time_mean", "death_time_cv"], permutedims(reduce(hcat, rows_c)))
 save_csv("fig4c_times.csv", ["dose", "event", "time"], permutedims(reduce(hcat, rows_ct)))
 
-# (d) fate correlations between related cells (memory gene versus fast-switching control)
-function fate_concordance(lt, pairs, t_from, t_to)
+# (d) fate correlations between related cells (memory gene versus fast-switching control). A cell's fate is the
+# fate of its lineage: it "survives" if any descendant is alive at the end of the run (colony formation), and
+# "dies" if its whole subtree is extinct.
+function lineage_survival(lt, alive_ids)
+    cm = Biomodelling.children_map(lt)
+    alive = Set(alive_ids)
+    memo = Dict{Int,Bool}()
+    function surv(id)
+        haskey(memo, id) && return memo[id]
+        v = id in alive || any(surv, get(cm, id, Int[]))
+        memo[id] = v
+    end
+    surv
+end
+function fate_concordance(lt, pairs, t_from, t_to, surv)
     same = 0; n = 0; deaths = 0
     for (a, b) in pairs
         (t_from <= lt.birth_time[a] < t_to && t_from <= lt.birth_time[b] < t_to) || continue
-        fa = lt.fate[a] == :died; fb = lt.fate[b] == :died
+        fa = !surv(a); fb = !surv(b)
         n += 1; same += (fa == fb); deaths += fa + fb
     end
     p = n == 0 ? NaN : deaths / (2n)
@@ -94,10 +107,11 @@ function fate_concordance(lt, pairs, t_from, t_to)
 end
 rows = Any[]
 for (tag, m) in (("memory", mem), ("fast", fast))
-    r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death()]); seed = 3, T = 90.0, N = 800, record_every = 100)
+    r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death()]); seed = 3, T = 100.0, N = 800, record_every = 100)
     lt = r.lineage
+    surv = lineage_survival(lt, r.ids[end])
     for (rel, pairs) in (("sisters", sister_pairs(lt)), ("cousins", Biomodelling.cousin_pairs(lt)))
-        fc = fate_concordance(lt, pairs, T_DRUG - 25.0, T_DRUG)
+        fc = fate_concordance(lt, pairs, T_DRUG - 25.0, T_DRUG, surv)
         push!(rows, [tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction])
         @printf("(d) %-6s %-8s concordance %.3f expected %.3f (n=%d, death fraction %.2f)\n", tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction)
     end

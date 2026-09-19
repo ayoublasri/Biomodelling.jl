@@ -237,7 +237,7 @@ def fig5():
     @panel
     def b(ax):
         d = load("fig5bc_metrics.csv"); d = d[~d.dataset.str.startswith("imputed")]
-        order = ["fixed_volume", "population_counts", "population_concentration", "sequenced_counts", "sequenced_normalized"]
+        order = ["fixed_volume", "population_counts", "population_concentration", "population_cycle_regressed", "sequenced_counts", "sequenced_normalized"]
         methods = [m for m in ["pearson", "spearman", "genie3"] if m in set(d.method)]
         x = np.arange(len(order)); w = 0.8 / len(methods)
         for i, m in enumerate(methods):

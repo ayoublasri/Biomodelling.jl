@@ -42,7 +42,22 @@ def metrics(scores, adj, directed):
     return average_precision_score(truth, s), roc_auc_score(truth, s), truth.mean()
 
 adj = pd.read_csv(os.path.join(OUT, "fig5b_adjacency.csv")).values
-datasets = {os.path.basename(p)[len("fig5b_data_"):-4]: pd.read_csv(p).values for p in glob.glob(os.path.join(OUT, "fig5b_data_*.csv"))}
+datasets = {os.path.basename(p)[len("fig5b_data_"):-4]: pd.read_csv(p).values for p in glob.glob(os.path.join(OUT, "fig5b_data_*.csv")) if "cycle_regressed" not in p}
+# an extra dataset: concentrations with cell-cycle covariates (gene copy number, age) regressed out, using the
+# ground-truth metadata the simulator provides — what a perfect cell-cycle correction could achieve
+meta = pd.read_csv(os.path.join(OUT, "fig5b_population_metadata.csv"))
+Z = np.log1p(datasets["population_concentration"])
+X = np.column_stack([np.ones(len(meta)), meta.copies.values, meta.age.values, meta.age.values ** 2])
+beta = np.linalg.lstsq(X, Z, rcond=None)[0]
+resid = Z - X @ beta
+datasets["population_cycle_regressed"] = np.expm1(resid - resid.min(0))       # back to a non-negative scale
+pd.DataFrame(datasets["population_cycle_regressed"], columns=[f"gene_{j+1}" for j in range(Z.shape[1])]).to_csv(os.path.join(OUT, "fig5b_data_population_cycle_regressed.csv"), index=False)
+for name in ("population_cycle_regressed",):
+    Y = datasets[name]; Zc = np.log1p(Y)
+    Cm = np.abs(np.corrcoef(Zc.T)); np.fill_diagonal(Cm, 0)
+    pd.DataFrame(Cm, columns=[f"gene_{j+1}" for j in range(Cm.shape[1])]).to_csv(os.path.join(OUT, f"fig5b_scores_pearson_{name}.csv"), index=False)
+    R = pd.DataFrame(Y).rank().values; Sm = np.abs(np.corrcoef(R.T)); np.fill_diagonal(Sm, 0)
+    pd.DataFrame(Sm, columns=[f"gene_{j+1}" for j in range(Sm.shape[1])]).to_csv(os.path.join(OUT, f"fig5b_scores_spearman_{name}.csv"), index=False)
 rows = []
 # (b) GENIE3 on every dataset
 for name, Y in datasets.items():

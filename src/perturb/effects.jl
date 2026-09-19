@@ -167,8 +167,8 @@ function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vec
         gmult *= 1.0 / (1.0 + (d / gi.IC50)^gi.m)
     end
     for gc in cp.costs
-        c = gc.conc ? c.x[gc.idx] / c.V : float(c.x[gc.idx])
-        cq = c^gc.q
+        conc = gc.conc ? c.x[gc.idx] / c.V : float(c.x[gc.idx])
+        cq = conc^gc.q
         gmult *= 1.0 - gc.max_cost * cq / (gc.K^gc.q + cq)
     end
     for dh in cp.deaths

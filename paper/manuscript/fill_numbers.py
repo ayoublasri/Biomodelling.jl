@@ -31,11 +31,15 @@ def f3():
 @safe
 def f4():
     put("mem_time", "50")
-    d = load("fig4c_decay_vs_dose.csv"); d = d[d.dose > 0].sort_values("dose")
-    put("decay_fold", f"{d.decay_rate.iloc[-1] / d.decay_rate.iloc[0]:.1f}")
-    put("divtime_change", f"{abs(d.division_time_mean.iloc[-1] - d.division_time_mean.iloc[0]) / d.division_time_mean.iloc[0] * 100:.0f}%")
+    d = load("fig4c_decay_vs_dose.csv").sort_values("dose")
+    lo = d[d.dose == 0.5].decay_rate.iloc[0]; hi = d[d.dose == 2.0].decay_rate.iloc[0]
+    put("decay_lo", f"{lo:.3f}"); put("decay_hi", f"{hi:.3f}"); put("decay_fold", f"{hi / lo:.1f}")
+    dd = d[d.dose > 0]
+    put("divtime_change", f"{abs(dd.division_time_mean.iloc[-1] - dd.division_time_mean.iloc[0]) / dd.division_time_mean.iloc[0] * 100:.1f}%")
+    put("deathtime_range", f"{dd.death_time_mean.max():.1f} to {dd.death_time_mean.min():.1f}")
     c = load("fig4d_fate_concordance.csv"); r = c[(c.model == "memory") & (c.relation == "sisters")].iloc[0]
     put("sis_conc", f"{r.concordance:.2f}"); put("sis_exp", f"{r.expected_independent:.2f}")
+    rf = c[(c.model == "fast") & (c.relation == "sisters")].iloc[0]; put("sis_conc_fast", f"{rf.concordance:.2f}")
     e = load("fig4e_clone_diversity.csv"); m = e.groupby("model").mean(numeric_only=True)
     put("clones_before", f"{m.loc['pre_existing', 'effective_clones_before']:.0f}"); put("clones_after_pre", f"{m.loc['pre_existing', 'effective_clones_after']:.0f}")
     put("clones_after_ind", f"{m.loc['drug_induced', 'effective_clones_after']:.0f} of {m.loc['drug_induced', 'effective_clones_before']:.0f}")
