@@ -1,91 +1,85 @@
-| **Build Status** | **Help** |
-|:---:|:---:|
-| [![][travis-img]][travis-url] [![][codecov-img]][codecov-url] | [![][slack-img]][slack-url] |
-
 # Biomodelling.jl
 
-Authors:
-- Ayoub Lasri (lasriay@gmail.com)
-- Marc Sturrock
+[![CI](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/ayoublasri/Biomodelling.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ayoublasri/Biomodelling.jl)
 
-Framework for stochastic modelling in systems biology as published in [BMC Bioinformatics](https://link.springer.com/article/10.1186/s12859-022-04778-9)
+Mechanistic stochastic simulation of gene regulatory networks inside **growing,
+dividing and drug-treated cell populations**, with lineage tracking,
+single-cell observation models and likelihood-free inference.
 
-Usage questions can be posted in:
-[Julia Community](https://julialang.org/community/)
+Authors: Ayoub Lasri and Marc Sturrock (Royal College of Surgeons in Ireland).
+Version 1 of the framework was published in
+[BMC Bioinformatics (2022)](https://doi.org/10.1186/s12859-022-04778-9); version
+2.0 is a rewrite described in the accompanying preprint (see `paper/`).
 
-[slack-img]: https://img.shields.io/badge/chat-on%20slack-yellow.svg
-[slack-url]: https://julialang.slack.com
+## What it does
 
-[travis-img]: https://travis-ci.org/ayoublasri/Biomodelling.jl.svg?branch=master
-[travis-url]: https://travis-ci.org/ayoublasri/Biomodelling.jl
+* **Reaction networks** with mass-action, Hill (activation, inhibition,
+  combinatorial) and custom kinetics, named parameters, and volume scaling
+  rules that keep concentrations consistent as cells grow.
+* **Stochastic kernels**: Gillespie's direct method, fixed-step tau-leaping, a
+  hybrid tau-leap/SSA scheme and adaptive tau-leaping (Cao, Gillespie and
+  Petzold), all reproducible from explicit random number generators.
+* **Cells and populations**: exponential growth with heterogeneity, sizer /
+  adder / timer division control, binomial or beta-binomial partitioning,
+  promoter-state inheritance, gene replication, constant-size, free-growth or
+  logistic population control, multithreaded and deterministic.
+* **Drug and perturbation layer**: dose schedules (constant, pulsed, piecewise,
+  one-compartment pharmacokinetics), state-dependent death hazards protected by
+  resistance proteins, growth inhibition, drug-induced rate changes, gene
+  knockdown / overexpression in subsets of cells.
+* **Lineage**: the complete division tree; mother-daughter, sister and cousin
+  correlations; lineage autocorrelation and memory timescales; lineage versus
+  population noise; Luria-Delbrück fluctuation tests; MemorySeq-style clonal
+  scores; Newick export.
+* **Observation models**: scRNA-seq (capture efficiency, depth, dropout,
+  batches), smFISH and time-lapse reporters; CSV and AnnData (`.h5ad`) output.
+* **Inference**: ABC-SMC over any simulation, and the exact Beta-Poisson
+  likelihood of the telegraph model.
+* **Generators**: random regulatory networks with known ground truth.
 
-[codecov-img]: https://codecov.io/gh/ayoublasri/Biomodelling.jl/branch/master/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/ayoublasri/Biomodelling.jl
-
-# Installation
-
-```julia 
-add https://github.com/ayoublasri/Biomodelling.jl.git 
-```
-
-# Simple Usage
-
-We describe how to simulate simple reactions, in this case:
-
-- reaction1 describes transcription with a rate k1.
-- reaction2 describes mRNA decay with a rate k2.
-- reaction3 describes translation with a rate k3.
-- reaction4 describes protein decay with a rate k4.
-
-Each reaction is a Named Tuple that has six entries:
+## Installation
 
 ```julia
-NamedTuple{(:name, :rate, :reactants, :products, :coeff_rea, :coeff_pro), Tuple{String, Int64, Vector{Symbol}, Vector{Symbol}, Vector{Int64}, Vector{Int64}}}
-```
-- name: the name of the reaction (String).
-- rate: rate of the reaction (Int64).
-- reactants: the reaction reactant(s) given as a vector of symbols.
-- products: the reaction product(s) given as a vector of symbols.
-- coeff_rea and coeff_pro refer to the coefficient of the reactants and the products respectively and given as vector of Int64.
-
-# Simple example
-
-```julia 
-    k1 = 1.0
-    k2 = 0.2
-    k3 = 10.0
-    k4 = 0.1
-    reaction1 = (name = "transcription", rate = k1, reactants = [:NULL], products =[:mRNA] , coeff_rea = [1] , coeff_pro = [1] )
-    reaction2 = (name = "mRNA decay", rate = k2, reactants = [:mRNA], products =[:NULL], coeff_rea = [1], coeff_pro = [1])
-    reaction3 = (name = "translation", rate = k3, reactants = [:mRNA], products =[:mRNA,:protein], coeff_rea = [1] , coeff_pro = [1,1] )
-    reaction4 = (name = "protein decay", rate = k4, reactants = [:protein], products = [:NULL], coeff_rea = [1] , coeff_pro = [1] )
+using Pkg
+Pkg.add(url = "https://github.com/ayoublasri/Biomodelling.jl")
 ```
 
-The model is then definied as the combiantion of the reactions defined above
+Requires Julia 1.10 or later. `using HDF5` enables `write_h5ad`.
 
-```julia 
-    model = (reaction1, reaction2, reaction3, reaction4)
+## Quick start
+
+```julia
+using Biomodelling, Random
+
+# a resistance gene with slow promoter switching (heritable expression states)
+model = telegraph_model(k_on = 0.005, k_off = 0.005, k_tx = 30.0, k_dm = 1.0, k_tl = 4.0, k_dp = 0.2)
+x0    = initial_state(model; G_off = 1)
+
+# growing, dividing population; drug applied from t = 100 kills low-expressing cells
+pert  = Perturbation(PiecewiseDose([0.0, 100.0], [0.0, 1.0]);
+                     effects = [DeathHazard(h_max = 0.5, EC50 = 0.3, protect = :protein, K = 60.0, q = 4.0)])
+st    = PopulationSettings(dt = 0.1, growth = ExponentialGrowth(log(2) / 20), size_control = Sizer(2.0; cv = 0.05),
+                           replication = Replication(0.5), control = FreeGrowth(max_cells = 20_000))
+res   = simulate_population(model, x0, 1000, (0.0, 200.0); settings = st, perturbation = pert, rng = Xoshiro(1))
+
+res.popsize                                                # kill curve and regrowth
+heritability(res, :protein; relation = :mother_daughter)   # expression memory across divisions
+sn = sample_cells(res; n = 500)                            # snapshot of survivors
+Y  = sequence(sn.counts, SeqProtocol(capture = 0.15)).Y    # synthetic scRNA-seq counts
 ```
 
-# Initial conditions
+See the documentation (`docs/`) for tutorials on single cells, populations,
+drug treatment, synthetic data and inference, and `docs/src/migration.md` for
+the mapping from the v1 API (which still works through a deprecated
+compatibility layer).
 
-Next step is to define the initial conditions, for this example we consider that at t=0, there are 5 mRNA molecules and 100 protein molecules. The initiale conditions should be given as Array{Any, 2} with the rows corresponding to model species including the NULL.
+## Reproducing the paper
 
-```julia 
-    initiale_population = [:NULL 0;:mRNA 5;:protein 100]
-```
+`paper/` contains the scripts that generate every figure of the v2.0 preprint
+from fixed seeds (`julia --project=paper paper/run_all.jl`, then
+`python paper/plot_all.py`).
 
-# Building the model
+## License
 
-The function Donne is then used to build a structure that contains information about the model and can be updated in time. The function Donne takes as inputs: the model, initial conditions, the simulation time (1000.0 in this example), time step (0.1 in this example), number of cells (100 in this example) and cells' growth rate (0.03 in this example).
-
-```julia 
-    data = Biomodelling.Donne(model,initiale_population,1000.0,0.1,100,0.03)
-```
-# Model simulation
-
-Different algorithms were implemented, below an example using SSA. T is a vector of time steps. The species are sorted in the same order as the initial_population, for example to access the number of mRNA molecules for the entire simulation time: X[:,2].
-
-```julia 
-    T,X =Biomodelling.ssa(data)
-```
+MIT. See `LICENSE`.

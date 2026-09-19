@@ -1,0 +1,46 @@
+# Changelog
+
+## v2.0.0 (unreleased)
+
+Breaking release. The package is reorganised around six layers: model, kernels,
+cells and populations, perturbations, lineage, observation, plus inference and
+generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
+and `docs/src/migration.md` for the migration guide.
+
+### Added
+- `ReactionModel` with `MassAction`, `Hill` and `Custom` kinetics, named
+  parameters, volume scaling rules and promoter groups.
+- Kernels `DirectSSA`, `TauLeap`, `HybridSSATau`, `AdaptiveTauLeap` sharing a
+  preallocated `Workspace` and explicit random number generators.
+- Cell and population layer: exponential growth with heterogeneity, `Sizer`,
+  `Adder`, `AgeTimer` size control, binomial and beta-binomial partitioning,
+  promoter inheritance, gene replication, `ConstantN`, `FreeGrowth` and
+  `LogisticGrowth` population control, multithreaded population loop.
+- Lineage recording (`LineageTable`) with heritability statistics,
+  fluctuation tests and Newick export.
+- Drug and perturbation layer: dose schedules, bolus pharmacokinetics,
+  state-dependent death hazards, growth inhibition, rate modulation and gene
+  perturbations.
+- Observation models for scRNA-seq, smFISH and time-lapse reporters.
+- Inference: ABC-SMC and the exact telegraph (Beta-Poisson) likelihood.
+- Random gene regulatory network generator.
+- CSV, Newick and AnnData-compatible HDF5 output (`HDF5` extension).
+- Test suite with statistical validation against analytic distributions.
+
+### Changed
+- Minimum Julia version is 1.10.
+- Continuous integration moved from Travis CI to GitHub Actions.
+
+### Deprecated
+- The v1 API (`Donne`, `ssa`, `tauleap`, `tauleapswitch`, `adaptive_tauleap`,
+  `exponential_growth`, NamedTuple reactions) is kept as a thin compatibility
+  layer and will be removed in v3.
+
+### Removed
+- `LsqFit` and `StringDistances` dependencies.
+- The duplicated kernel files (`ssa2`, `ssa3`, `ssa_switch*`, `tauleapswitch2`,
+  `non_negative_Poisson_tauleap`, `comp_*`, `compute_L`, `HO_reaction`).
+
+## v0.3.0
+
+Last release of the original framework (BMC Bioinformatics 2022).

@@ -1,0 +1,9 @@
+numpy
+scipy
+pandas
+matplotlib
+h5py
+anndata
+scanpy
+scikit-learn
+magic-impute
