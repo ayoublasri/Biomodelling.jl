@@ -63,10 +63,11 @@ def fig2():
         y = np.arange(len(d)); h = 0.38
         ax.barh(y - h/2, d.ks_telegraph, height=h, color=C[0], label="telegraph")
         ax.barh(y + h/2, d.ks_birthdeath, height=h, color=C[1], label="birth–death")
-        crit = 1.63 / math.sqrt(20000)
-        ax.axvline(crit, color=INK2, ls=":", lw=0.9); ax.text(crit, len(d) - 0.4, " KS 99% critical", color=INK2, fontsize=6, va="top")
-        ax.set_yticks(y); ax.set_yticklabels(d.kernel); ax.invert_yaxis(); ax.set_xlabel("KS distance to exact law (n = 20 000)"); ax.legend(loc="lower right"); label(ax, "d", "kernels")
-        for i, r in d.iterrows(): ax.text(max(r.ks_telegraph, r.ks_birthdeath) + 0.0005, i, f"{r.sec_per_1e4_telegraph:.2f} s / 10⁴ cells", va="center", fontsize=6, color=INK2)
+        crit = 1.63 / math.sqrt(20000); xmax = max(d.ks_telegraph.max(), d.ks_birthdeath.max(), crit)
+        ax.axvline(crit, color=INK2, ls=":", lw=0.9); ax.text(crit, -0.55, "99% critical ", color=INK2, fontsize=5.5, ha="right", va="bottom")
+        ax.set_xlim(0, xmax * 1.75); ax.set_yticks(y); ax.set_yticklabels(d.kernel); ax.invert_yaxis(); ax.set_xlabel("KS distance to exact law (n = 20 000)")
+        ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=2, fontsize=5.5, borderaxespad=0); label(ax, "d", "kernels")
+        for i, r in d.iterrows(): ax.text(xmax * 1.72, i, f"{r.sec_per_1e4_telegraph:.2f} s / 10⁴ cells", va="center", ha="right", fontsize=5.8, color=INK2)
     @panel
     def e(ax):
         d = load("fig2e_crosscheck.csv"); s = kv("fig2e_crosscheck_stats.csv")
@@ -84,7 +85,7 @@ def fig2():
             ax.plot(g10.cells, g10.seconds, marker="o", ms=3, color=C[i], label=f"{k}, 10 genes")
             g1000 = g[g.cells == 1000].sort_values("genes")
             ax.plot(g1000.genes * 100, g1000.seconds, marker="s", ms=3, ls="--", color=C[i], label=f"{k}, 1000 cells (×100 genes)")
-        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("cells  (or 100 × genes)"); ax.set_ylabel("seconds for 200 steps"); ax.legend(fontsize=5.5); label(ax, "f", "runtime")
+        ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("cells  (or 100 × genes)"); ax.set_ylabel("seconds for 200 steps"); ax.legend(fontsize=5, loc="lower right"); label(ax, "f", "runtime")
     for fn, pos in zip((a, b, c, d, e, f), range(6)):
         fn(fig.add_subplot(gs[pos // 3, pos % 3]))
     save(fig, "fig2_engine")

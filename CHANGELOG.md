@@ -8,6 +8,8 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- `paper/`: manuscript sources, figure scripts (`paper/run_all.jl`, `paper/plot_all.py`), Python benchmark
+  scripts and the built PDF/DOCX of the accompanying bioRxiv manuscript.
 - `ReactionModel` with `MassAction`, `Hill` and `Custom` kinetics, named
   parameters, volume scaling rules and promoter groups.
 - Kernels `DirectSSA`, `TauLeap`, `HybridSSATau`, `AdaptiveTauLeap` sharing a
