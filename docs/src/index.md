@@ -55,6 +55,8 @@ Y  = sequence(sn.counts, SeqProtocol(capture = 0.15)).Y    # synthetic scRNA-seq
 
 ## Citing
 
-If you use Biomodelling.jl, please cite the 2022 paper (Lasri, Shahrezaei and
-Sturrock, *BMC Bioinformatics* 23:236) and the v2.0 preprint (see the
-repository README for the reference once available).
+If you use Biomodelling.jl, please cite the version 2.0 white paper,
+*Mechanistic simulation of heritable expression states, cell division and drug
+response in single-cell populations* (in the `whitepaper/` directory of the
+repository), and the version 1 article (Lasri, Shahrezaei and Sturrock, *BMC
+Bioinformatics* 23:236, 2022).

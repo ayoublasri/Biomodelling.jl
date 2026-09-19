@@ -7,10 +7,15 @@ Mechanistic stochastic simulation of gene regulatory networks inside **growing,
 dividing and drug-treated cell populations**, with lineage tracking,
 single-cell observation models and likelihood-free inference.
 
-Authors: Ayoub Lasri and Marc Sturrock (Royal College of Surgeons in Ireland).
-Version 1 of the framework was published in
-[BMC Bioinformatics (2022)](https://doi.org/10.1186/s12859-022-04778-9); version
-2.0 is a rewrite described in the accompanying preprint (see `paper/`).
+Author: Ayoub Lasri (Royal College of Surgeons in Ireland). Version 2.0 was
+authored with [Claude](https://claude.ai) (Anthropic) under the author's
+direction. Version 1 of the framework was developed with Marc Sturrock and
+Vahid Shahrezaei and published in
+[BMC Bioinformatics (2022)](https://doi.org/10.1186/s12859-022-04778-9).
+
+**White paper:** [Mechanistic simulation of heritable expression states, cell
+division and drug response in single-cell populations](whitepaper/Biomodelling-jl-2.0-white-paper.pdf)
+([supplementary information](whitepaper/Biomodelling-jl-2.0-supplementary-information.pdf)).
 
 ## What it does
 
@@ -74,11 +79,45 @@ drug treatment, synthetic data and inference, and `docs/src/migration.md` for
 the mapping from the v1 API (which still works through a deprecated
 compatibility layer).
 
-## Reproducing the paper
+## White paper
 
-`paper/` contains the scripts that generate every figure of the v2.0 preprint
-from fixed seeds (`julia --project=paper paper/run_all.jl`, then
-`python paper/plot_all.py`).
+`whitepaper/` holds the v2.0 white paper,
+[*Mechanistic simulation of heritable expression states, cell division and drug
+response in single-cell populations*](whitepaper/Biomodelling-jl-2.0-white-paper.pdf),
+with its [supplementary information](whitepaper/Biomodelling-jl-2.0-supplementary-information.pdf)
+and an [editable version](whitepaper/Biomodelling-jl-2.0-white-paper.docx). It
+reports, with all code and seeds in this repository:
+
+* validation of the kernels against exact stationary laws and against
+  JumpProcesses.jl;
+* cell-size scaling, partitioning noise, lineage-versus-population statistics
+  and cell-cycle-dependent bursting arising from the physiology alone;
+* a single resistance gene with slow promoter switching reproducing the
+  signatures of drug-tolerant persisters (dose-dependent decay with unchanged
+  single-cell timing, correlated fates of related cells, barcode diversity
+  preserved or collapsed, loss of resistance when memory is disrupted during
+  exposure);
+* ground-truth benchmarks for memory-gene detection, network inference,
+  imputation and perturbation prediction;
+* calibration to published time-lapse measurements of cisplatin-treated cells
+  and validation on a held-out concentration, on lineage correlations and on
+  the dose-invariance of single-cell timing;
+* schedule optimisation reproducing the opposite outcomes of intermittent
+  dosing in the SWOG S1320 melanoma trial and in patient-derived xenografts,
+  and evaluating standard against dose-dense temozolomide (RTOG 0525).
+
+The paper sources, figure scripts and reference data are in `paper/`; every
+figure is regenerated from fixed seeds with `julia --project=paper
+paper/run_all.jl` followed by `python paper/plot_all.py`, and the document is
+rebuilt with `bash paper/manuscript/build.sh`.
+
+## Citation
+
+If you use Biomodelling.jl, please cite the white paper above and the version 1
+article: Lasri, A., Shahrezaei, V. and Sturrock, M. Benchmarking imputation
+methods for network inference using a novel method of synthetic scRNA-seq data
+generation. *BMC Bioinformatics* **23**, 236 (2022).
+<https://doi.org/10.1186/s12859-022-04778-9>
 
 ## License
 

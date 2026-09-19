@@ -8,13 +8,15 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- `whitepaper/`: the version 2.0 white paper (PDF and DOCX) and its supplementary
+  information, rebuilt from `paper/manuscript/` with the Nature citation style.
 - Schedule optimisation: `AdaptiveDose` feedback schedules, finite-cycle `PulsedDose`,
   `daily_boluses`/`cycle_days` pharmacokinetic regimens, treatment outcomes
   (`time_to_progression`, `log_kill`, `net_growth_rate`, `extinction_probability`,
   `cumulative_dose`), `optimize_schedule`, state-dependent `GrowthInhibition`, `kin_pairs`.
 - `paper/data/`: laboratory and clinical reference values (with provenance) used for calibration.
 - `paper/`: manuscript sources, figure scripts (`paper/run_all.jl`, `paper/plot_all.py`), Python benchmark
-  scripts and the built PDF/DOCX of the accompanying bioRxiv manuscript.
+  scripts and the built PDF/DOCX of the accompanying white paper.
 - `ReactionModel` with `MassAction`, `Hill` and `Custom` kinetics, named
   parameters, volume scaling rules and promoter groups.
 - Kernels `DirectSSA`, `TauLeap`, `HybridSSATau`, `AdaptiveTauLeap` sharing a
