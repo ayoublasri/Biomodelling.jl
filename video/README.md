@@ -1,6 +1,6 @@
 # LinkedIn showcase video
 
-A 60-second, 1080×1080 video for Biomodelling.jl 2.0, built with [Remotion](https://remotion.dev).
+A 66-second, 1080×1080 video for Biomodelling.jl 2.0, built with [Remotion](https://remotion.dev).
 Every chart in it is rendered from the simulation outputs in `paper/output/`, so the
 video shows the same numbers as the white paper.
 
@@ -30,7 +30,7 @@ npx remotion render Showcase out/biomodelling-showcase.mp4 \
 
 | File | What it holds |
 |---|---|
-| `src/Showcase.tsx` | the nine scenes and their timings |
+| `src/Showcase.tsx` | the ten scenes and their timings |
 | `src/theme.tsx` | palette, Inter faces, reveal/scene/chart primitives |
 | `src/Cells.tsx` | the two SVG animations (drug response, cell cycle) |
 | `public/chart_*.png` | charts rendered from real simulation output |
