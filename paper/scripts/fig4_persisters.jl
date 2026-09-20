@@ -44,6 +44,29 @@ pidx(m) = speciesindex(m, :P)
 high_fraction(sn, m; thr = 150.0) = mean(sn.counts[:, pidx(m)] ./ sn.volume .> thr)
 from(t_on, d) = PiecewiseDose([0.0, t_on], [0.0, d])
 
+"""A cell's fate is the fate of its lineage: it survives if any descendant is alive at the end of the run."""
+function lineage_survival(lt, alive_ids)
+    cm = Biomodelling.children_map(lt)
+    alive = Set(alive_ids)
+    memo = Dict{Int,Bool}()
+    function surv(id)
+        haskey(memo, id) && return memo[id]
+        v = id in alive || any(surv, get(cm, id, Int[]))
+        memo[id] = v
+    end
+    surv
+end
+function fate_concordance(lt, pairs, t_from, t_to, surv)
+    same = 0; n = 0; deaths = 0
+    for (a, b) in pairs
+        (t_from <= lt.birth_time[a] < t_to && t_from <= lt.birth_time[b] < t_to) || continue
+        fa = !surv(a); fb = !surv(b)
+        n += 1; same += (fa == fb); deaths += fa + fb
+    end
+    p = n == 0 ? NaN : deaths / (2n)
+    (concordance = n == 0 ? NaN : same / n, expected = p^2 + (1 - p)^2, n = n, death_fraction = p)
+end
+
 mem = resistance_model()                                   # p_on = 0.002/0.022 ≈ 9%, memory time 1/(k_on+k_off) ≈ 45
 fast = resistance_model(k_on = 0.05, k_off = 0.5)          # same p_on, memory time ≈ 1.8
 induced = resistance_model(k_on = 0.0002, k_off = 0.02)   # p_on ≈ 1% before drug; the drug raises k_on 100-fold at dose 1
@@ -91,27 +114,6 @@ if "d" in parts
 # (d) fate correlations between related cells (memory gene versus fast-switching control). A cell's fate is the
 # fate of its lineage: it "survives" if any descendant is alive at the end of the run (colony formation), and
 # "dies" if its whole subtree is extinct.
-function lineage_survival(lt, alive_ids)
-    cm = Biomodelling.children_map(lt)
-    alive = Set(alive_ids)
-    memo = Dict{Int,Bool}()
-    function surv(id)
-        haskey(memo, id) && return memo[id]
-        v = id in alive || any(surv, get(cm, id, Int[]))
-        memo[id] = v
-    end
-    surv
-end
-function fate_concordance(lt, pairs, t_from, t_to, surv)
-    same = 0; n = 0; deaths = 0
-    for (a, b) in pairs
-        (t_from <= lt.birth_time[a] < t_to && t_from <= lt.birth_time[b] < t_to) || continue
-        fa = !surv(a); fb = !surv(b)
-        n += 1; same += (fa == fb); deaths += fa + fb
-    end
-    p = n == 0 ? NaN : deaths / (2n)
-    (concordance = n == 0 ? NaN : same / n, expected = p^2 + (1 - p)^2, n = n, death_fraction = p)
-end
 rows = Any[]
 for (tag, m) in (("memory", mem), ("fast", fast))
     r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death()]); seed = 3, T = 100.0, N = 800, record_every = 100)
@@ -189,3 +191,49 @@ save_csv("fig4h_mgmt.csv", ["model", "t", "dose", "popsize", "mean_P_concentrati
 end
 
 println("fig4 done")
+
+if "cycle" in parts
+# Robustness of the persister results to cell-cycle-dependent killing. Most of the death hazard is gated by the
+# cell cycle: a fraction β of it acts anywhere, the rest only in a window around mid-cycle, so a cell outside the
+# window is spared whatever its expression state. β = 1 recovers the cycle-blind hazard used elsewhere here.
+# Sisters are born together and so occupy the same phase, which makes this a test of whether cycle gating can
+# manufacture the kin fate correlations of panel d without any heritable expression state.
+CYC = CycleSensitivity(baseline = 0.25, center = 0.5, width = 0.15)
+rows_c = Any[]; rows_d = Any[]; rows_f = Any[]
+for d in (0.0, 0.25, 0.5, 1.0, 2.0)
+    r = treat(mem, Perturbation(from(T_DRUG, d); effects = [death(), CYC]); seed = 2, T = 140.0)
+    i0 = argmin(abs.(r.t .- T_DRUG)); i30 = argmin(abs.(r.t .- (T_DRUG + 30)))
+    decay = -(log(r.popsize[i30]) - log(r.popsize[i0])) / 30
+    lt = r.lineage
+    div = [lt.end_time[i] - lt.birth_time[i] for i in eachindex(lt.id) if lt.fate[i] == :divided && lt.birth_time[i] >= T_DRUG]
+    dead = [lt.end_time[i] - max(lt.birth_time[i], T_DRUG) for i in eachindex(lt.id) if lt.fate[i] == :died]
+    push!(rows_c, [d, decay, length(div), isempty(div) ? NaN : mean(div), length(dead), isempty(dead) ? NaN : mean(dead)])
+    @printf("(cycle) dose %.2f decay %.4f  division %.2f (n=%d)  death %.2f (n=%d)\n", d, decay,
+            isempty(div) ? NaN : mean(div), length(div), isempty(dead) ? NaN : mean(dead), length(dead))
+end
+save_csv("fig4i_cycle_decay.csv", ["dose", "decay_rate", "n_divisions", "division_time_mean", "n_deaths", "death_time_mean"], permutedims(reduce(hcat, rows_c)))
+
+for (tag, m) in (("memory", mem), ("fast", fast))
+    r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death(), CYC]); seed = 3, T = 100.0, N = 800, record_every = 100)
+    lt = r.lineage; surv = lineage_survival(lt, r.ids[end])
+    for (rel, pairs) in (("sisters", sister_pairs(lt)), ("cousins", Biomodelling.cousin_pairs(lt)))
+        fc = fate_concordance(lt, pairs, T_DRUG - 25.0, T_DRUG, surv)
+        push!(rows_d, [tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction])
+        @printf("(cycle) %-6s %-8s concordance %.3f expected %.3f (n=%d, death fraction %.2f)\n", tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction)
+    end
+end
+save_csv("fig4i_cycle_concordance.csv", ["model", "relation", "concordance", "expected_independent", "n_pairs", "death_fraction"], permutedims(reduce(hcat, rows_d)))
+
+cost_c = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)
+for (tag, m, extra) in (("pre_existing", mem, DrugEffect[]), ("pre_existing_cost", mem, DrugEffect[cost_c]), ("drug_induced", induced, DrugEffect[induction]))
+    for off in (0.0, 5.0, 10.0, 20.0, 40.0), d in (0.25, 0.5, 1.0, 2.0)
+        sched = off == 0 ? from(T_DRUG, d) : PulsedDose(d; on = 20.0, off = off, start = T_DRUG)
+        r = treat(m, Perturbation(sched; effects = vcat([death(), CYC], extra)); seed = 4, N = 300, T = 240.0, N_max = 6000, record_every = 50)
+        i0 = argmin(abs.(r.t .- T_DRUG))
+        fitness = (log(max(r.popsize[end], 1e-9)) - log(r.popsize[i0])) / (240 - T_DRUG)
+        push!(rows_f, [tag, off, d, fitness, r.popsize[end]])
+    end
+    println("(cycle) schedule scan done: ", tag)
+end
+save_csv("fig4i_cycle_schedules.csv", ["model", "release_period", "dose", "long_term_growth_rate", "final_popsize"], permutedims(reduce(hcat, rows_f)))
+end

@@ -25,7 +25,7 @@ end
 
 
 # ---------------------------------------------------------------- melanoma (WM989-like; Shaffer et al. 2017, S1320)
-if "melanoma" in parts
+if ("melanoma" in parts) || ("melanoma_cycle" in parts)
     const CYCLE_M = 4WEEK                                    # net tumour doubling time ≈ 4 weeks (division minus loss)
     const λm = log(2) / CYCLE_M
     const MEMORY_M = 5CYCLE_M                                # memory of the pre-resistant state ≈ 5 generations (MemorySeq)
@@ -65,6 +65,7 @@ if "melanoma" in parts
         PiecewiseDose(ts, ds)
     end
     schedules = [("continuous", () -> continuous), ("intermittent (S1320)", () -> s1320), ("adaptive (50 %)", () -> AdaptiveDose(1.0; on_above = 1.0, off_below = 0.5))]
+if "melanoma" in parts
     rows = Any[]; rows_t = Any[]
     for (mtag, eff) in mechanisms, (stag, mk) in schedules, seed in 1:4
         r = treat_m(mk(), eff; seed = 20 + seed)
@@ -86,6 +87,22 @@ if "melanoma" in parts
         opt = optimize_schedule(objective, [1WEEK, 0.2], [12WEEK, 1.0]; names = [:period_h, :duty], n_grid = 4, seeds = 1:1, maxiter = 16, log_scale = [true, false], rng = Xoshiro(5))
         @printf("(c) %-18s best period %.1f weeks, duty %.2f → loss of control after %.1f weeks\n", mtag, opt.params[1] / WEEK, opt.params[2], -opt.value)
         save_csv("fig8c_melanoma_optimum_$(replace(mtag, " " => "_")).csv", ["period_weeks", "duty", "ttp_weeks"], permutedims(reduce(hcat, [[p[1] / WEEK, p[2], -v] for (p, v) in opt.table])))
+    end
+end  # "melanoma"
+
+    # Robustness of the schedule ranking to cell-cycle-dependent killing. A BRAF/MEK inhibitor does not make
+    # replication-coupled lesions as a platinum drug does, but it does act on cells traversing the cycle, so this
+    # asks whether the ranking survives a hazard of which only a fraction acts outside a window of the cycle.
+    if "melanoma_cycle" in parts
+        CYC_M = CycleSensitivity(baseline = 0.25, center = 0.5, width = 0.15)
+        rows_y = Any[]
+        for (mtag, eff) in mechanisms, (stag, mk) in schedules, seed in 1:4
+            r = treat_m(mk(), vcat(eff, DrugEffect[CYC_M]); seed = 20 + seed)
+            tb, progb = ttp_baseline(r)
+            push!(rows_y, [mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb, r.popsize[end] / r.popsize[1], cumulative_dose(r) / WEEK])
+            @printf("(cycle) %-18s %-22s seed %d  loss of control %.1f w%s\n", mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb ? "" : "*")
+        end
+        save_csv("fig8f_melanoma_cycle.csv", ["mechanism", "schedule", "seed", "ttp_baseline_weeks", "progressed_baseline", "N_end_over_N0", "cumulative_dose_weeks"], permutedims(reduce(hcat, rows_y)))
     end
 end
 

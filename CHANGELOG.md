@@ -15,6 +15,9 @@ and `docs/src/migration.md` for the migration guide.
   drug (one molecule per lesion repaired, at rate `k·d·V·c/(c + K_m)`), so that
   depletion follows the cumulative exposure rather than the peak concentration.
   This replaces the dose-scaled first-order degradation used for MGMT in Fig. 8.
+- Cell-cycle robustness runs for the persister and melanoma case studies
+  (`fig4_persisters.jl cycle`, `fig8_schedules.jl melanoma_cycle`), reported as
+  Supplementary Note 13 and Supplementary Figure 5.
 - Identifiability and robustness analysis of the calibration (`fig7_calibration.jl profile`):
   conditional parameter profiles, a memory/resistant-fraction slice and an integration-step
   check, reported as Supplementary Note 11 and Supplementary Figure 3.

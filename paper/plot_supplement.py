@@ -163,3 +163,66 @@ try:
     save(fig, "figS4_cycle")
 except Exception as e:
     print("S4 skipped:", e)
+
+# S5: do the persister and melanoma conclusions survive cell-cycle-dependent killing?
+try:
+    import numpy as _np
+    dec0 = pd.read_csv(os.path.join(OUT, "fig4c_decay_vs_dose.csv"))
+    dec1 = pd.read_csv(os.path.join(OUT, "fig4i_cycle_decay.csv"))
+    con0 = pd.read_csv(os.path.join(OUT, "fig4d_fate_concordance.csv"))
+    con1 = pd.read_csv(os.path.join(OUT, "fig4i_cycle_concordance.csv"))
+    mel1 = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle.csv"))
+    mel0 = pd.read_csv(os.path.join(OUT, "fig8a_melanoma_schedules.csv"))
+
+    fig = plt.figure(figsize=(7.2, 5.2))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.05], hspace=0.62, wspace=0.62)
+
+    ax = fig.add_subplot(gs[0, 0])
+    ax.plot(dec0.dose, dec0.decay_rate, marker="o", ms=3.5, lw=1.3, color=C[0], label="cycle-blind")
+    ax.plot(dec1.dose, dec1.decay_rate, marker="s", ms=3.5, lw=1.3, color=C[1], label="cycle-gated")
+    ax.set_xlabel("dose"); ax.set_ylabel("population decay rate")
+    ax2 = ax.twinx(); ax2.grid(False)
+    d0 = dec0[dec0.dose > 0]; d1 = dec1[dec1.dose > 0]
+    ax2.plot(d0.dose, d0.death_time_mean, marker="o", ms=3, lw=1.0, ls="--", color=C[0], alpha=0.6)
+    ax2.plot(d1.dose, d1.death_time_mean, marker="s", ms=3, lw=1.0, ls="--", color=C[1], alpha=0.6)
+    ax2.set_ylabel("mean death time (dashed)", fontsize=6.5, labelpad=2); ax2.tick_params(labelsize=6.5)
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.set_title("a   decay and single-cell timing", loc="left", fontweight="semibold", color="#2a2a28")
+
+    ax = fig.add_subplot(gs[0, 1])
+    keys = [(m, r) for m in ("memory", "fast") for r in ("sisters", "cousins")]
+    def excess(df, m, r):
+        g = df[(df.model == m) & (df.relation == r)]
+        return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else _np.nan
+    x = _np.arange(len(keys)); w = 0.38
+    ax.bar(x - w/2, [excess(con0, m, r) for m, r in keys], width=w, color=C[0], label="cycle-blind")
+    ax.bar(x + w/2, [excess(con1, m, r) for m, r in keys], width=w, color=C[1], label="cycle-gated")
+    ax.axhline(0, color=INK, lw=0.6)
+    ax.set_xticks(x); ax.set_xticklabels([f"{m}\n{r}" for m, r in keys], fontsize=6)
+    ax.set_ylabel("excess concordance")
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.set_title("b   do related cells still share fates?", loc="left", fontweight="semibold", color="#2a2a28")
+
+    ax = fig.add_subplot(gs[1, :])
+    mechs = [m for m in dict.fromkeys(mel0.mechanism)]
+    scheds = [s for s in dict.fromkeys(mel0.schedule)]
+    x = _np.arange(len(mechs)); w = 0.8 / (2 * len(scheds))
+    for j, s in enumerate(scheds):
+        for k, (df, lab, alpha) in enumerate(((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))):
+            vals = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.mean() for m in mechs]
+            sds = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.std() for m in mechs]
+            off = (j * 2 + k - (2 * len(scheds) - 1) / 2) * w
+            ax.bar(x + off, vals, yerr=sds, width=w, color=C[j], alpha=alpha, capsize=1.2,
+                   label=(s if k == 0 else None))
+    cens = mel0.ttp_baseline_weeks.max()
+    ax.axhline(cens, color=INK2, ls=":", lw=0.8)
+    ax.text(len(mechs) - 0.55, cens + 0.8, "end of follow-up", fontsize=5.5, color=INK2, ha="right")
+    ax.set_xticks(x); ax.set_xticklabels(["no fitness cost", "fitness cost", "partial protection"], fontsize=6.5)
+    ax.set_ylabel("weeks to loss of control")
+    h, l = ax.get_legend_handles_labels()
+    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for a in (1.0, 0.45)]; l += ["cycle-blind", "cycle-gated"]
+    ax.legend(h, l, fontsize=6, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
+    ax.set_title("c   melanoma schedule ranking", loc="left", fontweight="semibold", color="#2a2a28")
+    save(fig, "figS5_cycle_robustness")
+except Exception as e:
+    print("S5 skipped:", e)

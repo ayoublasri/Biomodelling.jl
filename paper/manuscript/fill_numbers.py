@@ -240,6 +240,107 @@ def f7c():
         f"were outside the replication window, and the parameters of either fit should be read with that in mind.")
 
 @safe
+def f4c():
+    """Do the persister and melanoma conclusions survive cell-cycle-gated killing?"""
+    import numpy as np
+    d0 = load("fig4c_decay_vs_dose.csv"); d1 = load("fig4i_cycle_decay.csv")
+    c0 = load("fig4d_fate_concordance.csv"); c1 = load("fig4i_cycle_concordance.csv")
+    s0 = load("fig4f_schedules.csv"); s1 = load("fig4i_cycle_schedules.csv")
+    m0 = load("fig8a_melanoma_schedules.csv"); m1 = load("fig8f_melanoma_cycle.csv")
+
+    # decay rates are reported as a range, not a ratio: the gated rate crosses zero at low dose
+    def dec(d):
+        g = d[d.dose >= 0.5].sort_values("dose")
+        return float(g.decay_rate.iloc[0]), float(g.decay_rate.iloc[-1])
+    a1, b1 = dec(d1); a0, b0 = dec(d0)
+    put("cyc4_decay", f"{a1:+.3f} to {b1:+.3f} per time unit over doses 0.5 to 2, against {a0:+.3f} to {b0:+.3f} "
+                      f"without the gate")
+    def dtr(d):
+        g = d[d.dose > 0].death_time_mean.dropna(); return float(g.min()), float(g.max())
+    q1, q0 = dtr(d1), dtr(d0)
+    put("cyc4_dtime", f"{q1[0]:.1f} to {q1[1]:.1f} against {q0[0]:.1f} to {q0[1]:.1f} time units")
+
+    def exc(df, m, r):
+        g = df[(df.model == m) & (df.relation == r)]
+        return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else float("nan")
+    mem0, mem1 = exc(c0, "memory", "sisters"), exc(c1, "memory", "sisters")
+    fst0, fst1 = exc(c0, "fast", "sisters"), exc(c1, "fast", "sisters")
+    put("cyc4_mem", f"{mem1:+.3f} against {mem0:+.3f}")
+    put("cyc4_fast", f"{fst1:+.3f} against {fst0:+.3f}")
+    put("cyc4_mem_g", f"{mem1:+.3f}"); put("cyc4_mem_b", f"{mem0:+.3f}")
+    put("cyc4_fast_g", f"{fst1:+.3f}"); put("cyc4_fast_b", f"{fst0:+.3f}")
+    put("cyc4_ratio", f"{mem1 / fst1:.0f}-fold" if fst1 > 1e-6 else "far")
+    put("cyc4_confound_word", "does" if fst1 > max(0.02, 2 * abs(fst0)) else "does not")
+
+    # schedules: separate what survives (the dose) from what does not (the release period)
+    def bs(df, m):
+        g = df[df.model == m]; r = g.loc[g.long_term_growth_rate.idxmin()]
+        return float(r.release_period), float(r.dose)
+    label = {"pre_existing": "pre-existing tolerance", "pre_existing_cost": "a fitness cost of resistance",
+             "drug_induced": "drug-induced tolerance"}
+    models = list(dict.fromkeys(s0.model))
+    same_dose = sum(bs(s0, m)[1] == bs(s1, m)[1] for m in models)
+    moved = [m for m in models if bs(s0, m)[0] != bs(s1, m)[0]]
+    if not moved:
+        put("cyc4_sched", f"the best schedule is unchanged in all {len(models)} models")
+    else:
+        to_zero = all(bs(s1, m)[0] == 0.0 for m in moved)
+        which = " and with ".join(label.get(m, m) for m in moved)
+        put("cyc4_sched",
+            f"the best dose is unchanged in {same_dose} of {len(models)} models, but the best release period is "
+            f"not. With {which}, the holidays that won without the gate "
+            + ("collapse to continuous dosing" if to_zero else "move") +
+            ", because a gated hazard kills the reverting cells more slowly on re-exposure")
+
+    def best(df, mm):
+        g = df[df.mechanism == mm].groupby("schedule").ttp_baseline_weeks.mean()
+        return g.idxmax()
+    mechs = list(dict.fromkeys(m0.mechanism))
+    put("cyc8_same", f"{sum(best(m0, mm) == best(m1, mm) for mm in mechs)} of {len(mechs)}")
+    def order(df, mm):
+        return tuple(df[df.mechanism == mm].groupby("schedule").ttp_baseline_weeks.mean().sort_values().index)
+    flipped = [mm for mm in mechs if order(m0, mm) != order(m1, mm)]
+    put("cyc8_full", f"{len(mechs) - len(flipped)} of {len(mechs)}")
+    put("cyc8_flipped", "none" if not flipped else
+        "; ".join(f"under {mm} the two losing schedules trade places" for mm in flipped))
+    pp = "partial protection"
+    if pp in mechs:
+        g0 = m0[m0.mechanism == pp].groupby("schedule").ttp_baseline_weeks.mean()
+        g1 = m1[m1.mechanism == pp].groupby("schedule").ttp_baseline_weeks.mean()
+        cont, inter = "continuous", "intermittent (S1320)"
+        keep = (g1[cont] > g1[inter]) == (g0[cont] > g0[inter])
+        put("cyc8_trial", ("still" if keep else "no longer") +
+            f" favours continuous dosing under partial protection ({g1[cont]:.0f} against {g1[inter]:.0f} weeks, "
+            f"from {g0[cont]:.0f} and {g0[inter]:.0f})")
+
+    put("cycle_case_result",
+        f"Population decay still rises with dose ({V.get('cyc4_decay', '')}) and the mean time to death stays "
+        f"nearly dose-invariant ({V.get('cyc4_dtime', '')}), so neither signature depends on a cycle-blind hazard. "
+        f"Sisters share a birth time and so a cycle phase, which lets a gated hazard correlate their fates with no "
+        f"inherited state; it {V.get('cyc4_confound_word', '')} do so to any useful degree, lifting the sister "
+        f"concordance of the memoryless fast-switching control only to {V.get('cyc4_fast_g', '')} above "
+        f"independence (from {V.get('cyc4_fast_b', '')}), against {V.get('cyc4_mem_g', '')} for the memory gene, "
+        f"so the kin signature still reads expression memory rather than the cycle. The schedule conclusions are "
+        f"the fragile ones, because {V.get('cyc4_sched', '')}")
+    put("cycle_case_note",
+        f"Population decay still rises with dose ({V.get('cyc4_decay', '')}), at roughly half the rate, and the "
+        f"mean time to death of killed cells stays nearly dose-invariant ({V.get('cyc4_dtime', '')}), so the "
+        f"dose-dependence of decay alongside dose-invariant single-cell timing is not an artefact of a cycle-blind "
+        f"hazard. The kin correlations deserve more care, because sisters are born together and therefore occupy "
+        f"the same phase of the cycle: a gated hazard can in principle correlate their fates with no heritable "
+        f"expression state at all. It {V.get('cyc4_confound_word', '')}: in the fast-switching control, which has "
+        f"no usable memory, the sister concordance above independence rises only from {V.get('cyc4_fast_b', '')} "
+        f"to {V.get('cyc4_fast_g', '')}, while the memory gene sits at {V.get('cyc4_mem_g', '')}, "
+        f"{V.get('cyc4_ratio', '')} larger. What the "
+        f"gate does change is the schedule scan: {V.get('cyc4_sched', '')}. In the melanoma study the best "
+        f"schedule is unchanged in {V.get('cyc8_same', '')} mechanisms and the model {V.get('cyc8_trial', '')}; "
+        f"the full ordering of the three schedules survives in {V.get('cyc8_full', '')} mechanisms "
+        f"({V.get('cyc8_flipped', '')}).")
+    put("cycle_mel_result",
+        f"the best schedule is unchanged in {V.get('cyc8_same', '')} mechanisms and the model "
+        f"{V.get('cyc8_trial', '')}")
+
+@safe
 def f8():
     d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"]).mean(numeric_only=True)
     for mech, mtag in (("no fitness cost", "nocost"), ("fitness cost", "cost"), ("partial protection", "partial")):
@@ -272,7 +373,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
-for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8): f()
+for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f4c): f()
 fsupp()
 
 def fill(template, target):
