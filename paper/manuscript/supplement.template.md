@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: ""
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–14, Supplementary Figures 1–6 and Supplementary Tables 1–4.
+**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–15, Supplementary Figures 1–6 and Supplementary Tables 1–5.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -204,3 +204,7 @@ where $\gamma$ is the decay rate, $\lambda$ the division rate and $\beta_i$ the 
 {{exact_note}}
 
 {{exact_table}}
+
+# Supplementary Note 15: Sensitivity of the melanoma schedules to the memory of the resistant state
+
+{{memory_scan_note}}

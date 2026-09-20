@@ -207,11 +207,17 @@ try:
     mechs = [m for m in dict.fromkeys(mel0.mechanism)]
     scheds = [s for s in dict.fromkeys(mel0.schedule)]
     x = _np.arange(len(mechs)); w = 0.8 / (2 * len(scheds))
+    try:
+        melm = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle_matched.csv"))
+        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.55), (melm, "gated, matched hazard", 0.3))
+    except Exception:
+        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))
+    w = 0.8 / (len(arms) * len(scheds))
     for j, s in enumerate(scheds):
-        for k, (df, lab, alpha) in enumerate(((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))):
+        for k, (df, lab, alpha) in enumerate(arms):
             vals = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.mean() for m in mechs]
             sds = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.std() for m in mechs]
-            off = (j * 2 + k - (2 * len(scheds) - 1) / 2) * w
+            off = (j * len(arms) + k - (len(arms) * len(scheds) - 1) / 2) * w
             ax.bar(x + off, vals, yerr=sds, width=w, color=C[j], alpha=alpha, capsize=1.2,
                    label=(s if k == 0 else None))
     cens = mel0.ttp_baseline_weeks.max()
@@ -220,8 +226,8 @@ try:
     ax.set_xticks(x); ax.set_xticklabels(["no fitness cost", "fitness cost", "partial protection"], fontsize=6.5)
     ax.set_ylabel("weeks to loss of control")
     h, l = ax.get_legend_handles_labels()
-    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for a in (1.0, 0.45)]; l += ["cycle-blind", "cycle-gated"]
-    ax.legend(h, l, fontsize=6, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
+    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for _, _, a in arms]; l += [lab for _, lab, _ in arms]
+    ax.legend(h, l, fontsize=5.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
     ax.set_title("c   melanoma schedule ranking", loc="left", fontweight="semibold", color="#2a2a28")
     save(fig, "figS5_cycle_robustness")
 except Exception as e:

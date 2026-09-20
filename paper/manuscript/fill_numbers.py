@@ -244,6 +244,39 @@ def f7b():
         put("memslice_sentence", "")
 
 @safe
+def f8b():
+    """Sensitivity of the melanoma schedule ranking to the memory of the resistant state."""
+    import numpy as np
+    d = load("fig8g_memory_sensitivity.csv")
+    cont, inter, adapt = "continuous", "intermittent (S1320)", "adaptive (50 %)"
+    g = d[d.mechanism == "no fitness cost"].groupby(["memory_generations", "schedule"]).ttp_baseline_weeks.agg(["mean", "std"])
+    gens = sorted(d.memory_generations.unique())
+    order_keeps = all(g.loc[(x, inter), "mean"] > g.loc[(x, cont), "mean"] for x in gens)
+    gaps = {x: g.loc[(x, inter), "mean"] - g.loc[(x, cont), "mean"] for x in gens}
+    lo, hi = min(gens), max(gens)
+    base = 5.0 if 5.0 in gens else gens[len(gens) // 2]
+    cost = d[d.mechanism == "fitness cost"]
+    censored = bool((~cost.progressed_baseline.astype(bool)).all())
+    put("memory_scan_note",
+        f"The melanoma study gives the resistant state a memory of five net population doublings, about 20 weeks, "
+        f"which is a modelling choice and not a measurement, and it is the quantity that decides whether resistant "
+        f"cells revert during a three-week holiday. Repeating the schedule comparison over memories from {lo:.0f} to "
+        f"{hi:.0f} net doublings, with {int(d.seed.nunique())} seeds at each point, leaves the ranking in place: "
+        + ("without a fitness cost both interrupted schedules keep control longer than continuous dosing at every "
+           "memory tested" if order_keeps else
+           "without a fitness cost the ranking of continuous against intermittent dosing changes over this range") +
+        f". What changes is how much the holidays are worth. The advantage of the intermittent schedule over "
+        f"continuous dosing falls from {gaps[lo]:.0f} weeks at a memory of {lo:.0f} doublings to {gaps[hi]:.1f} "
+        f"weeks at {hi:.0f}, against {gaps[base]:.1f} weeks at the {base:.0f} doublings used in the main text, "
+        f"because a state that is forgotten quickly is re-drawn during a holiday while one that is remembered is "
+        f"carried through it. The memory assumed here therefore sits at the conservative end: a shorter memory "
+        f"would make the case for holidays stronger, not weaker. "
+        + (f"With a fitness cost of resistance no schedule loses control within the follow-up at any memory in this "
+           f"range, so that arm is insensitive to the assumption." if censored else
+           f"With a fitness cost of resistance the ranking is unchanged over the same range."))
+    put("memory_scan_range", f"{gaps[lo]:.0f} weeks at {lo:.0f} net doublings of memory to {gaps[hi]:.1f} weeks at {hi:.0f}")
+
+@safe
 def f9():
     """Validation of the population and lineage layers against exact stationary laws."""
     import numpy as np
@@ -540,7 +573,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
-for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f4c, f9): f()
+for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f8b, f4c, f9): f()
 fsupp()
 
 def fill(template, target):

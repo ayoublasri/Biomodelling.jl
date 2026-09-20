@@ -8,6 +8,21 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- `MotherMachine` population control: at every division one daughter is kept at
+  random and the other discarded, so `N0` founders give `N0` independent
+  single-lineage traces. With it, the single-lineage and population-snapshot
+  distributions can be generated from the same model and compared.
+- `AgeTimer` accepts gamma-distributed interdivision times (`dist = :gamma`),
+  covering the Erlang family of the exactly solvable population models and, at
+  `cv = 1`, the memoryless timer.
+- `simulate_population` accepts `age0`, the founders' ages.
+- Validation of the population and lineage layers against the exact stationary
+  solutions that exist for this model class (Beentjes, Perez-Carrasco & Grima
+  2020; Jia & Grima 2023), in both lineage and snapshot modes, for constitutive,
+  bursty, telegraph and volume-scaled-with-replication kinetics
+  (`paper/scripts/fig9_validation.jl` and `paper/scripts/exact_solutions.py`,
+  reported as Supplementary Note 14). The closed-form lineage and population
+  means and variances are checked on every run of the test suite.
 - `CycleSensitivity`: cell-cycle dependence of the drug death hazard, for agents
   whose lesions are converted into death during replication. The hazard is scaled by
   `baseline + (1 - baseline)·exp(-((φ - center)/width)²/2)` at cycle progress `φ`.
@@ -73,6 +88,15 @@ and `docs/src/migration.md` for the migration guide.
 
 ### Changed
 - Minimum Julia version is 1.10.
+- Manuscript revised in response to peer review: the memory-disruption
+  prediction is reconciled with the two published pretreatment experiments that
+  bear on it, the temozolomide consumption claim is softened against the
+  measured depletion time-courses, an explicit limitation is added for the kin
+  correlations that independent cycle noise cannot generate, the capability
+  table and the novelty claim are corrected, and every reported error metric is
+  given one definition. The cell-cycle gate comparison gains an arm at matched
+  cycle-averaged mean hazard, the schedule scans gain replicate seeds, and the
+  melanoma memory assumption gains a sensitivity scan.
 - Continuous integration moved from Travis CI to GitHub Actions.
 - Manuscript revised after a multi-dimension review (citations, numbers, biology,
   figures, methods-vs-code, prose): corrected the Fig. 3c heritability description,
