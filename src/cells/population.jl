@@ -26,6 +26,17 @@ end
 FreeGrowth(; max_cells::Integer=100_000) = FreeGrowth(Int(max_cells))
 
 """
+    MotherMachine()
+
+Single-lineage ("mother machine") sampling: at every division one daughter is
+kept uniformly at random and the other is discarded. `N0` founders therefore
+give `N0` statistically independent lineages, and the recorded cells follow the
+single-lineage distribution rather than the population snapshot distribution
+(the two differ whenever division is size- or age-structured).
+"""
+struct MotherMachine <: PopulationControl end
+
+"""
     LogisticGrowth(K; max_cells=100_000)
 
 Free growth with an additional death hazard `λ N / K` (carrying capacity `K`).
@@ -184,7 +195,8 @@ end
 
 """
     simulate_population(model, x0, N0, tspan; settings=PopulationSettings(), p=model.p0,
-                        perturbation=nothing, rng=Random.default_rng(), V0=nothing) -> PopulationResult
+                        perturbation=nothing, rng=Random.default_rng(), V0=nothing,
+                        age0=nothing) -> PopulationResult
 
 Simulate `N0` initial cells from `tspan[1]` to `tspan[2]`; `x0` is either one
 state vector shared by all founders or an `N0 × nspecies` matrix of per-founder
@@ -194,11 +206,17 @@ replicates its genes (optional), divides with partitioning of molecules, and may
 die under a [`Perturbation`](@ref). Every cell carries its own random number
 generator seeded from `rng`, so results are reproducible regardless of the
 number of threads.
+
+`V0` and `age0` give the founders' volumes and ages explicitly. `age0` matters
+for age-based size control, where it sets how far through its first cycle each
+founder starts: the default draws founder ages uniformly, which is the
+single-lineage stationary age distribution, whereas a growing population has an
+age distribution weighted towards younger cells.
 """
 function simulate_population(m::ReactionModel, x0::AbstractVecOrMat{<:Integer}, N0::Integer, tspan::Tuple{<:Real,<:Real};
                              settings::PopulationSettings=PopulationSettings(), p::AbstractVector{<:Real}=m.p0,
                              perturbation::Union{Nothing,Perturbation}=nothing, rng::AbstractRNG=Random.default_rng(),
-                             V0=nothing)
+                             V0=nothing, age0=nothing)
     t0, t1 = float(tspan[1]), float(tspan[2])
     dt = settings.dt
     nsteps = max(1, round(Int, (t1 - t0) / dt))
@@ -230,7 +248,8 @@ function simulate_population(m::ReactionModel, x0::AbstractVecOrMat{<:Integer}, 
         target = sample_target(sc, Vb, crng)
         V = V0 === nothing ? _initial_volume(sc, Vb, target, crng) : Float64(V0[i])
         λ = sample_growth_rate(settings.growth, crng)
-        birth = sc isa AgeTimer ? t0 - rand(crng) * target : t0
+        birth = age0 !== nothing ? t0 - Float64(age0[i]) :
+                sc isa AgeTimer ? t0 - rand(crng) * target : t0
         c = Cell(next_id[] += 1, 0, i, 0, birth, V, Vb, target, 1, false, λ, x, copy(pp), crng, false, true)
         cells[i] = c
         settings.track_lineage && record_birth!(lt, c)
@@ -289,16 +308,25 @@ function simulate_population(m::ReactionModel, x0::AbstractVecOrMat{<:Integer}, 
         end
         # divisions
         newborns = Cell[]
+        mother_machine = settings.control isa MotherMachine
         for i in eachindex(cells)
             c = cells[i]
             if should_divide(sc, c, tn)
                 a, b = divide!(c, m, settings, tn, lt, next_id, base_copies)
-                cells[i] = a
-                push!(newborns, b)
+                if mother_machine
+                    keep, drop = rand(c.rng, Bool) ? (a, b) : (b, a)
+                    cells[i] = keep
+                    settings.track_lineage && record_end!(lt, drop.id, tn, :removed, drop.x, drop.V)
+                else
+                    cells[i] = a
+                    push!(newborns, b)
+                end
             end
         end
         # population control
-        if settings.control isa ConstantN
+        if settings.control isa MotherMachine
+            # every division already kept exactly one daughter
+        elseif settings.control isa ConstantN
             for b in newborns
                 isempty(cells) && break
                 j = rand(rng, 1:length(cells))

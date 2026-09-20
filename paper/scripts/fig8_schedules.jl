@@ -95,15 +95,69 @@ end  # "melanoma"
     # asks whether the ranking survives a hazard of which only a fraction acts outside a window of the cycle.
     if "melanoma_cycle" in parts
         CYC_M = CycleSensitivity(baseline = 0.25, center = 0.5, width = 0.15)
-        rows_y = Any[]
-        for (mtag, eff) in mechanisms, (stag, mk) in schedules, seed in 1:4
-            r = treat_m(mk(), vcat(eff, DrugEffect[CYC_M]); seed = 20 + seed)
-            tb, progb = ttp_baseline(r)
-            push!(rows_y, [mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb, r.popsize[end] / r.popsize[1], cumulative_dose(r) / WEEK])
-            @printf("(cycle) %-18s %-22s seed %d  loss of control %.1f w%s\n", mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb ? "" : "*")
+        # A second arm raises h_max so that the cycle-averaged hazard matches the cycle-blind one
+        # (mean multiplier 0.508 under the realised phase density 2/(1+φ)²), which separates gating
+        # from the reduction in average killing that the gate also produces.
+        death_matched = DeathHazard(h_max = 0.0023 / 0.5083, EC50 = 0.3, m = 2.0, protect = :P, K = 150.0, q = 4.0)
+        cycle_arms = (("gated", death_m, "fig8f_melanoma_cycle.csv"),
+                      ("gated_matched", death_matched, "fig8f_melanoma_cycle_matched.csv"))
+        for (atag, dth, outfile) in cycle_arms
+            rows_y = Any[]
+            for (mtag, eff) in mechanisms, (stag, mk) in schedules, seed in 1:4
+                effc = DrugEffect[e === death_m ? dth : e for e in eff]
+                r = treat_m(mk(), vcat(effc, DrugEffect[CYC_M]); seed = 20 + seed)
+                tb, progb = ttp_baseline(r)
+                push!(rows_y, [mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb, r.popsize[end] / r.popsize[1], cumulative_dose(r) / WEEK])
+                @printf("(cycle %s) %-18s %-22s seed %d  loss of control %.1f w%s\n", atag, mtag, stag, seed, (tb - LEAD_IN) / WEEK, progb ? "" : "*")
+            end
+            save_csv(outfile, ["mechanism", "schedule", "seed", "ttp_baseline_weeks", "progressed_baseline", "N_end_over_N0", "cumulative_dose_weeks"], permutedims(reduce(hcat, rows_y)))
         end
-        save_csv("fig8f_melanoma_cycle.csv", ["mechanism", "schedule", "seed", "ttp_baseline_weeks", "progressed_baseline", "N_end_over_N0", "cumulative_dose_weeks"], permutedims(reduce(hcat, rows_y)))
     end
+end
+
+# ---------------------------------------------------------------- melanoma: sensitivity to the memory of the resistant state
+# The resistant state is given a memory of five net doublings (about 20 weeks), which is an assumption,
+# not a measurement, and it decides whether resistant cells revert during a three-week holiday. This scan
+# repeats the schedule comparison over memories from two to twelve net doublings.
+if "melanoma_memory" in parts
+    const CYCLE_S = 4 * 7 * 24.0
+    const λs = log(2) / CYCLE_S
+    const P_ON_S = 0.005
+    const LEAD_IN_S = 8 * 7 * 24.0; const T_S = 60 * 7 * 24.0
+    const N_S = 2000
+    const SEEDS_S = parse(Int, get(ENV, "PAPER_SEEDS", "3"))
+    burn_s = PopulationSettings(dt = 4.0, growth = ExponentialGrowth(λs), size_control = Sizer(2.0; cv = 0.1), control = ConstantN(), track_lineage = false, record_every = 10_000)
+    st_s = PopulationSettings(dt = 4.0, growth = ExponentialGrowth(λs), size_control = Sizer(2.0; cv = 0.1), control = FreeGrowth(max_cells = 20_000), track_lineage = false, record_every = 24)
+    death_s = DeathHazard(h_max = 0.0023, EC50 = 0.3, m = 2.0, protect = :P, K = 150.0, q = 4.0)
+    arrest_s = GrowthInhibition(IC50 = 0.3, m = 2.0, protect = :P, K = 150.0, q = 4.0)
+    stabilise_s = RateModulation(:k_off, d -> 1 / (1 + 9d))
+    cost_s = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)
+    cont_s = ConstantDose(1.0)
+    s1320_s = let ts = [0.0, LEAD_IN_S]; ds = [1.0, 0.0]; t = LEAD_IN_S
+        while t < T_S
+            t += 3 * 7 * 24.0; push!(ts, t); push!(ds, 1.0); t += 5 * 7 * 24.0; push!(ts, t); push!(ds, 0.0)
+        end
+        PiecewiseDose(ts, ds)
+    end
+    scheds_s = [("continuous", () -> cont_s), ("intermittent (S1320)", () -> s1320_s), ("adaptive (50 %)", () -> AdaptiveDose(1.0; on_above = 1.0, off_below = 0.5))]
+    rows_s = Any[]
+    for gens in (2.0, 3.5, 5.0, 8.0, 12.0)
+        memory = gens * CYCLE_S
+        m = telegraph_model(k_on = P_ON_S / memory, k_off = (1 - P_ON_S) / memory, k_tx = 3.0, k_dm = 0.1, k_tl = 0.4, k_dp = 0.02, gene = :R, mrna = :mRNA, protein = :P)
+        fs = stationary_founders(m, N_S, P_ON_S, burn_s, 11; cycle = CYCLE_S)
+        for (mtag, eff) in (("no fitness cost", DrugEffect[death_s, arrest_s, stabilise_s]),
+                            ("fitness cost", DrugEffect[death_s, arrest_s, stabilise_s, cost_s])),
+            (stag, mk) in scheds_s, seed in 1:SEEDS_S
+            r = simulate_population(m, fs.counts, N_S, (0.0, T_S); settings = st_s, V0 = fs.volume,
+                                    perturbation = Perturbation(mk(); effects = eff), rng = Xoshiro(500 + seed))
+            i = findfirst(k -> r.t[k] >= LEAD_IN_S && r.popsize[k] >= 1.2 * r.popsize[1], eachindex(r.t))
+            tb = i === nothing ? r.t[end] : r.t[i]
+            push!(rows_s, [gens, mtag, stag, seed, (tb - LEAD_IN_S) / (7 * 24.0), i !== nothing,
+                           r.popsize[end] / r.popsize[1], cumulative_dose(r) / (7 * 24.0)])
+            @printf("(memory) %4.1f generations  %-18s %-22s seed %d  loss of control %.1f w%s\n", gens, mtag, stag, seed, (tb - LEAD_IN_S) / (7 * 24.0), i === nothing ? "*" : "")
+        end
+    end
+    save_csv("fig8g_memory_sensitivity.csv", ["memory_generations", "mechanism", "schedule", "seed", "ttp_baseline_weeks", "progressed_baseline", "N_end_over_N0", "cumulative_dose_weeks"], permutedims(reduce(hcat, rows_s)))
 end
 
 # ---------------------------------------------------------------- glioblastoma / temozolomide (N15-0385-like; RTOG 0525)

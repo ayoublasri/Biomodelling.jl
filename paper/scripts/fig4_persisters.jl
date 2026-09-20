@@ -2,6 +2,7 @@
 # Usage: julia fig4_persisters.jl [a] [b] [d] [e] [f] [g] [h]   (default: all panels; b also produces c)
 include(joinpath(@__DIR__, "common.jl"))
 const parts = isempty(ARGS) ? ["a", "b", "d", "e", "f", "g", "h"] : ARGS
+const SEEDS = parse(Int, get(ENV, "PAPER_SEEDS", "5"))     # replicate seeds for the schedule scans
 
 const λ = log(2) / 20
 const T_DRUG = 40.0          # drug start in the treatment stage (after a burn-in of the founder population)
@@ -190,6 +191,24 @@ end
 save_csv("fig4h_mgmt.csv", ["model", "t", "dose", "popsize", "mean_P_concentration", "high_fraction"], permutedims(reduce(hcat, rows)))
 end
 
+# Replicate seeds for the schedule scan of panel f: the differences between the best schedules are
+# small, so the scan is repeated to show how much of the ranking is reproducible.
+if "seeds" in parts
+cost = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)
+rows = Any[]
+for (tag, m, extra) in (("pre_existing", mem, DrugEffect[]), ("pre_existing_cost", mem, DrugEffect[cost]), ("drug_induced", induced, DrugEffect[induction]))
+    for off in (0.0, 5.0, 10.0, 20.0, 40.0), d in (0.25, 0.5, 1.0, 2.0), seed in 1:SEEDS
+        sched = off == 0 ? from(T_DRUG, d) : PulsedDose(d; on = 20.0, off = off, start = T_DRUG)
+        r = treat(m, Perturbation(sched; effects = vcat([death()], extra)); seed = 400 + seed, N = 300, T = 240.0, N_max = 6000, record_every = 50)
+        i0 = argmin(abs.(r.t .- T_DRUG))
+        fitness = (log(max(r.popsize[end], 1e-9)) - log(r.popsize[i0])) / (240 - T_DRUG)
+        push!(rows, [tag, off, d, seed, fitness, mean(r.dose[i0:end]), r.popsize[end]])
+    end
+    println("(seeds) schedule scan done: ", tag)
+end
+save_csv("fig4f_schedules_seeds.csv", ["model", "release_period", "dose", "seed", "long_term_growth_rate", "mean_exposure", "final_popsize"], permutedims(reduce(hcat, rows)))
+end
+
 println("fig4 done")
 
 if "cycle" in parts
@@ -199,41 +218,57 @@ if "cycle" in parts
 # Sisters are born together and so occupy the same phase, which makes this a test of whether cycle gating can
 # manufacture the kin fate correlations of panel d without any heritable expression state.
 CYC = CycleSensitivity(baseline = 0.25, center = 0.5, width = 0.15)
-rows_c = Any[]; rows_d = Any[]; rows_f = Any[]
+# The gate does two things at once: it makes the hazard depend on cycle phase, and it lowers the
+# hazard on average. Averaged over a uniform cycle phase the multiplier is 0.532; the phase density
+# realised here is f(φ) = 2/(1+φ)² (a sizer with exponential growth, in a growing population), which
+# gives 0.508. A second arm therefore raises h_max by 1/0.508 so that the cycle-averaged hazard
+# matches the cycle-blind one, separating gating from a simple reduction in average killing.
+const CYC_MEAN_PHASE = 0.5318
+const CYC_MEAN_REALISED = 0.5083
+const H_MATCHED = 0.15 / CYC_MEAN_REALISED
+arms = (("gated", "fig4i_cycle_decay.csv", "fig4i_cycle_concordance.csv", death()),
+        ("gated_matched", "fig4i_cycle_matched.csv", "fig4i_cycle_matched_concordance.csv", death(h_max = H_MATCHED)))
+for (atag, decay_file, conc_file, dth) in arms
+rows_c = Any[]; rows_d = Any[]
 for d in (0.0, 0.25, 0.5, 1.0, 2.0)
-    r = treat(mem, Perturbation(from(T_DRUG, d); effects = [death(), CYC]); seed = 2, T = 140.0)
+    r = treat(mem, Perturbation(from(T_DRUG, d); effects = [dth, CYC]); seed = 2, T = 140.0)
     i0 = argmin(abs.(r.t .- T_DRUG)); i30 = argmin(abs.(r.t .- (T_DRUG + 30)))
     decay = -(log(r.popsize[i30]) - log(r.popsize[i0])) / 30
     lt = r.lineage
     div = [lt.end_time[i] - lt.birth_time[i] for i in eachindex(lt.id) if lt.fate[i] == :divided && lt.birth_time[i] >= T_DRUG]
     dead = [lt.end_time[i] - max(lt.birth_time[i], T_DRUG) for i in eachindex(lt.id) if lt.fate[i] == :died]
     push!(rows_c, [d, decay, length(div), isempty(div) ? NaN : mean(div), length(dead), isempty(dead) ? NaN : mean(dead)])
-    @printf("(cycle) dose %.2f decay %.4f  division %.2f (n=%d)  death %.2f (n=%d)\n", d, decay,
+    @printf("(cycle %s) dose %.2f decay %.4f  division %.2f (n=%d)  death %.2f (n=%d)\n", atag, d, decay,
             isempty(div) ? NaN : mean(div), length(div), isempty(dead) ? NaN : mean(dead), length(dead))
 end
-save_csv("fig4i_cycle_decay.csv", ["dose", "decay_rate", "n_divisions", "division_time_mean", "n_deaths", "death_time_mean"], permutedims(reduce(hcat, rows_c)))
+save_csv(decay_file, ["dose", "decay_rate", "n_divisions", "division_time_mean", "n_deaths", "death_time_mean"], permutedims(reduce(hcat, rows_c)))
 
 for (tag, m) in (("memory", mem), ("fast", fast))
-    r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [death(), CYC]); seed = 3, T = 100.0, N = 800, record_every = 100)
+    r = treat(m, Perturbation(from(T_DRUG, 1.0); effects = [dth, CYC]); seed = 3, T = 100.0, N = 800, record_every = 100)
     lt = r.lineage; surv = lineage_survival(lt, r.ids[end])
     for (rel, pairs) in (("sisters", sister_pairs(lt)), ("cousins", Biomodelling.cousin_pairs(lt)))
         fc = fate_concordance(lt, pairs, T_DRUG - 25.0, T_DRUG, surv)
         push!(rows_d, [tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction])
-        @printf("(cycle) %-6s %-8s concordance %.3f expected %.3f (n=%d, death fraction %.2f)\n", tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction)
+        @printf("(cycle %s) %-6s %-8s concordance %.3f expected %.3f (n=%d, death fraction %.2f)\n", atag, tag, rel, fc.concordance, fc.expected, fc.n, fc.death_fraction)
     end
 end
-save_csv("fig4i_cycle_concordance.csv", ["model", "relation", "concordance", "expected_independent", "n_pairs", "death_fraction"], permutedims(reduce(hcat, rows_d)))
+save_csv(conc_file, ["model", "relation", "concordance", "expected_independent", "n_pairs", "death_fraction"], permutedims(reduce(hcat, rows_d)))
+end  # arms
+save_kv("fig4i_cycle_matching.csv", ["baseline" => 0.25, "center" => 0.5, "width" => 0.15,
+        "mean_multiplier_uniform_phase" => CYC_MEAN_PHASE, "mean_multiplier_realised" => CYC_MEAN_REALISED,
+        "h_max_blind" => 0.15, "h_max_matched" => H_MATCHED])
 
+rows_f = Any[]
 cost_c = GrowthCost(:P; K = 150.0, q = 4.0, max_cost = 0.5)
 for (tag, m, extra) in (("pre_existing", mem, DrugEffect[]), ("pre_existing_cost", mem, DrugEffect[cost_c]), ("drug_induced", induced, DrugEffect[induction]))
-    for off in (0.0, 5.0, 10.0, 20.0, 40.0), d in (0.25, 0.5, 1.0, 2.0)
+    for off in (0.0, 5.0, 10.0, 20.0, 40.0), d in (0.25, 0.5, 1.0, 2.0), seed in 1:SEEDS
         sched = off == 0 ? from(T_DRUG, d) : PulsedDose(d; on = 20.0, off = off, start = T_DRUG)
-        r = treat(m, Perturbation(sched; effects = vcat([death(), CYC], extra)); seed = 4, N = 300, T = 240.0, N_max = 6000, record_every = 50)
+        r = treat(m, Perturbation(sched; effects = vcat([death(), CYC], extra)); seed = 400 + seed, N = 300, T = 240.0, N_max = 6000, record_every = 50)
         i0 = argmin(abs.(r.t .- T_DRUG))
         fitness = (log(max(r.popsize[end], 1e-9)) - log(r.popsize[i0])) / (240 - T_DRUG)
-        push!(rows_f, [tag, off, d, fitness, r.popsize[end]])
+        push!(rows_f, [tag, off, d, seed, fitness, r.popsize[end]])
     end
     println("(cycle) schedule scan done: ", tag)
 end
-save_csv("fig4i_cycle_schedules.csv", ["model", "release_period", "dose", "long_term_growth_rate", "final_popsize"], permutedims(reduce(hcat, rows_f)))
+save_csv("fig4i_cycle_schedules.csv", ["model", "release_period", "dose", "seed", "long_term_growth_rate", "final_popsize"], permutedims(reduce(hcat, rows_f)))
 end

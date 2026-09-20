@@ -24,15 +24,25 @@ end
 Adder(Δ::Real; cv::Real=0.0) = Adder(Float64(Δ), Float64(cv))
 
 """
-    AgeTimer(T; cv=0.0)
+    AgeTimer(T; cv=0.0, dist=:normal)
 
-Divide at age `T` (times noise), independent of size.
+Divide at age `T`, independent of size. With `cv > 0` each newborn draws its own
+interdivision time with mean `T` and coefficient of variation `cv`, from a normal
+(`dist = :normal`, the default, truncated below at `0.05 T`) or a gamma
+(`dist = :gamma`) distribution. The gamma family covers the Erlang interdivision
+times of the exactly solvable population models (shape `1/cv^2`), and `cv = 1`
+gives the memoryless exponential timer.
 """
 struct AgeTimer <: SizeControl
     T::Float64
     cv::Float64
+    dist::Symbol
+    function AgeTimer(T::Real, cv::Real, dist::Symbol=:normal)
+        dist in (:normal, :gamma) || throw(ArgumentError("dist must be :normal or :gamma"))
+        new(Float64(T), Float64(cv), dist)
+    end
 end
-AgeTimer(T::Real; cv::Real=0.0) = AgeTimer(Float64(T), Float64(cv))
+AgeTimer(T::Real; cv::Real=0.0, dist::Symbol=:normal) = AgeTimer(Float64(T), Float64(cv), dist)
 
 """
     Replication(fraction)
@@ -52,7 +62,11 @@ _noisy(v::Float64, cv::Float64, rng::AbstractRNG) = cv > 0 ? v * max(0.05, 1.0 +
 
 sample_target(sc::Sizer, Vb::Float64, rng::AbstractRNG) = _noisy(sc.V_div, sc.cv, rng)
 sample_target(sc::Adder, Vb::Float64, rng::AbstractRNG) = Vb + _noisy(sc.Δ, sc.cv, rng)
-sample_target(sc::AgeTimer, Vb::Float64, rng::AbstractRNG) = _noisy(sc.T, sc.cv, rng)
+function sample_target(sc::AgeTimer, Vb::Float64, rng::AbstractRNG)
+    (sc.cv > 0 && sc.dist === :gamma) || return _noisy(sc.T, sc.cv, rng)
+    k = 1 / sc.cv^2
+    k == 1 ? sc.T * randexp(rng) : rand(rng, Gamma(k, sc.T / k))
+end
 
 @inline should_divide(::Union{Sizer,Adder}, c::Cell, t::Float64) = c.V >= c.div_target
 @inline should_divide(::AgeTimer, c::Cell, t::Float64) = (t - c.birth_time) >= c.div_target
