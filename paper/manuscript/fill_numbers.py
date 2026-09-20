@@ -187,6 +187,59 @@ def f7b():
         put("memslice_sentence", "")
 
 @safe
+def f7c():
+    """Cell-cycle-dependent killing tested against heritable expression."""
+    import numpy as np
+    fit = load("fig7j_cycle_fit.csv").set_index("key").value
+    prof = load("fig7j_cycle_profile.csv")
+    fat = load("fig7j_cycle_fates.csv")
+    o = pd.read_csv(os.path.join(HERE, "..", "data", "iyer2025_u2os_fates.csv"))
+    ses, ov = [], {}
+    for _, r in o.iterrows():
+        n = r["cells_at_drug"]
+        for k, lab in (("died", "died"), ("divided", "divided"), ("survived_without_dividing", "survived")):
+            q = r[k] / n; ses.append(np.sqrt(q * (1 - q) / n)); ov[(float(r["cisplatin_uM"]), lab)] = q
+    se = float(np.mean(ses))
+    rf, rc = float(fit["rmse_flat"]), float(fit["rmse_cycle"])
+    beta = float(fit["cycle_baseline"])
+    held = 10.0
+    def held_rmse(tag):
+        g = fat[(fat.model == tag) & (fat.cisplatin_uM == held)][["died", "divided", "survived"]].mean()
+        return float(np.sqrt(np.mean([(g[l] - ov[(held, l)]) ** 2 for l in ("died", "divided", "survived")])))
+    hf, hc = held_rmse("cycle-independent"), held_rmse("cycle-dependent")
+    ok = prof[prof.rmse <= prof.rmse.min() + se]
+    span = f"{ok.cycle_baseline.min():.2f} to {ok.cycle_baseline.max():.2f}"
+    put("cyc_beta", f"{beta:.2f}"); put("cyc_span", span)
+    put("cyc_rmse_flat", f"{rf:.3f}"); put("cyc_rmse_cycle", f"{rc:.3f}")
+    put("cyc_held_flat", f"{hf:.3f}"); put("cyc_held_cycle", f"{hc:.3f}")
+    # the verdict follows the numbers rather than the other way round
+    diff = rf - rc                       # positive when the cycle-dependent fit is the better one
+    if abs(diff) < 0.3 * se:
+        head = (f"The two fits describe the training fractions equally well ({rc:.3f} against {rf:.3f}, "
+                f"against a mean sampling error of {se:.3f} in the measurement)")
+    elif diff > 0:
+        head = f"The cycle-dependent fit describes the training fractions better ({rc:.3f} against {rf:.3f})"
+    else:
+        head = f"The cycle-dependent fit describes the training fractions no better ({rc:.3f} against {rf:.3f})"
+    if hc < hf - 0.3 * se:
+        tail = f"and the cycle-dependent fit predicts the held-out concentration better ({hc:.3f} against {hf:.3f})"
+    elif hc > hf + 0.3 * se:
+        tail = f"and the cycle-dependent fit does not improve the held-out prediction either ({hc:.3f} against {hf:.3f})"
+    else:
+        tail = f"and the two predict the held-out concentration about equally ({hc:.3f} against {hf:.3f})"
+    put("cycle_result",
+        f"{head}, {tail}. The fitted cycle-independent fraction is {beta:.2f}, but values from {span} all sit "
+        f"within one sampling error of the best fit, so the fate fractions do not determine it")
+    put("cycle_note",
+        f"Refitting under the same objective, bounds and optimiser budget gives a cycle-independent fraction of "
+        f"{beta:.2f} and a root-mean-square error of {rc:.3f} on the training fractions, against {rf:.3f} for the "
+        f"cycle-independent model; at the held-out concentration the errors are {hc:.3f} and {hf:.3f}. The profile "
+        f"over that fraction is flat: every value from {span} lies within one binomial standard error of the "
+        f"measurement ({se:.3f}) of the best fit (Supplementary Fig. 4a). Three fate counts per concentration "
+        f"therefore cannot say whether cells are spared because they inherited a protective state or because they "
+        f"were outside the replication window, and the parameters of either fit should be read with that in mind.")
+
+@safe
 def f8():
     d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"]).mean(numeric_only=True)
     for mech, mtag in (("no fitness cost", "nocost"), ("fitness cost", "cost"), ("partial protection", "partial")):
@@ -219,7 +272,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
-for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f8): f()
+for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8): f()
 fsupp()
 
 def fill(template, target):

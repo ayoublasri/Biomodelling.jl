@@ -55,4 +55,39 @@ end
     cost = Perturbation(; effects = [GrowthCost(:protein; K = 10.0, q = 4.0, max_cost = 0.9)])
     r1 = simulate_population(tm, sn.counts, 200, (0.0, 30.0); settings = st, V0 = sn.volume, perturbation = cost, rng = Xoshiro(2))
     @test r1.popsize[end] < 0.8 * r0.popsize[end]
+
+    # cell-cycle-dependent killing: the hazard peaks at `center` and is damped elsewhere
+    dh = DeathHazard(h_max = 0.3, EC50 = 1.0, m = 1.0)
+    cflat = Biomodelling.compile(Perturbation(ConstantDose(1.0); effects = [dh, CycleSensitivity(baseline = 1.0)]), tm)
+    cwin = Biomodelling.compile(Perturbation(ConstantDose(1.0); effects = [dh, CycleSensitivity(baseline = 0.0, center = 0.5, width = 0.1)]), tm)
+    @test Biomodelling.cycle_multiplier(cflat, 0.1) ≈ 1.0
+    @test Biomodelling.cycle_multiplier(cwin, 0.5) ≈ 1.0
+    @test Biomodelling.cycle_multiplier(cwin, 0.9) < 0.01
+    st_c = PopulationSettings(dt = 0.05, growth = ExponentialGrowth(log(2) / 20), size_control = Sizer(2.0),
+                              control = FreeGrowth(max_cells = 5000), threads = false)
+    r_flat = simulate_population(tm, x0, 300, (0.0, 30.0); settings = st_c, rng = Xoshiro(11),
+                                 perturbation = Perturbation(ConstantDose(1.0); effects = [dh]))
+    r_cyc = simulate_population(tm, x0, 300, (0.0, 30.0); settings = st_c, rng = Xoshiro(11),
+                                perturbation = Perturbation(ConstantDose(1.0); effects = [dh, CycleSensitivity(baseline = 0.0, center = 0.5, width = 0.1)]))
+    @test count(==(:died), r_cyc.lineage.fate) < count(==(:died), r_flat.lineage.fate)
+    @test r_cyc.popsize[end] > r_flat.popsize[end]
+
+    # suicide consumption: depletion follows the cumulative exposure, not the peak dose
+    inert = telegraph_model(k_on = 0.0, k_off = 0.0, k_tx = 0.0, k_dm = 0.0, k_tl = 0.0, k_dp = 0.0)
+    xi = initial_state(inert; G_off = 1, protein = 500)
+    st_i = PopulationSettings(dt = 0.05, growth = ExponentialGrowth(0.0), size_control = AgeTimer(1e9),
+                              control = FreeGrowth(), threads = false)
+    eat = [SuicideConsumption(:protein; k = 20.0, K_m = 1.0)]
+    ip = speciesindex(inert, :protein)
+    prot(r) = mean(final_snapshot(r).counts[:, ip])
+    # both schedules deliver the same integral of dose over [0, 20]; the pulsed one has four times the peak
+    r_low = simulate_population(inert, xi, 200, (0.0, 20.0); settings = st_i, rng = Xoshiro(7),
+                                perturbation = Perturbation(ConstantDose(0.5); effects = eat))
+    r_hi = simulate_population(inert, xi, 200, (0.0, 20.0); settings = st_i, rng = Xoshiro(7),
+                               perturbation = Perturbation(PulsedDose(2.0; on = 2.5, off = 7.5); effects = eat))
+    r_no = simulate_population(inert, xi, 200, (0.0, 20.0); settings = st_i, rng = Xoshiro(7))
+    @test prot(r_no) == 500
+    @test prot(r_low) < 400 && prot(r_hi) < 400
+    @test abs(prot(r_low) - prot(r_hi)) < 0.1 * (500 - prot(r_low))
+    @test minimum(final_snapshot(r_low).counts[:, ip]) >= 0
 end

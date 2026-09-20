@@ -60,6 +60,54 @@ GrowthCost(species::Symbol; K, q=2.0, max_cost=0.5, concentration=true) =
     GrowthCost(species, Float64(K), Float64(q), Float64(max_cost), concentration)
 
 """
+    CycleSensitivity(; baseline=0.0, center=0.5, width=0.15)
+
+Cell-cycle dependence of the drug death hazard. The hazard of every
+[`DeathHazard`](@ref) is multiplied by
+
+    baseline + (1 - baseline) exp(-((φ - center)/width)^2 / 2),
+
+where `φ` is the cell's progress through its division cycle (0 at birth, 1 at
+division). The peak hazard is `h_max` at `φ = center` and falls to
+`baseline · h_max` away from it, so `baseline = 1` recovers a cycle-independent
+hazard and `baseline = 0` confines killing to a window around `center`. Setting
+`center` to the replication set point represents an agent whose lesions are
+converted into death during replication, such as a platinum drug.
+"""
+struct CycleSensitivity <: DrugEffect
+    baseline::Float64
+    center::Float64
+    width::Float64
+end
+CycleSensitivity(; baseline=0.0, center=0.5, width=0.15) =
+    CycleSensitivity(Float64(baseline), Float64(center), Float64(width))
+
+"""
+    SuicideConsumption(species; k, K_m=1.0)
+
+Stoichiometric consumption of a protective protein by the drug, as for a
+suicide enzyme such as MGMT, which is inactivated by the very lesion it
+repairs. Lesions form at a rate proportional to the dose, so molecules of
+`species` are removed at rate
+
+    k · d · V · c / (c + K_m),
+
+with dose `d`, volume `V` and protein concentration `c`. While the protein is
+abundant the rate is set by lesion formation alone, so depletion follows the
+*cumulative* exposure rather than the peak concentration; once the pool runs
+low the rate falls with what remains. Resynthesis is whatever the reaction
+model provides. This differs from scaling a first-order degradation rate by the
+dose, which makes depletion track the peak concentration instead.
+"""
+struct SuicideConsumption <: DrugEffect
+    species::Symbol
+    k::Float64
+    K_m::Float64
+end
+SuicideConsumption(species::Symbol; k, K_m=1.0) =
+    SuicideConsumption(species, Float64(k), Float64(K_m))
+
+"""
     RateModulation(param, f)
 
 Multiplies the model parameter `param` by `f(d)` at dose `d` (e.g. drug-induced
@@ -118,6 +166,12 @@ end
 struct GrowthInhibitionC
     IC50::Float64; m::Float64; protect::Int; K::Float64; q::Float64; conc::Bool
 end
+struct CycleSensitivityC
+    baseline::Float64; center::Float64; width::Float64
+end
+struct SuicideConsumptionC
+    idx::Int; k::Float64; K_m::Float64
+end
 struct CompiledPerturbation
     schedule::DoseSchedule
     deaths::Vector{DeathHazardC}
@@ -125,12 +179,19 @@ struct CompiledPerturbation
     rates::Vector{RateModulationC}
     genes::Vector{GenePerturbationC}
     costs::Vector{GrowthCostC}
+    cycle::Vector{CycleSensitivityC}
+    consume::Vector{SuicideConsumptionC}
 end
 
 function compile(pt::Perturbation, m::ReactionModel)
     deaths = DeathHazardC[]; growth = GrowthInhibitionC[]; rates = RateModulationC[]; costs = GrowthCostC[]
+    cycle = CycleSensitivityC[]; consume = SuicideConsumptionC[]
     for e in pt.effects
-        if e isa DeathHazard
+        if e isa CycleSensitivity
+            push!(cycle, CycleSensitivityC(e.baseline, e.center, e.width))
+        elseif e isa SuicideConsumption
+            push!(consume, SuicideConsumptionC(speciesindex(m, e.species), e.k, e.K_m))
+        elseif e isa DeathHazard
             push!(deaths, DeathHazardC(e.h_max, e.EC50, e.m, e.protect === nothing ? 0 : speciesindex(m, e.protect), e.K, e.q, e.concentration))
         elseif e isa GrowthInhibition
             push!(growth, GrowthInhibitionC(e.IC50, e.m, e.protect === nothing ? 0 : speciesindex(m, e.protect), e.K, e.q, e.concentration))
@@ -141,7 +202,43 @@ function compile(pt::Perturbation, m::ReactionModel)
         end
     end
     genes = [GenePerturbationC(paramindex(m, g.param), g.factor, g.fraction, g.t_start, g.t_end) for g in pt.gene_perturbations]
-    CompiledPerturbation(pt.schedule, deaths, growth, rates, genes, costs)
+    CompiledPerturbation(pt.schedule, deaths, growth, rates, genes, costs, cycle, consume)
+end
+
+"""
+    cycle_multiplier(cp, phi) -> Float64
+
+Factor by which the drug death hazard is scaled for a cell at cycle progress
+`phi`; `1.0` when no [`CycleSensitivity`](@ref) is in force.
+"""
+@inline function cycle_multiplier(cp::CompiledPerturbation, phi::Float64)
+    isempty(cp.cycle) && return 1.0
+    mult = 1.0
+    for cs in cp.cycle
+        z = (phi - cs.center) / cs.width
+        mult *= cs.baseline + (1.0 - cs.baseline) * exp(-0.5 * z * z)
+    end
+    mult
+end
+
+"""
+    apply_consumption!(cell, compiled_perturbation, d, dt)
+
+Remove molecules of every species under [`SuicideConsumption`](@ref), one per
+lesion repaired over the step, by a Poisson draw at the current dose.
+"""
+function apply_consumption!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, d::Float64, dt::Float64)
+    (cp === nothing || d <= 0.0 || dt <= 0.0) && return nothing
+    for sc in cp.consume
+        M = c.x[sc.idx]
+        M <= 0 && continue
+        conc = M / c.V
+        rate = sc.k * d * c.V * conc / (conc + sc.K_m)
+        rate > 0.0 || continue
+        n = pois_rand(c.rng, rate * dt)
+        c.x[sc.idx] = max(0, M - n)
+    end
+    nothing
 end
 
 @inline function hazard(e::DeathHazardC, d::Float64, x::AbstractVector{Int}, V::Float64)
@@ -157,12 +254,14 @@ end
 end
 
 """
-    apply_effects!(cell, compiled_perturbation, p, d, t) -> (growth_multiplier, death_hazard)
+    apply_effects!(cell, compiled_perturbation, p, d, t, phi=0.5) -> (growth_multiplier, death_hazard)
 
 Reset the cell's parameter vector to `p` and apply rate modulations and gene
 perturbations; return the growth multiplier and the total drug death hazard.
+`phi` is the cell's progress through its division cycle, used by
+[`CycleSensitivity`](@ref).
 """
-function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vector{Float64}, d::Float64, t::Float64)
+function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vector{Float64}, d::Float64, t::Float64, phi::Float64=0.5)
     copyto!(c.p, p)
     gmult = 1.0
     h = 0.0
@@ -192,5 +291,6 @@ function apply_effects!(c::Cell, cp::Union{Nothing,CompiledPerturbation}, p::Vec
     for dh in cp.deaths
         h += hazard(dh, d, c.x, c.V)
     end
+    h > 0.0 && (h *= cycle_multiplier(cp, phi))
     gmult, h
 end

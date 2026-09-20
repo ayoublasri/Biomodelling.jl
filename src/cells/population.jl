@@ -166,8 +166,10 @@ end
 
 function _step_cell!(c::Cell, m::ReactionModel, pp::Vector{Float64}, cp, d::Float64, t::Float64, tn::Float64,
                      dt::Float64, kernel::AbstractKernel, ws::Workspace, settings::PopulationSettings, extra_h::Float64)
-    gmult, h = apply_effects!(c, cp, pp, d, t)
+    phi = cycle_progress(settings.size_control, c, t)
+    gmult, h = apply_effects!(c, cp, pp, d, t, phi)
     simulate!(c.x, m, c.p, c.V, c.copies, t, tn, kernel, ws, c.rng)
+    apply_consumption!(c, cp, d, dt)
     c.V = grow(settings.growth, c.V, c.growth_rate * gmult, dt)
     if settings.replication !== nothing && !c.replicated &&
        cycle_progress(settings.size_control, c, tn) >= settings.replication.fraction

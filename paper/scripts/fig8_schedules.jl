@@ -103,7 +103,11 @@ if "gbm" in parts
     regimens = [("standard 5/28", daily_boluses(1.0, cycle_days(5, 28, N_CYCLES), K_E)),                      # 200 mg/m² days 1-5
                 ("dose-dense 21/28", daily_boluses(0.5, cycle_days(21, 28, N_CYCLES), K_E)),                  # 100 mg/m² days 1-21 (2.1× cumulative)
                 ("dense, equal cumulative", daily_boluses(5 / 21, cycle_days(21, 28, N_CYCLES), K_E))]         # 21 days at the standard cumulative dose
-    deplete = RateModulation(:k_dp, d -> 1 + 20d)               # MGMT is a suicide enzyme: consumed while repairing drug lesions
+    # MGMT is a suicide enzyme: one molecule is spent per lesion repaired, and lesions form in proportion to
+    # the dose, so the pool follows the cumulative exposure rather than the peak concentration. k is set so the
+    # consumption rate at the standard bolus peak matches the first-order parameterisation it replaces
+    # (k_dp -> k_dp(1 + 20d)), which isolates the difference in how consumption integrates over time.
+    deplete = SuicideConsumption(:P; k = 300.0, K_m = 150.0)
     mechanisms_g = [("MGMT stable", DrugEffect[death_g]), ("MGMT consumed by drug", DrugEffect[death_g, deplete])]
     rows = Any[]; rows_t = Any[]
     for (ptag, p_on) in (("MGMT methylated (1 % expressing)", 0.01), ("MGMT unmethylated (30 % expressing)", 0.30)), (gtag, eff) in mechanisms_g

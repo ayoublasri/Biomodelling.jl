@@ -8,6 +8,13 @@ generators. See `docs/plan/v2_implementation_and_paper_plan.md` for the design
 and `docs/src/migration.md` for the migration guide.
 
 ### Added
+- `CycleSensitivity`: cell-cycle dependence of the drug death hazard, for agents
+  whose lesions are converted into death during replication. The hazard is scaled by
+  `baseline + (1 - baseline)·exp(-((φ - center)/width)²/2)` at cycle progress `φ`.
+- `SuicideConsumption`: stoichiometric consumption of a protective protein by the
+  drug (one molecule per lesion repaired, at rate `k·d·V·c/(c + K_m)`), so that
+  depletion follows the cumulative exposure rather than the peak concentration.
+  This replaces the dose-scaled first-order degradation used for MGMT in Fig. 8.
 - Identifiability and robustness analysis of the calibration (`fig7_calibration.jl profile`):
   conditional parameter profiles, a memory/resistant-fraction slice and an integration-step
   check, reported as Supplementary Note 11 and Supplementary Figure 3.

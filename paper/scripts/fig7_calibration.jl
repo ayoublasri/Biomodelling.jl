@@ -25,8 +25,14 @@ const T_FREE = 48.0                # two drug-free days of imaging
 const T_DRUG = 72.0                # three days of cisplatin
 model(k_on, k_off) = telegraph_model(; k_on, k_off, k_tx = 30.0, k_dm = 1.0, k_tl = 4.0, k_dp = 0.2, gene = :R, mrna = :mRNA, protein = :P)
 x0(m) = initial_state(m; R_off = 1)
-effects(h_max, EC50, mh, IC50) = [DeathHazard(h_max = h_max, EC50 = EC50, m = mh, protect = :P, K = 150.0, q = 4.0),
-                                  GrowthInhibition(IC50 = IC50, m = 2.0)]
+const S_CENTER = 0.5               # cisplatin lesions are converted into death during replication: killing peaks mid-cycle
+const S_WIDTH = 0.15
+"""Drug effects. `cyc` is the fraction of the death hazard that is independent of cell-cycle position:
+`nothing` (or 1) gives the cycle-independent hazard, 0 confines killing to a window around the replication set point."""
+effects(h_max, EC50, mh, IC50, cyc = nothing) =
+    vcat(DrugEffect[DeathHazard(h_max = h_max, EC50 = EC50, m = mh, protect = :P, K = 150.0, q = 4.0),
+                    GrowthInhibition(IC50 = IC50, m = 2.0)],
+         cyc === nothing ? DrugEffect[] : DrugEffect[CycleSensitivity(baseline = cyc, center = S_CENTER, width = S_WIDTH)])
 burn_st_dt(dt) = PopulationSettings(dt = dt, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
                              control = ConstantN(), track_lineage = false, record_every = 10_000)
 treat_st(; record_every = 4, dt = 0.5) = PopulationSettings(dt = dt, growth = ExponentialGrowth(λ), size_control = Sizer(2.0; cv = 0.1), partitioning = BinomialPartition(σ = 0.02),
@@ -34,11 +40,12 @@ treat_st(; record_every = 4, dt = 0.5) = PopulationSettings(dt = dt, growth = Ex
 """Burn in a constant-size population (promoter states, sizes and ages at stationarity) and treat it: `t_free` hours
 without drug, then `t_drug` hours at concentration `d` (µM)."""
 function experiment(θ, d; N = 300, seed = 1, t_free = T_FREE, t_drug = T_DRUG, record_every = 4, dt = 0.5)
-    k_on, k_off, h_max, EC50, mh, IC50 = θ
+    k_on, k_off, h_max, EC50, mh, IC50 = θ[1], θ[2], θ[3], θ[4], θ[5], θ[6]
+    cyc = length(θ) >= 7 ? θ[7] : nothing
     m = model(k_on, k_off)
     b = simulate_population(m, x0(m), N, (0.0, 10CYCLE); settings = burn_st_dt(dt), rng = Xoshiro(1000 + seed))
     sn = final_snapshot(b)
-    pert = Perturbation(PiecewiseDose([0.0, t_free], [0.0, d]); effects = effects(h_max, EC50, mh, IC50))
+    pert = Perturbation(PiecewiseDose([0.0, t_free], [0.0, d]); effects = effects(h_max, EC50, mh, IC50, cyc))
     simulate_population(m, sn.counts, N, (0.0, t_free + t_drug); settings = treat_st(; record_every, dt), V0 = sn.volume, perturbation = pert, rng = Xoshiro(seed))
 end
 """Fates, over the drug window, of the cells present at drug addition: died, divided, or survived without dividing."""
@@ -133,6 +140,43 @@ if "profile" in parts
         end
     end
     save_csv("fig7i_stepsize.csv", ["dt_h", "seed", "died", "divided", "survived"], permutedims(reduce(hcat, rows_r)))
+end
+
+# ---------------------------------------------------------------- is the cell cycle an alternative to heritable expression?
+# Cisplatin lethality is enhanced during replication, so cell-cycle position when the drug arrives is a competing
+# explanation for the dose-invariant death timing and for the large fraction of cells that survive without dividing.
+# Fit the same model with a cycle-dependent hazard (a seventh parameter: the cycle-independent fraction of the
+# hazard) and ask whether the fate fractions prefer it over heritable protective expression alone.
+if "cycle" in parts
+    tab = readdlm(joinpath(OUT, "fig7_calibration.csv"), ','; skipstart = 1)
+    cal = Dict(String(k) => v for (k, v) in zip(tab[:, 1], tab[:, 2]))
+    θ̂ = [cal[string(n)] for n in names]
+    names_c = vcat(names, [:cycle_baseline]); lower_c = vcat(lower, [0.0]); upper_c = vcat(upper, [1.0])
+    t0 = time()
+    # β is a fraction, not a rate spanning decades, so it is searched on a linear scale (log(0) is undefined)
+    optc = optimize_schedule(distance, lower_c, upper_c; names = names_c, n_grid = 3, max_grid = 160, seeds = 1:1,
+                             maxiter = 80, log_scale = vcat(fill(true, length(names)), [false]),
+                             rng = Xoshiro(7), verbose = false)
+    θc = optc.params
+    @printf("cycle-dependent fit: %s  (%.0f s)\n", optc, time() - t0)
+    save_kv("fig7j_cycle_fit.csv", vcat([string(n) => v for (n, v) in zip(names_c, θc)],
+            ["distance" => optc.value, "rmse_cycle" => fit_distance(θc, 1), "rmse_flat" => fit_distance(θ̂, 1),
+             "memory_generations" => 1 / (θc[1] + θc[2]) / CYCLE, "p_on" => θc[1] / (θc[1] + θc[2])]))
+    # how well the fates determine the cycle-independent fraction, the rest held at the cycle-dependent fit
+    rows_c = Any[]
+    for b in range(0.0, 1.0, length = 11)
+        θ = copy(θc); θ[7] = b
+        push!(rows_c, [b, fit_distance(θ, 1)])
+    end
+    save_csv("fig7j_cycle_profile.csv", ["cycle_baseline", "rmse"], permutedims(reduce(hcat, rows_c)))
+    # fates at every concentration under both models, the held-out one included
+    rows_f = Any[]
+    for (tag, θ) in (("cycle-independent", θ̂), ("cycle-dependent", θc)), d in sort(collect(keys(obs))), seed in 1:3
+        f = fates(experiment(θ, d; seed))
+        push!(rows_f, [tag, d, seed, f.died, f.divided, f.survived])
+    end
+    save_csv("fig7j_cycle_fates.csv", ["model", "cisplatin_uM", "seed", "died", "divided", "survived"], permutedims(reduce(hcat, rows_f)))
+    println("cycle comparison done")
 end
 
 # ---------------------------------------------------------------- validation on held-out conditions

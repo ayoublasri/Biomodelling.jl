@@ -47,7 +47,7 @@ Y  = sequence(sn.counts, SeqProtocol(capture = 0.15)).Y    # synthetic scRNA-seq
 | Model | [`ReactionModel`](@ref), [`Reaction`](@ref), [`MassAction`](@ref), [`Hill`](@ref), [`Custom`](@ref), builders |
 | Kernels | [`DirectSSA`](@ref), [`TauLeap`](@ref), [`HybridSSATau`](@ref), [`AdaptiveTauLeap`](@ref), [`simulate`](@ref), [`ensemble_final`](@ref) |
 | Cells and populations | [`PopulationSettings`](@ref), [`simulate_population`](@ref), [`ExponentialGrowth`](@ref), [`Sizer`](@ref), [`Adder`](@ref), [`AgeTimer`](@ref), [`BinomialPartition`](@ref), [`Replication`](@ref), [`ConstantN`](@ref), [`FreeGrowth`](@ref), [`LogisticGrowth`](@ref) |
-| Perturbations | [`Perturbation`](@ref), dose schedules, [`DeathHazard`](@ref), [`GrowthInhibition`](@ref), [`GrowthCost`](@ref), [`RateModulation`](@ref), [`GenePerturbation`](@ref) |
+| Perturbations | [`Perturbation`](@ref), dose schedules, [`DeathHazard`](@ref), [`GrowthInhibition`](@ref), [`GrowthCost`](@ref), [`CycleSensitivity`](@ref), [`SuicideConsumption`](@ref), [`RateModulation`](@ref), [`GenePerturbation`](@ref) |
 | Lineage | [`LineageTable`](@ref), [`heritability`](@ref), [`lineage_autocorrelation`](@ref), [`memory_timescale`](@ref), [`fluctuation_test`](@ref), [`clonal_variance_scores`](@ref), [`newick`](@ref) |
 | Observation | [`SeqProtocol`](@ref), [`sequence`](@ref), [`smfish`](@ref), [`timelapse`](@ref), [`sample_cells`](@ref) |
 | Inference | [`abc_smc`](@ref), [`telegraph_pmf`](@ref), [`fit_telegraph`](@ref), [`moment_summaries`](@ref) |

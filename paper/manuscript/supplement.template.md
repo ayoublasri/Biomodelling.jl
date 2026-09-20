@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: ""
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–11, Supplementary Figures 1–3 and Supplementary Tables 1–4.
+**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–12, Supplementary Figures 1–4 and Supplementary Tables 1–4.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -41,9 +41,9 @@ Supplementary Table 2. Parameters of every simulation in this Article.
 | 5d | random GRN | 20 genes, 22 activations, 10 inhibitions; knockdown factor 0.05; 800 cells |
 | 6a-b | telegraph | truth $(0.3, 0.6, 20)$; priors log-uniform on $[0.01, 10]$, $[0.01, 10]$, $[1, 200]$; 200 (a) / 150 (b) particles |
 | 6c | resistance gene | truth $h_{\max} = 0.5$, $K = 150$; priors log-uniform on $[0.05, 5]$ and $[20, 1000]$; 100 particles |
-| 7 | resistance gene, hours | cell cycle 24 h (sizer, cv 0.1), $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$ per h, $K = 150$, $q = 4$, growth-arrest Hill coefficient 2; fitted: $k_{\mathrm{on}}$, $k_{\mathrm{off}} \in [10^{-3}, 0.3]$, $h_{\max} \in [0.005, 0.5]$ per h, $\mathrm{EC}_{50} \in [3, 40]$ µM, $m \in [1, 6]$, $\mathrm{IC}_{50} \in [1, 40]$ µM; 300 founders burnt in for 10 cycles, 48 h drug-free, 72 h drug, integration step $dt = 0.5$ h; 160 Latin-hypercube points and 80 Nelder-Mead iterations with seed 1; identifiability (Supplementary Fig. 3) by 11-point log-grid conditional profiles of the six parameters, a $7\times7$ memory × resistant-fraction slice, and the step halved to 0.25 h with three seeds, via the `profile` part of the script |
+| 7 | resistance gene, hours | cell cycle 24 h (sizer, cv 0.1), $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$ per h, $K = 150$, $q = 4$, growth-arrest Hill coefficient 2; fitted: $k_{\mathrm{on}}$, $k_{\mathrm{off}} \in [10^{-3}, 0.3]$, $h_{\max} \in [0.005, 0.5]$ per h, $\mathrm{EC}_{50} \in [3, 40]$ µM, $m \in [1, 6]$, $\mathrm{IC}_{50} \in [1, 40]$ µM; 300 founders burnt in for 10 cycles, 48 h drug-free, 72 h drug, integration step $dt = 0.5$ h; 160 Latin-hypercube points and 80 Nelder-Mead iterations with seed 1; identifiability (Supplementary Fig. 3) by 11-point log-grid conditional profiles of the six parameters, a $7\times7$ memory × resistant-fraction slice, and the step halved to 0.25 h with three seeds, via the `profile` part of the script; the cycle-dependent variant (Supplementary Fig. 4) adds a seventh parameter $\beta \in [0, 1]$ with $\varphi_0 = 0.5$, $w = 0.15$, fitted under the same budget by the `cycle` part |
 | 8a-e | melanoma-like | $k_{\mathrm{tx}} = 3$, $k_{\mathrm{dm}} = 0.1$, $k_{\mathrm{tl}} = 0.4$, $k_{\mathrm{dp}} = 0.02$ per h; net doubling 4 weeks, memory 5 net doublings, pre-resistant fraction 0.005, $h_{\max} = 0.0023$ per h, $\mathrm{EC}_{50} = 0.3$, $m = 2$, protection $K = 150$, $q = 4$, growth arrest $\mathrm{IC}_{50} = 0.3$ with the same protection, $k_{\mathrm{off}} \to k_{\mathrm{off}}/(1 + 9d)$, fitness cost 0.5, partial protection: additional unprotected growth inhibition with $\mathrm{IC}_{50} = 1$; 2,000 founders with promoter states drawn from the stationary distribution, 60 weeks, dt 4 h; progression at 1.73 × nadir after the 8-week lead-in |
-| 8f-h | MGMT model | same expression kinetics; net doubling 40 days, memory 4 net doublings, MGMT-expressing fraction 0.01 or 0.30, $h_{\max} = 0.03$ per h at peak, $\mathrm{EC}_{50} = 0.4$ of the standard bolus peak, $m = 2$, $K = 150$, $q = 4$; elimination half-life 2.1 h; MGMT consumption $k_{\mathrm{dp}} \to k_{\mathrm{dp}}(1 + 20d)$; 1,500 founders at the stationary promoter distribution, six 28-day cycles, dt 1 h |
+| 8f-h | MGMT model | same expression kinetics; net doubling 40 days, memory 4 net doublings, MGMT-expressing fraction 0.01 or 0.30, $h_{\max} = 0.03$ per h at peak, $\mathrm{EC}_{50} = 0.4$ of the standard bolus peak, $m = 2$, $K = 150$, $q = 4$; elimination half-life 2.1 h; stoichiometric MGMT consumption at rate $k\,d\,V\,c/(c + K_m)$ with $k = 300$, $K_m = 150$; 1,500 founders at the stationary promoter distribution, six 28-day cycles, dt 1 h |
 
 # Supplementary Note 4: Additional persister simulations
 
@@ -130,3 +130,15 @@ The death parameters are the better determined: the maximal death rate stays wit
 Halving the integration step from 0.5 h to 0.25 h changes each simulated fate fraction by less than the seed-to-seed spread (Supplementary Fig. 3c), so the discretisation of the death hazard is not a source of error at this step size.
 
 A profile in which the remaining parameters are re-optimised at each fixed memory would be preferable to a slice, but at seven seconds per objective evaluation the inner search could not be given enough budget to be reliable: it returned fits three times worse than the known solution at short memory, which reflects the optimiser rather than the data. The slice avoids that failure at the cost of conditioning on the fitted death parameters.
+
+# Supplementary Note 12: Cell-cycle-dependent killing as an alternative to heritable expression
+
+The lethality of cisplatin is enhanced during replication, so where a cell sits in its division cycle when the drug arrives is a competing explanation for two of the observations the calibrated model reproduces: the near-invariance of the mean time to death across concentrations, and the large fraction of cells that survive three days of drug without dividing. A model in which killing is confined to a window of the cycle would spare exactly those cells that never enter that window, without any heritable expression state.
+
+![](figS4_cycle.png)
+
+**Supplementary Fig. 4 | Cell-cycle-dependent killing tested against the fate data.** **a**, Root-mean-square error of the fate fractions at the training concentrations as the cycle-independent fraction $\beta$ of the death hazard is moved from 0 (killing confined to the replication window) to 1 (cycle-independent), with the remaining parameters held at the cycle-dependent fit; dotted line, one binomial standard error of the measurement above the best fit; dashed line, the fitted value. **b**, Simulated against observed fate fractions at all three concentrations for the cycle-independent and the cycle-dependent fit (squares, the held-out 10 µM condition; line, equality).
+
+{{cycle_note}}
+
+The two mechanisms are not exclusive, and the experiment that separates them is not a fate count: it is a measurement of cell-cycle position at the moment the drug arrives, which time-lapse imaging with a cycle reporter provides directly. Until that is done, the heritable-expression reading of the calibrated parameters should be understood as one of two accounts that these fate fractions cannot tell apart.

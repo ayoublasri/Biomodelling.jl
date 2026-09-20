@@ -116,3 +116,50 @@ try:
     save(fig, "figS3_identifiability")
 except Exception as e:
     print("S3 skipped:", e)
+
+# S4: does cell-cycle-dependent killing explain the cisplatin fates better than heritable expression?
+try:
+    import numpy as _np
+    prof = pd.read_csv(os.path.join(OUT, "fig7j_cycle_profile.csv"))
+    fat = pd.read_csv(os.path.join(OUT, "fig7j_cycle_fates.csv"))
+    fit = pd.read_csv(os.path.join(OUT, "fig7j_cycle_fit.csv")).set_index("key").value
+    obs = pd.read_csv(os.path.join(HERE, "data", "iyer2025_u2os_fates.csv"))
+    ses, ov = [], {}
+    for _, r in obs.iterrows():
+        n = r["cells_at_drug"]
+        for k, lab in (("died", "died"), ("divided", "divided"), ("survived_without_dividing", "survived")):
+            q = r[k] / n; ses.append(_np.sqrt(q * (1 - q) / n)); ov[(r["cisplatin_uM"], lab)] = q
+    se = float(_np.mean(ses))
+    held = 10.0
+
+    fig, axes = plt.subplots(1, 2, figsize=(6.8, 2.7), gridspec_kw={"width_ratios": [1.0, 1.15], "wspace": 0.42})
+
+    ax = axes[0]
+    ax.plot(prof.cycle_baseline, prof.rmse, marker="o", ms=3, lw=1.2, color=C[0])
+    b = prof.rmse.min()
+    ax.axhline(b + se, color="#52514e", ls=":", lw=0.9, label="within one s.e. of the data")
+    ax.axvline(float(fit["cycle_baseline"]), color=C[3], ls="--", lw=1.0, label="fitted value")
+    ax.set_xlabel("cycle-independent fraction of the hazard"); ax.set_ylabel("RMSE of fate fractions")
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30))
+    ax.set_title("a   is the cycle dependence determined?", loc="left", fontweight="semibold", color="#2a2a28")
+
+    ax = axes[1]
+    for k, (mod, col) in enumerate((("cycle-independent", C[0]), ("cycle-dependent", C[1]))):
+        g = fat[fat.model == mod].groupby(["cisplatin_uM"])[["died", "divided", "survived"]].mean()
+        for dd, row in g.iterrows():
+            for lab in ("died", "divided", "survived"):
+                o = ov.get((dd, lab))
+                if o is None: continue
+                ax.plot([o], [row[lab]], marker=("o" if dd != held else "s"), ms=4.5, lw=0,
+                        mfc=(col if dd != held else "none"), mec=col, mew=1.0)
+        ax.plot([], [], marker="o", ms=4.5, lw=0, color=col, label=mod)
+    lim = [0, 0.75]
+    ax.plot(lim, lim, color="#52514e", lw=0.8, ls="-")
+    ax.set_xlim(lim); ax.set_ylim(lim)
+    ax.set_xlabel("observed fraction"); ax.set_ylabel("simulated fraction")
+    ax.plot([], [], marker="s", ms=4.5, lw=0, mfc="none", mec="#52514e", label="held-out 10 µM")
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2, columnspacing=1.0)
+    ax.set_title("b   fates under the two mechanisms", loc="left", fontweight="semibold", color="#2a2a28")
+    save(fig, "figS4_cycle")
+except Exception as e:
+    print("S4 skipped:", e)

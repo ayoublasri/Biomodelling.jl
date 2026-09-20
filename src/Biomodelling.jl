@@ -87,6 +87,7 @@ export simulate_population, snapshot, final_snapshot, popsize, concentrations
 export DoseSchedule, ConstantDose, PulsedDose, PiecewiseDose, BolusPK, FunctionDose, AdaptiveDose, dose, daily_boluses, cycle_days, cumulative_dose
 export net_growth_rate, log_kill, time_to_progression, extinction_probability, optimize_schedule, ScheduleOptimum
 export DrugEffect, DeathHazard, GrowthInhibition, GrowthCost, RateModulation, GenePerturbation, Perturbation
+export CycleSensitivity, SuicideConsumption
 # lineage
 export LineageTable, children, sister_pairs, cousin_pairs, kin_pairs, mother_daughter_pairs, lineage_of, follow_lineage
 export heritability, lineage_autocorrelation, memory_timescale, noise_decomposition
