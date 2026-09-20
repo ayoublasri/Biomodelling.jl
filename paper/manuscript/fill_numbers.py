@@ -26,13 +26,16 @@ def f2():
     d = load("fig2f_runtime.csv"); row = d[(d.kernel == "HybridSSATau") & (d.cells == d.cells.max()) & (d.genes == 10)].iloc[0]
     put("runtime_10k", f"{row.seconds:.1f} s"); put("runtime_case", f"{int(row.cells)} cells × {int(row.genes)} telegraph genes × 200 steps (hybrid kernel)")
     # scaling in the number of reactions is not the same for the two kernels, so quote both
+    # the gene scan is run at one cell count: use whichever it is
+    ncells = d.groupby("cells").genes.nunique().idxmax()
     parts = []
     for kern in ("HybridSSATau", "DirectSSA"):
-        g = d[(d.kernel == kern) & (d.cells == d.cells.max())].sort_values("genes")
+        g = d[(d.kernel == kern) & (d.cells == ncells)].sort_values("genes")
         if len(g) < 2: continue
         lo, hi = g.iloc[0], g.iloc[-1]
-        parts.append(f"{kern} {lo.seconds:.2f} s to {hi.seconds:.1f} s, a factor of {hi.seconds/lo.seconds:.0f} "
-                     f"for a factor of {hi.genes/lo.genes:.0f} in genes")
+        parts.append(f"{lo.seconds:.2f} s to {hi.seconds:.1f} s for the "
+                     f"{'hybrid' if kern == 'HybridSSATau' else 'direct'} kernel, a factor of "
+                     f"{hi.seconds/lo.seconds:.0f} for the same factor of {hi.genes/lo.genes:.0f} in genes")
     put("runtime_scaling", "; ".join(parts))
 
 @safe
@@ -578,7 +581,10 @@ fsupp()
 
 def fill(template, target):
     tpl = open(os.path.join(HERE, template)).read()
-    missing = sorted(set(re.findall(r"{{([a-z_0-9]+)}}", tpl)) - set(V))
+    used = set(re.findall(r"{{([a-z_0-9]+)}}", tpl))
+    missing = sorted(used - set(V))
+    empty = sorted(k for k in used & set(V) if not str(V[k]).strip())
+    if empty: print(f"  [{target}: EMPTY placeholders: {empty}]")
     out = re.sub(r"{{([a-z_0-9]+)}}", lambda m: str(V.get(m.group(1), "[" + m.group(1) + "]")), tpl)
     open(os.path.join(HERE, target), "w").write(out)
     print(f"{target}: filled from {len(V)} values; missing:", missing)

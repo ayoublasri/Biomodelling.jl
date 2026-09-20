@@ -265,7 +265,13 @@ def fig4():
         ax.set_xlabel("time"); ax.set_ylabel("fraction of high-expressing cells"); ax.set_ylim(0, 1); ax.legend(fontsize=5.5); label(ax, "g", "phenotypic selection persists")
     @panel
     def h(cell):
-        d = load("fig4f_schedules.csv")
+        # prefer the replicated scan when it is available, and plot the mean over seeds
+        try:
+            d = load("fig4f_schedules_seeds.csv")
+            nseed = int(d.seed.nunique())
+            d = d.groupby(["model", "release_period", "dose"], as_index=False).long_term_growth_rate.mean()
+        except Exception:
+            d = load("fig4f_schedules.csv"); nseed = 1
         models = [("pre_existing", "pre-existing"), ("pre_existing_cost", "pre-existing, fitness cost"), ("drug_induced", "drug-induced")]
         sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.12)
         vmax = np.abs(d.long_term_growth_rate).max()
@@ -279,7 +285,8 @@ def fig4():
             else: ax.set_yticklabels([])
             for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=("white" if abs(v) > 0.6 * vmax else INK))
             r0, c0 = np.unravel_index(np.nanargmin(piv.values), piv.values.shape); ax.add_patch(plt.Rectangle((c0 - 0.5, r0 - 0.5), 1, 1, fill=False, ec=INK, lw=1.2))
-        fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04, label="net growth rate")
+        fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04,
+                     label=f"net growth rate{'' if nseed == 1 else f' (mean of {nseed} seeds)'}")
     a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2])); g(fig.add_subplot(gs[2, 0])); h(gs[2, 1:])
     save(fig, "fig4_persisters")
 
