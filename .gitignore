@@ -12,3 +12,5 @@ Manifest.toml
 /paper/figures/fonts/
 /paper/figures/fig1_framework.html
 /paper/figures/fig1_raw.png
+__pycache__/
+*.pyc
