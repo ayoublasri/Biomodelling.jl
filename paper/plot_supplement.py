@@ -239,8 +239,8 @@ try:
     val = pd.read_csv(os.path.join(OUT, "fig9_validation.csv"))
     pmf = pd.read_csv(os.path.join(OUT, "fig9_pmf.csv"))
     cnt = pd.read_csv(os.path.join(OUT, "fig9_counts.csv"))
-    LABEL = {"constitutive": "constitutive", "bursty": "bursts of 4", "telegraph": "telegraph",
-             "replication": "replication"}
+    LABEL = {"constitutive": "const.", "bursty": "burst", "telegraph": "teleg.",
+             "replication": "replic."}
     MODES = ("lineage", "population")
     fig = plt.figure(figsize=(7.2, 5.0))
     gs = fig.add_gridspec(2, 2, hspace=0.62, wspace=0.42)
@@ -276,7 +276,7 @@ try:
         ax.plot([xi - 0.45, xi + 0.45], [ci, ci], ls=":", lw=0.9, color=INK2)
     ax.set_yscale("log"); ax.set_ylabel("Kolmogorov–Smirnov distance")
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{LABEL[c]}\n{m[:4]}." for c, m in keys], fontsize=5.5)
+    ax.set_xticklabels([f"{LABEL[c]}\n{'lin.' if m == 'lineage' else 'pop.'}" for c, m in keys], fontsize=6)
     ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
     ax.set_title("b   agreement, and its power to discriminate", loc="left", fontweight="semibold", color="#2a2a28")
 
@@ -289,7 +289,10 @@ try:
             label="simulated against continuum")
     ax.plot(dtv["dt"], dtv.ks_crit99, ls=":", lw=0.9, color=INK2, label="99% critical value")
     ax.set_xscale("log"); ax.set_yscale("log")
-    ax.set_xlabel("update step / mean interdivision time"); ax.set_ylabel("Kolmogorov–Smirnov distance")
+    ax.set_xticks(list(dtv["dt"]))
+    ax.set_xticklabels([f"1/{round(1/v)}" for v in dtv["dt"]], fontsize=6.5)
+    ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    ax.set_xlabel("update step, as a fraction of the interdivision time"); ax.set_ylabel("Kolmogorov–Smirnov distance")
     ax.legend(fontsize=6)
     ax.set_title("c   the step-size bias is first order", loc="left", fontweight="semibold", color="#2a2a28")
 
