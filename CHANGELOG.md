@@ -48,6 +48,15 @@ and `docs/src/migration.md` for the migration guide.
 ### Changed
 - Minimum Julia version is 1.10.
 - Continuous integration moved from Travis CI to GitHub Actions.
+- Manuscript revised after a multi-dimension review (citations, numbers, biology,
+  figures, methods-vs-code, prose): corrected the Fig. 3c heritability description,
+  the memory-disruption and imputation results, the hybrid-kernel exactness wording
+  and the Fig. 6d and Fig. 7b axes; cited the primary Das Thakur et al. (2013, Nature)
+  xenograft study; labelled the MGMT fractions and consumption model, the RECIST
+  analogue and the temozolomide plasma half-life as the approximations they are;
+  aligned the parameter table (panels 8a-e / 8f-h, 150 particles, 500 founders,
+  dt and profile settings) with the scripts; and fixed the Fig. 1e code snippet
+  (`initial_state`, `log_kill`).
 
 ### Deprecated
 - The v1 API (`Donne`, `ssa`, `tauleap`, `tauleapswitch`, `adaptive_tauleap`,

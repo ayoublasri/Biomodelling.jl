@@ -116,7 +116,7 @@ def f5():
 @safe
 def f6():
     a = kv("fig6a_summary.csv"); put("abc_a", f"({a['abc_median_k_on']:.2f}, {a['abc_median_k_off']:.2f}, {a['abc_median_k_tx']:.1f})")
-    b = kv("fig6b_summary.csv"); put("naive_b", f"k_on = {b['naive_k_on']:.2f}, k_off = {b['naive_k_off']:.2f}, k_tx = {b['naive_k_tx']:.1f}")
+    b = kv("fig6b_summary.csv"); put("naive_b", f"$k_{{\\mathrm{{on}}}} = {b['naive_k_on']:.2f}$, $k_{{\\mathrm{{off}}}} = {b['naive_k_off']:.2f}$, $k_{{\\mathrm{{tx}}}} = {b['naive_k_tx']:.1f}$")
     put("abc_b", f"({b['abc_median_k_on']:.2f}, {b['abc_median_k_off']:.2f}, {b['abc_median_k_tx']:.1f})")
     c = kv("fig6c_summary.csv"); put("abc_c", f"({c['abc_median_h_max']:.2f}, {c['abc_median_K']:.0f})")
     pc = load("fig6c_particles.csv"); lh, lK = np.log10(pc.h_max), np.log10(pc.K); w = pc.weight / pc.weight.sum()

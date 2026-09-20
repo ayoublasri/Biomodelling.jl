@@ -342,18 +342,19 @@ def add_panel_d(s):
 CODE = """using Biomodelling, Random
 # a resistance gene whose promoter switches more slowly than the cell divides
 model = telegraph_model(k_on=0.005, k_off=0.005, k_tx=30.0, k_dm=1.0, k_tl=4.0, k_dp=0.2)
+x0    = initial_state(model)
 pert  = Perturbation(PiecewiseDose([0.0, 100.0], [0.0, 1.0]);
                      effects = [DeathHazard(h_max=0.5, EC50=0.3, protect=:protein, K=60.0)])
 st    = PopulationSettings(dt=0.1, growth=ExponentialGrowth(log(2)/20), size_control=Sizer(2.0),
                            replication=Replication(0.5), control=FreeGrowth())
 res   = simulate_population(model, x0, 1000, (0.0, 200.0); settings=st, perturbation=pert, rng=Xoshiro(1))
-
 heritability(res, :protein; relation=:sisters)                          # expression memory across divisions
-kill_curve(res); time_to_progression(res)                               # treatment outcomes
+log_kill(res); time_to_progression(res)                                 # treatment outcomes
 sequence(sample_cells(res; n=500).counts, SeqProtocol(capture=0.15)).Y   # synthetic scRNA-seq"""
 
 CALLS = ("telegraph_model Perturbation PiecewiseDose DeathHazard PopulationSettings ExponentialGrowth Sizer "
-         "Replication FreeGrowth simulate_population Xoshiro heritability kill_curve time_to_progression "
+         "Replication FreeGrowth simulate_population Xoshiro heritability log_kill time_to_progression "
+         "initial_state "
          "sequence sample_cells SeqProtocol log").split()
 
 

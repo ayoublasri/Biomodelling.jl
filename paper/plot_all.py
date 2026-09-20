@@ -165,7 +165,7 @@ def fig3():
             ax.plot(d.k_switch, d[col], marker="o", ms=3, color=C[i], label=lab)
         ax.plot(d.k_switch, d.mother_daughter_mRNA, ls="--", color=C[0], lw=1.0, label="mother–daughter (mRNA)")
         ax.axvline(math.log(2) / 20, color=INK2, ls=":", lw=0.8); ax.text(math.log(2) / 20, 0.95, " 1/cycle time", fontsize=6, color=INK2, va="top")
-        ax.set_xscale("log"); ax.set_xlabel("switching rate k_on = k_off"); ax.set_ylabel("correlation (protein at division)"); ax.set_ylim(-0.1, 1); ax.legend(fontsize=5.5, loc="lower left"); label(ax, "c", "heritability")
+        ax.set_xscale("log"); ax.set_xlabel("switching rate $k_\\mathrm{on} = k_\\mathrm{off}$"); ax.set_ylabel("correlation at division"); ax.set_ylim(-0.1, 1.05); ax.legend(fontsize=5.5, loc="lower left", framealpha=0.9); label(ax, "c", "heritability")
     @panel
     def d(ax):
         d = load("fig3d_memory_timescale.csv")
@@ -230,8 +230,8 @@ def fig4():
     def c(ax):
         d = load("fig4c_decay_vs_dose.csv")
         ax.plot(d.dose, d.decay_rate, marker="o", ms=4, color=C[0]); ax.set_xlabel("dose"); ax.set_ylabel("population decay rate", color=C[0])
-        ax2 = ax.inset_axes([0.5, 0.12, 0.45, 0.36])
-        ax2.plot(d.dose, d.division_time_mean, marker="s", ms=3, color=C[1]); ax2.set_title("division time", fontsize=6, color=INK2); ax2.tick_params(labelsize=5); ax2.set_ylim(0, d.division_time_mean.max() * 1.3)
+        ax2 = ax.inset_axes([0.5, 0.16, 0.45, 0.34]); ax2.set_facecolor("white"); ax2.patch.set_alpha(1.0); ax2.set_zorder(3)
+        ax2.plot(d.dose, d.division_time_mean, marker="s", ms=3, color=C[1]); ax2.set_title("division time", fontsize=6, color=INK2); ax2.tick_params(labelsize=5); ax2.set_ylim(0, d.division_time_mean.max() * 1.3); ax2.set_xlabel("dose", fontsize=5, labelpad=1)
         label(ax, "c", "decay vs single-cell timing")
     @panel
     def d(ax):
@@ -277,7 +277,7 @@ def fig4():
             ax.set_xlabel("dose"); ax.set_title(title, fontsize=6.5, color=INK2, pad=3); ax.grid(False)
             if i == 0: ax.set_ylabel("release period"); label(ax, "h", None)
             else: ax.set_yticklabels([])
-            for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=INK)
+            for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=("white" if abs(v) > 0.6 * vmax else INK))
             r0, c0 = np.unravel_index(np.nanargmin(piv.values), piv.values.shape); ax.add_patch(plt.Rectangle((c0 - 0.5, r0 - 0.5), 1, 1, fill=False, ec=INK, lw=1.2))
         fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04, label="net growth rate")
     a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2])); g(fig.add_subplot(gs[2, 0])); h(gs[2, 1:])
@@ -286,13 +286,14 @@ def fig4():
 # ------------------------------------------------------------------ Figure 5
 def fig5():
     fig = plt.figure(figsize=(7.2, 4.8)); gs = gridspec.GridSpec(2, 2, figure=fig, hspace=0.55, wspace=0.4)
+    mcol = {"pearson": C[0], "spearman": C[1], "genie3": C[2]}
     @panel
     def a(ax):
         d = load("fig5a_memory_genes.csv")
         ax.plot(d.memory_time, d.score_true, marker="o", ms=3, lw=0, color=C[0], label="true concentrations")
         ax.plot(d.memory_time, d.score_seq, marker="s", ms=3, lw=0, mfc="none", color=C[1], label="sequenced counts")
         ax.axvline(20, color=INK2, ls=":", lw=0.8); ax.text(20, 0.62 * d.score_true.max(), " cycle time", fontsize=6, color=INK2)
-        ax.axhline(1, color=INK2, lw=0.6); ax.set_xscale("log"); ax.set_xlabel("memory time 1/(k_on+k_off)"); ax.set_ylabel("clonal variance score"); ax.legend(fontsize=5.5); label(ax, "a", "memory genes are recoverable")
+        ax.axhline(1, color=INK2, lw=0.6, label="no clonal memory (score 1)"); ax.set_xscale("log"); ax.set_xlabel("memory time $1/(k_\\mathrm{on}+k_\\mathrm{off})$"); ax.set_ylabel("clonal variance score"); ax.legend(fontsize=5.5); label(ax, "a", "memory genes are recoverable")
     @panel
     def b(ax):
         d = load("fig5bc_metrics.csv"); d = d[~d.dataset.str.startswith("imputed")]
@@ -301,7 +302,7 @@ def fig5():
         x = np.arange(len(order)); w = 0.8 / len(methods)
         for i, m in enumerate(methods):
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() if ((d.method == m) & (d.dataset == o)).any() else np.nan for o in order]
-            ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=C[i], label=m)
+            ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=mcol[m], label=m)
         ax.axhline(d.random_aupr.mean(), color=INK2, ls=":", lw=0.8); ax.text(len(order) - 0.5, d.random_aupr.mean(), "random", fontsize=6, color=INK2, ha="right", va="bottom")
         names = {"fixed_volume": "fixed volume", "population_counts": "dividing: counts", "population_concentration": "dividing: concentration", "population_cycle_regressed": "dividing: cycle-regressed", "sequenced_counts": "sequenced: counts", "sequenced_normalized": "sequenced: normalised"}
         ax.set_xticks(x); ax.set_xticklabels([names[o] for o in order], fontsize=5.5, rotation=30, ha="right", rotation_mode="anchor"); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "b", "GRN inference under growth and division")
@@ -313,7 +314,7 @@ def fig5():
         x = np.arange(len(order)); w = 0.8 / len(methods)
         for i, m in enumerate(methods):
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() for o in order]
-            ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=C[i], label=m)
+            ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=mcol[m], label=m)
         ax.set_xticks(x); ax.set_xticklabels([{"sequenced_counts": "no imputation", "imputed_knn_smoothing": "kNN-smoothing", "imputed_magic": "MAGIC"}[o] for o in order], fontsize=6); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "c", "imputation before network inference")
     @panel
     def d(ax):
@@ -356,10 +357,10 @@ def fig6():
         label(ax, "c", "drug parameters from kill curve and sister fates")
     @panel
     def d(ax):
-        d = load("fig6d_ppc.csv")
+        d = load("fig6d_ppc.csv"); t0 = d.t.min()
         for c in [c for c in d.columns if c.startswith("replicate")]:
-            ax.plot(d.t, d[c], color=C[0], alpha=0.5, lw=1.0)
-        ax.plot(d.t, d.observed, color=INK, lw=1.6, label="observed")
+            ax.plot(d.t - t0, d[c], color=C[0], alpha=0.5, lw=1.0)
+        ax.plot(d.t - t0, d.observed, color=INK, lw=1.6, label="observed")
         ax.plot([], [], color=C[0], alpha=0.5, label="posterior predictive")
         ax.set_yscale("log"); ax.set_xlabel("time since drug"); ax.set_ylabel("N(t) / N(drug start)")
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2, fontsize=6.4, columnspacing=1.6)
@@ -386,9 +387,14 @@ def fig7():
     @panel
     def b(ax):
         d = load("fig7b_killcurves.csv")
-        for i, (dd, g) in enumerate(d.groupby("cisplatin_uM")):
-            ax.plot(g.t_since_drug_h / 24, g.N_over_N0, color=C[i], label=f"{dd:g} µM")
-        ax.set_yscale("log"); ax.set_xlabel("days of cisplatin"); ax.set_ylabel("N(t) / N(0)")
+        groups = list(d.groupby("cisplatin_uM"))
+        g0 = groups[0][1]; pre = g0[g0.t_since_drug_h < 0]
+        if len(pre): ax.plot(pre.t_since_drug_h / 24, pre.N_over_N0, color=INK2, lw=1.3, label="pre-drug (all)")
+        for i, (dd, g) in enumerate(groups):
+            gp = g[g.t_since_drug_h >= 0]
+            ax.plot(gp.t_since_drug_h / 24, gp.N_over_N0, color=C[i], label=f"{dd:g} µM")
+        ax.axvline(0, color=INK2, ls=":", lw=0.6)
+        ax.set_yscale("log"); ax.set_xlabel("days from drug addition"); ax.set_ylabel("N(t) / N(0)")
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=4, fontsize=6.2, columnspacing=1.0,
                   handlelength=1.2); label(ax, "b", "predicted kill curves")
     @panel
@@ -467,7 +473,7 @@ def fig8():
             ax = fig.add_subplot(sub[i]); t = load(f"fig8c_melanoma_optimum_{tag}.csv")
             sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0, label="schedule evaluated")
             best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0, label="optimum")
-            ax.set_xscale("log"); ax.set_ylim(0.1, 1.1); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
+            ax.set_xscale("log"); ax.set_ylim(0.03, 1.15); ax.set_xlim(t.period_weeks.min() / 1.35, t.period_weeks.max() * 1.35); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
             if i == 0: ax.set_ylabel("fraction of time on drug"); label(ax, "e", None)
             else: ax.set_yticklabels([])
             if i == 1: ax.legend(fontsize=5.5, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.36), handletextpad=0.4, columnspacing=1.5)
@@ -489,7 +495,10 @@ def fig8():
         for i, r in enumerate(regs):
             vals = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].v.iloc[0] for p_, mm in groups]
             sds = [m[(m.population == p_) & (m.mechanism == mm) & (m.regimen == r)].sd.fillna(0).iloc[0] for p_, mm in groups]
-            ax.bar(x + (i - (len(regs) - 1) / 2) * w, vals, yerr=sds, width=w, color=C[i], capsize=1.5, label=r)
+            xpos = x + (i - (len(regs) - 1) / 2) * w
+            ax.bar(xpos, vals, yerr=sds, width=w, color=C[i], capsize=1.5, label=r)
+            for xi, vv in zip(xpos, vals):
+                if vv < 0.03: ax.text(xi, 0.03, "0", ha="center", va="bottom", fontsize=5, color=INK2)
         ax.set_xticks(x); ax.set_xticklabels(["stable" if mm.startswith("MGMT s") else "consumed" for _, mm in groups], fontsize=6, rotation=35, ha="right", rotation_mode="anchor")
         for xc, txt in ((0.5, "methylated"), (2.5, "unmethylated")):
             ax.text(xc, -0.3, txt, transform=ax.get_xaxis_transform(), fontsize=6.5, ha="center", va="top", color=INK)

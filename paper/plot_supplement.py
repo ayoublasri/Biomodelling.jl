@@ -25,13 +25,15 @@ def save(fig, name):
 # S1: single-cell timing distributions
 try:
     d = pd.read_csv(os.path.join(OUT, "fig4c_times.csv"))
+    dcol = {dose: C[i % 8] for i, dose in enumerate(sorted(d.dose.unique()))}  # one colour per dose across panels (matches Fig. 4b)
     fig, axes = plt.subplots(1, 2, figsize=(6.6, 2.6))
-    for i, (dose, g) in enumerate(d[d.event == "division"].groupby("dose")):
-        axes[0].hist(g.time, bins=np.linspace(10, 35, 40), histtype="step", color=C[i % 8], label=f"dose {dose:g}", density=True)
+    for dose, g in d[d.event == "division"].groupby("dose"):
+        axes[0].hist(g.time, bins=np.linspace(10, 35, 40), histtype="step", color=dcol[dose], label=f"dose {dose:g}", density=True)
     axes[0].set_xlabel("division time (cells born under drug)"); axes[0].set_ylabel("density"); axes[0].legend(fontsize=6); axes[0].set_title("a   division times", loc="left", fontweight="semibold", color="#2a2a28")
-    for i, (dose, g) in enumerate(d[d.event == "death"].groupby("dose")):
-        axes[1].hist(g.time, bins=np.linspace(0, 60, 40), histtype="step", color=C[i % 8], label=f"dose {dose:g}", density=True)
-    axes[1].set_xlabel("time from drug (or birth) to death"); axes[1].legend(fontsize=6); axes[1].set_title("b   death times", loc="left", fontweight="semibold", color="#2a2a28")
+    death = d[d.event == "death"]
+    for dose, g in death.groupby("dose"):
+        axes[1].hist(g.time, bins=np.linspace(0, 60, 40), histtype="step", color=dcol[dose], label=f"dose {dose:g}", density=True)
+    axes[1].set_xlim(0, float(death.time.quantile(0.99)) * 1.1); axes[1].set_xlabel("time from drug (or birth) to death"); axes[1].legend(fontsize=6); axes[1].set_title("b   death times", loc="left", fontweight="semibold", color="#2a2a28")
     save(fig, "figS1_timing")
 except Exception as e: print("S1 skipped:", e)
 # S2: ABC schedules
@@ -74,11 +76,12 @@ try:
 
     ax = fig.add_subplot(gs[0])
     best = prof.rmse.min()
+    pal6 = [C[0], C[1], C[2], C[3], C[4], C[7]]  # avoid two near-greens (IC50 -> C[7])
+    plabels = {"k_on": "k_on", "k_off": "k_off", "h_max": "h_max", "EC50": "EC50", "m_h": "Hill m", "IC50": "IC50 growth"}
     for i, (par, g) in enumerate(prof.groupby("parameter", sort=False)):
         g = g.sort_values("value")
-        ax.plot(g.value / float(cal[par]), g.rmse, marker="o", ms=2.2, lw=1.1, color=C[i % 8], label=par)
-    ax.axhline(best + se, color="#52514e", ls=":", lw=0.9)
-    ax.text(0.03, 0.93, "dotted: within one s.e. of the data", transform=ax.transAxes, fontsize=6, color="#52514e")
+        ax.plot(g.value / float(cal[par]), g.rmse, marker="o", ms=2.2, lw=1.1, color=pal6[i % len(pal6)], label=plabels.get(par, par))
+    ax.axhline(best + se, color="#52514e", ls=":", lw=0.9, label="within one s.e. of the data")
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel("parameter / fitted value"); ax.set_ylabel("RMSE of fate fractions")
     ax.legend(fontsize=6, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.30), columnspacing=1.2, handlelength=1.2)
@@ -108,7 +111,7 @@ try:
                width=w, color=C[k], capsize=1.5, label=f"dt = {dt:g} h")
     ax.set_xticks(x); ax.set_xticklabels(["died", "divided", "survived"], fontsize=6, rotation=20, ha="right", rotation_mode="anchor")
     ax.set_ylabel("fraction of cells at 13 µM")
-    ax.legend(fontsize=6, labelspacing=0.25)
+    ax.legend(fontsize=6, labelspacing=0.25, loc="upper right")
     ax.set_title("c   integration step", loc="left", fontweight="semibold", color="#2a2a28")
     save(fig, "figS3_identifiability")
 except Exception as e:
