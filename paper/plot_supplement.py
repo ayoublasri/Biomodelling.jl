@@ -178,15 +178,22 @@ try:
     gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.05], hspace=0.62, wspace=0.62)
 
     ax = fig.add_subplot(gs[0, 0])
-    ax.plot(dec0.dose, dec0.decay_rate, marker="o", ms=3.5, lw=1.3, color=C[0], label="cycle-blind")
-    ax.plot(dec1.dose, dec1.decay_rate, marker="s", ms=3.5, lw=1.3, color=C[1], label="cycle-gated")
+    try:
+        decm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched.csv"))
+    except Exception:
+        decm = None
+    series = [(dec0, "cycle-blind", C[0], "o"), (dec1, "cycle-gated", C[1], "s")]
+    if decm is not None:
+        series.append((decm, "gated, matched hazard", C[2], "^"))
+    for df, lab, col, mk in series:
+        ax.plot(df.dose, df.decay_rate, marker=mk, ms=3.5, lw=1.3, color=col, label=lab)
     ax.set_xlabel("dose"); ax.set_ylabel("population decay rate")
     ax2 = ax.twinx(); ax2.grid(False)
-    d0 = dec0[dec0.dose > 0]; d1 = dec1[dec1.dose > 0]
-    ax2.plot(d0.dose, d0.death_time_mean, marker="o", ms=3, lw=1.0, ls="--", color=C[0], alpha=0.6)
-    ax2.plot(d1.dose, d1.death_time_mean, marker="s", ms=3, lw=1.0, ls="--", color=C[1], alpha=0.6)
+    for df, lab, col, mk in series:
+        g = df[df.dose > 0]
+        ax2.plot(g.dose, g.death_time_mean, marker=mk, ms=3, lw=1.0, ls="--", color=col, alpha=0.6)
     ax2.set_ylabel("mean death time (dashed)", fontsize=6.5, labelpad=2); ax2.tick_params(labelsize=6.5)
-    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
     ax.set_title("a   decay and single-cell timing", loc="left", fontweight="semibold", color="#2a2a28")
 
     ax = fig.add_subplot(gs[0, 1])
@@ -194,13 +201,21 @@ try:
     def excess(df, m, r):
         g = df[(df.model == m) & (df.relation == r)]
         return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else _np.nan
-    x = _np.arange(len(keys)); w = 0.38
-    ax.bar(x - w/2, [excess(con0, m, r) for m, r in keys], width=w, color=C[0], label="cycle-blind")
-    ax.bar(x + w/2, [excess(con1, m, r) for m, r in keys], width=w, color=C[1], label="cycle-gated")
+    try:
+        conm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched_concordance.csv"))
+    except Exception:
+        conm = None
+    arms_b = [(con0, "cycle-blind", C[0]), (con1, "cycle-gated", C[1])]
+    if conm is not None:
+        arms_b.append((conm, "gated, matched hazard", C[2]))
+    x = _np.arange(len(keys)); w = 0.8 / len(arms_b)
+    for i, (df, lab, col) in enumerate(arms_b):
+        ax.bar(x + (i - (len(arms_b) - 1) / 2) * w, [excess(df, m, r) for m, r in keys],
+               width=w, color=col, label=lab)
     ax.axhline(0, color=INK, lw=0.6)
     ax.set_xticks(x); ax.set_xticklabels([f"{m}\n{r}" for m, r in keys], fontsize=6)
     ax.set_ylabel("excess concordance")
-    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
     ax.set_title("b   do related cells still share fates?", loc="left", fontweight="semibold", color="#2a2a28")
 
     ax = fig.add_subplot(gs[1, :])

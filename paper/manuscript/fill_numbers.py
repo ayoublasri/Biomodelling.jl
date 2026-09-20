@@ -84,18 +84,18 @@ def f4():
         g = agg[agg.model == model].sort_values("mean")
         best, second = g.iloc[0], g.iloc[1]
         sem = (best["std"] / np.sqrt(best["count"])) if best["count"] > 1 else float("nan")
-        err = "" if nseed == 1 else f" ± {best['std']:.3f} over {nseed} seeds"
-        put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best['mean']:+.3f}{err} per time unit)")
+        err = "" if nseed == 1 else f", ± {best['std']:.4f} over {nseed} seeds"
+        put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best['mean']:+.4f} per time unit{err})")
         cont = g[(g.release_period == 0) & (g.dose == g.dose.max())]["mean"].iloc[0]
-        put(f"cont_{tag}", f"{cont:+.3f}")
+        put(f"cont_{tag}", f"{cont:+.4f}")
         if nseed > 1:
             gaps.append((tag, float(second["mean"] - best["mean"]), float(np.hypot(sem, second["std"] / np.sqrt(second["count"])))))
     if gaps:
         resolved = [t for t, d, e in gaps if d > 2 * e]
         put("sched_seed_note",
             f"Each point of the scan is the mean of {nseed} independent seeds. The gap between the best schedule and "
-            f"the next best is {min(d for _, d, _ in gaps):.3f} to {max(d for _, d, _ in gaps):.3f} per time unit, "
-            f"against a standard error of {min(e for _, _, e in gaps):.3f} to {max(e for _, _, e in gaps):.3f} on the "
+            f"the next best is {min(d for _, d, _ in gaps):.4f} to {max(d for _, d, _ in gaps):.4f} per time unit, "
+            f"against a standard error of {min(e for _, _, e in gaps):.4f} to {max(e for _, _, e in gaps):.4f} on the "
             f"difference, so the ranking of the top two schedules is resolved in {len(resolved)} of the "
             f"{len(gaps)} mechanisms; elsewhere the scan identifies a region of good schedules rather than a single best one.")
     else:
@@ -289,41 +289,53 @@ def f9():
              "telegraph": "two-state promoter", "replication": "volume-scaled synthesis with gene replication"}
     dt0 = float(v[v.case == "constitutive"]["dt"].iloc[0])
     main = v[(v.case != "constitutive_dt") & (v["dt"] == dt0)]
-    # each replicate is an independent sample, so each gets its own test at its own sample size
-    passed = int((main.ks <= main.ks_crit99).sum())
-    ratio = float((main.ks_other_mode / main.ks).min())
-    put("exact_pass", f"{passed} of {len(main)}")
-    put("exact_ks_max", f"{main.ks.max():.4f}")
+    lin, pop = main[main["mode"] == "lineage"], main[main["mode"] == "population"]
 
-    rows = []
+    # Mother-machine samples are independent by construction, so the Kolmogorov-Smirnov test
+    # applies as it stands. A population snapshot is not: its cells share ancestors, which makes
+    # the independent critical value an under-estimate, so the population mode is tested on the
+    # agreement of the replicate means with the exact mean instead.
+    lin_pass = int((lin.ks <= lin.ks_crit99).sum())
+    pop_pass = int((pop.ks <= pop.ks_crit99).sum())
+    ratio = float((main.ks_other_mode / main.ks).min())
+
+    rows, zs = [], {}
     for (case, mode), g in main.groupby(["case", "mode"], sort=False):
-        rows.append(dict(case=case, mode=mode, reps=len(g), n=int(g.n_cells.iloc[0]),
-                         mean_sim=g.mean_sim.mean(), sem_mean=float(g.mean_sim.std(ddof=1) / np.sqrt(len(g))) if len(g) > 1 else float(g.sem_mean.iloc[0]),
-                         mean_exact=g.mean_exact.iloc[0], sd_sim=g.sd_sim.mean(), sd_exact=g.sd_exact.iloc[0],
+        mu, ex = g.mean_sim.mean(), g.mean_exact.iloc[0]
+        se = float(g.mean_sim.std(ddof=1) / np.sqrt(len(g))) if len(g) > 1 else float(g.sem_mean.iloc[0])
+        zs[(case, mode)] = (mu - ex) / se
+        rows.append(dict(case=case, mode=mode, reps=len(g), n=int(g.n_cells.iloc[0]), mean_sim=mu, sem_mean=se,
+                         mean_exact=ex, sd_sim=g.sd_sim.mean(), sd_exact=g.sd_exact.iloc[0],
                          ks=g.ks.max(), ks_crit=g.ks_crit99.iloc[0], ks_other=g.ks_other_mode.min()))
     r = pd.DataFrame(rows)
-    lin = r[r["mode"] == "lineage"].set_index("case"); pop = r[r["mode"] == "population"].set_index("case")
-    gaps = "; ".join(f"{label[c]} {lin.loc[c, 'mean_exact']:.2f} against {pop.loc[c, 'mean_exact']:.2f}"
-                     for c in lin.index if c in pop.index)
-    if passed == len(main):
-        head = (f"Every simulated distribution matches the exact law of its own mode. The largest "
-                f"Kolmogorov-Smirnov distance over the {len(main)} samples is {main.ks.max():.4f}, and each lies "
-                f"below the 99% critical value for its own sample size ({main.ks_crit99.min():.4f} to "
-                f"{main.ks_crit99.max():.4f})")
-    else:
-        w = main.loc[main.ks.idxmax()]
-        head = (f"{passed} of the {len(main)} samples fall below the 99% critical value for their sample size; the "
-                f"largest distance is {main.ks.max():.4f} for {label.get(w.case, w.case)} in {w['mode']} mode, "
-                f"against a critical value of {w.ks_crit99:.4f}")
+    zmax = max(abs(z) for z in zs.values())
+    gaps = "; ".join(f"{label[c]} {r[(r.case == c) & (r['mode'] == 'lineage')].mean_exact.iloc[0]:.2f} against "
+                     f"{r[(r.case == c) & (r['mode'] == 'population')].mean_exact.iloc[0]:.2f}"
+                     for c in label if len(r[(r.case == c) & (r['mode'] == 'population')]))
+    put("exact_pass", f"{lin_pass} of {len(lin)} lineage and {pop_pass} of {len(pop)} population samples")
+    put("exact_ks_max", f"{main.ks.max():.4f}")
+
+    head = (f"Along single lineages, where the mother-machine control makes the recorded cells independent and the "
+            f"Kolmogorov-Smirnov test applies as it stands, all {len(lin)} samples match the exact law of their mode "
+            f"(distances {lin.ks.min():.4f} to {lin.ks.max():.4f} against 99% critical values of "
+            f"{lin.ks_crit99.min():.4f} to {lin.ks_crit99.max():.4f})" if lin_pass == len(lin) else
+            f"Of the {len(lin)} single-lineage samples, {lin_pass} fall below the 99% critical value; the largest "
+            f"distance is {lin.ks.max():.4f}")
+    popsent = (f"A population snapshot is not an independent sample, because its cells share ancestors, so the "
+               f"independent critical value understates the true one and the population mode is judged on the "
+               f"agreement of its replicate means with the exact mean. Over the four models those means sit within "
+               f"{zmax:.1f} standard errors of the exact values ({pop_pass} of the {len(pop)} individual samples also "
+               f"fall below the independent critical value, the largest distance being {pop.ks.max():.4f})")
     tail = (f"Scored against the exact law of the other mode, the same samples give distances at least "
-            f"{ratio:.0f} times larger, so the comparison has ample power to tell the two settings apart. They "
+            f"{ratio:.0f} times larger, so the comparison has ample power to tell the two settings apart. The two "
             f"differ because a snapshot of a growing population over-weights cells that have just divided and so "
             f"just lost half their molecules: the mean molecule number is {gaps} along a lineage and in a "
             f"population respectively")
-    put("exact_result", f"{head}. {tail}")
+    put("exact_result", f"{head}. {popsent}. {tail}")
 
     dtv = v[v.case == "constitutive_dt"].sort_values("dt")
-    conv = ", ".join("%.4f at $dt = %g$" % (row.ks_scheme_vs_continuum, row["dt"]) for _, row in dtv.iterrows())
+    conv = ", ".join("%.4f at $dt = 1/%d$" % (row.ks_scheme_vs_continuum, round(1 / row["dt"]))
+                     for _, row in dtv.iterrows())
     floor = float(dtv["ks_crit99"].iloc[0])
     extra = ""
     try:
@@ -335,27 +347,31 @@ def f9():
                 parts.append(f"{0.5 * float(np.abs(g.observed - g.expected).sum()):.3f} ({mode})")
         if parts:
             extra = (f" In the model with gene replication the measured distribution of cell-cycle phase differs "
-                     f"from the predicted one by a total variation distance of {' and '.join(parts)} over twenty bins of cycle "
-                     f"phase, so the age structure that produces the snapshot weighting emerges from the branching dynamics rather "
-                     f"than being imposed on it.")
+                     f"from the predicted one by a total variation distance of {' and '.join(parts)} over twenty "
+                     f"bins, so the age structure that produces the snapshot weighting emerges from the branching "
+                     f"dynamics rather than being imposed on it.")
     except Exception:
         pass
     put("exact_note",
-        f"{head}. {tail}.\n\nDiscretising the interdivision time to the update step is the only bias in the "
-        f"memoryless-timer comparison, and its size can be computed without simulating anything, as the distance "
-        f"between the stationary law of the scheme and that of the continuous-time model: {conv}. It is first "
-        f"order in the step and already below the 99% critical value at this sample size ({floor:.4f}) for every "
-        f"step tested, so a step of a few percent of the interdivision time is enough for the discretisation to be "
+        f"{head}. {popsent}. {tail}.\n\nDiscretising the interdivision time to the update step is the only bias in "
+        f"the memoryless-timer comparison, and its size can be computed without simulating anything, as the distance "
+        f"between the stationary law of the scheme and that of the continuous-time model: {conv}. It is first order "
+        f"in the step and already below the 99% critical value at this sample size ({floor:.4f}) for every step "
+        f"tested, so a step of a few percent of the interdivision time is enough for the discretisation to be "
         f"undetectable here.{extra}")
 
     hdr = ("| Model | Mode | Cells per sample | Samples | Mean (simulated) | Mean (exact) | s.d. (simulated) | "
-           "s.d. (exact) | KS to own mode | 99% critical | KS to other mode |\n"
-           "|---|---|---|---|---|---|---|---|---|---|---|")
+           "s.d. (exact) | Mean in s.e. | Largest KS | Independent 99% | KS to other mode |\n"
+           "|---|---|---|---|---|---|---|---|---|---|---|---|")
     lines = [f"| {label.get(x.case, x.case)} | {x['mode']} | {x.n:,} | {x.reps} | {x.mean_sim:.3f} ± {x.sem_mean:.3f} | "
-             f"{x.mean_exact:.3f} | {x.sd_sim:.3f} | {x.sd_exact:.3f} | {x.ks:.4f} | {x.ks_crit:.4f} | {x.ks_other:.4f} |"
+             f"{x.mean_exact:.3f} | {x.sd_sim:.3f} | {x.sd_exact:.3f} | {zs[(x.case, x['mode'])]:+.2f} | "
+             f"{x.ks:.4f} | {x.ks_crit:.4f} | {x.ks_other:.4f} |"
              for _, x in r.iterrows()]
     put("exact_table",
-        "Supplementary Table 5. Simulated against exact stationary laws (worst distance over the samples of each row).\n\n"
+        "Supplementary Table 5. Simulated against exact stationary laws. The mean is the average over samples and "
+        "its error the spread between them; \"mean in s.e.\" is the difference from the exact mean in those units. "
+        "\"Largest KS\" is the worst Kolmogorov-Smirnov distance over the samples of the row, and the independent "
+        "critical value beside it is exact for the lineage rows and an under-estimate for the population rows.\n\n"
         + hdr + "\n" + "\n".join(lines))
 
 @safe
