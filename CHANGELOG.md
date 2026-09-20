@@ -21,8 +21,13 @@ and `docs/src/migration.md` for the migration guide.
   2020; Jia & Grima 2023), in both lineage and snapshot modes, for constitutive,
   bursty, telegraph and volume-scaled-with-replication kinetics
   (`paper/scripts/fig9_validation.jl` and `paper/scripts/exact_solutions.py`,
-  reported as Supplementary Note 14). The closed-form lineage and population
-  means and variances are checked on every run of the test suite.
+  reported as Supplementary Note 14). Single lineages match the exact law of
+  their mode to Kolmogorov-Smirnov distances of 0.0023 to 0.0054 against 99%
+  critical values of 0.0081 to 0.0115; population snapshots, whose cells are not
+  independent, agree in the mean to within 2.5 standard errors; and the same
+  samples scored against the law of the other mode give distances at least six
+  times larger. The closed-form lineage and population means and variances are
+  checked on every run of the test suite.
 - `CycleSensitivity`: cell-cycle dependence of the drug death hazard, for agents
   whose lesions are converted into death during replication. The hazard is scaled by
   `baseline + (1 - baseline)·exp(-((φ - center)/width)²/2)` at cycle progress `φ`.

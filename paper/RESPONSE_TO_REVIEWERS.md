@@ -163,12 +163,41 @@ fourth the count distribution at every cycle phase is exactly Poisson and the tw
 modes differ only in how phases are weighted.
 
 The results are in Supplementary Note 14, Supplementary Fig. 6 and Supplementary
-Table 5. Every simulated sample matches the exact law of its own mode below the 99%
-critical value for its sample size, and scored against the law of the *other* mode the
-same samples give distances an order of magnitude larger, so the comparison has ample
-power to tell the two settings apart. The Methods describe the protocol, and the
-closed-form lineage and population means and variances are now checked on every run
-of the test suite (`test/test_exact_population.jl`).
+Table 5, and the population layer passes.
+
+Along single lineages the mother-machine control makes the recorded cells independent,
+so the Kolmogorov-Smirnov test applies as it stands: all four models match the exact law
+of their mode, with distances of 0.0023 to 0.0054 against 99% critical values of 0.0081
+to 0.0115. A population snapshot is a different matter, and we say so rather than
+quoting a test that does not apply: its cells share ancestors, so the independent
+critical value understates the true one. The population mode is therefore judged on the
+agreement of its replicate means with the exact mean, and over the four models those sit
+within 2.5 standard errors; 18 of the 20 individual samples fall below the independent
+critical value as well, the two exceptions being replicates of the model with a
+deterministic cycle, where cells within a clone are synchronised and the within-sample
+correlation is strongest.
+
+Scored against the exact law of the *other* mode, the same samples give distances at
+least six times larger, so the comparison has ample power to tell the two settings
+apart. The mean molecule number is 13.33 along a lineage against 10.00 in a population
+for constitutive production, 13.33 against 10.00 for bursts of four, 8.89 against 6.67
+for the two-state promoter, and 25.64 against 23.96 for volume-scaled synthesis with
+replication.
+
+The step-size bias is quantified as a theoretical quantity rather than inferred from
+noisy samples: the distance between the stationary law of the scheme and that of the
+continuous-time model is 0.0004 at a step of 1/512 of the interdivision time and 0.0029
+at 1/64, first order in the step and below the critical value at these sample sizes
+throughout. In the model with gene replication the cycle-phase distribution the
+population develops matches the predicted two-level step to a total variation distance
+of 0.020 over twenty bins, so the snapshot weighting emerges from the branching dynamics
+rather than being imposed on it.
+
+The Methods describe the protocol, and the closed-form lineage and population means and
+variances are now checked on every run of the test suite
+(`test/test_exact_population.jl`). The theory itself was written twice, as a matrix
+solution of the scheme and as closed-form factorial moments of the continuum limit, and
+the two agree to six digits.
 
 The Jia & Grima venue is corrected to iScience (2023, 26:105746), and Beentjes et al.
 (Phys. Rev. E 2020, 101:032403), Thomas (J. R. Soc. Interface 2017) and Thomas &
@@ -192,18 +221,35 @@ cycle-blind one, and both arms are reported. Supplementary Note 13 states the tw
 averages explicitly and says that half of the shallower dose response under the gate
 is simply less killing.
 
-The conclusion the comparison was drawn for does not depend on the matching: at
-matched mean hazard the melanoma schedule ranking is essentially the cycle-blind one
-again, and under partial protection continuous dosing still outlasts the intermittent
-schedule, which is the trial-consistent ordering.
+The matched arm confirms the reviewer's reading and then strengthens the conclusion the
+comparison was drawn for. Raising the maximal hazard restores the cycle-blind dose
+response almost exactly: the decay rate runs from +0.025 to +0.049 per time unit over
+doses 0.5 to 2, against +0.023 to +0.050 with no gate at all and -0.001 to +0.023 at the
+unmatched gated hazard. So the shallower response under the gate was indeed the lower
+average hazard.
+
+The kin result improves. The question the gate raises is whether it can manufacture the
+sister fate correlations without any heritable state, since sisters are born together
+and so share a cycle phase. At matched mean hazard it leaves no excess sister
+concordance at all in the fast-switching control, which has no usable memory (-0.000,
+against +0.008 unmatched), while the memory gene keeps +0.051. The kin signature
+therefore reads expression memory rather than the cycle, and that conclusion does not
+rest on the gate also killing less. In the melanoma study the best schedule is unchanged
+in all three mechanisms at the matched hazard, and under partial protection continuous
+dosing still outlasts the intermittent schedule, which is the trial-consistent
+ordering.
 
 ### 7. Seed replication on the schedule scans, and Supplementary Table 1
 
-Both done. Every point of the Fig. 4h schedule scan and of its cycle-gated
-counterpart is now the mean of five independent seeds, and the text states the gap
-between the best schedule and the next best against the standard error on that
-difference, so that where the scan identifies a region of good schedules rather than
-a single best one it says so.
+Both done. Every point of the Fig. 4h schedule scan and of its cycle-gated counterpart
+is now the mean of five independent seeds, and Fig. 4h plots those means. The reviewer's
+concern is borne out: the gap between the best schedule and the next best is 0.0003 to
+0.0006 per time unit against a standard error of 0.0001 to 0.0008 on the difference, so
+the ranking of the top two is resolved in only one of the three mechanisms. The text now
+says that, and says that elsewhere the scan identifies a region of good schedules rather
+than a single best one. The qualitative conclusions are unaffected: continuous dosing at
+the highest dose is still best without a fitness cost, and dose 1 still beats dose 2 for
+drug-induced tolerance.
 
 The melanoma memory of five net doublings (issue 13) now has the sensitivity scan the
 reviewer asked for, over two to twelve net doublings with three seeds at each point
