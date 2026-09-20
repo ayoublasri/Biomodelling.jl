@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: ""
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–13, Supplementary Figures 1–5 and Supplementary Tables 1–4.
+**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–14, Supplementary Figures 1–6 and Supplementary Tables 1–4.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -20,7 +20,25 @@ whose mean is $\lambda a/(a+b)$ and whose variance is $\mu + \lambda^2 ab/[(a+b)
 
 The direct method draws the waiting time from $\mathrm{Exp}(a_0)$ and the channel by linear search over the cumulative propensities; after each event only the propensities of reactions that depend on a changed species (the dependency graph) are recomputed, and the running total is refreshed every 512 events. Fixed-step tau-leaping draws $\mathrm{Poisson}(a_j\tau)$ firings for every channel; the strict variant errors when a species would become negative, the hybrid variant discards the leap and simulates that interval with the direct method. Discarding is conditioned on the realised leap, so the accepted steps of the hybrid variant follow a truncated Poisson law and the kernel is approximate; Fig. 2d measures the resulting discrepancy against the exact stationary laws at two step sizes. Adaptive tau-leaping classifies as critical every channel within $n_c = 10$ firings of exhausting a reactant, selects $\tau$ from the non-critical channels through the bounds $\max(\varepsilon x_i/g_i, 1)/|\mu_i|$ and $\max(\varepsilon x_i/g_i, 1)^2/\sigma_i^2$, draws the time to the next critical event from $\mathrm{Exp}(a_0^{\mathrm{crit}})$, fires at most one critical channel, halves $\tau$ on rejection, and performs 100 exact events whenever $\tau < 10/a_0$.
 
-Supplementary Table 1 lists the tests of the package test suite that validate the kernels: Kolmogorov-Smirnov distances below 0.015 (direct) or 0.02–0.03 (approximate kernels) to the Poisson, Beta-Poisson and negative-binomial laws with 8,000 to 12,000 cells; agreement of the adaptive kernel with the direct method on a stiff dimerisation network within 5% in the mean; identical results with one and with several threads.
+Supplementary Table 1 lists the correctness tests of the package test suite. They run on every commit under continuous integration, so the tolerances below are enforced rather than reported once.
+
+Supplementary Table 1. Correctness tests of the kernels and of the population layer (`test/test_kernels.jl`, `test/test_population.jl`, `test/test_exact_population.jl`).
+
+| Model | Kernel | Cells | Statistic | Tolerance |
+|---|---|---|---|---|
+| Birth-death, $k = 12$, $\gamma = 1$ | direct | 8,000 | Kolmogorov-Smirnov distance to $\mathrm{Poisson}(12)$ | < 0.015 |
+| same | hybrid ($\tau = 0.02$), adaptive, strict tau-leap ($\tau = 0.005$) | 8,000 each | same | < 0.02 |
+| same | all four | 8,000 each | error of the mean; minimum count | < 0.2; $\geq 0$ |
+| Telegraph, $k_{\mathrm{on}} = 0.4$, $k_{\mathrm{off}} = 0.6$, $k_{\mathrm{tx}} = 12$ | direct | 12,000 | Kolmogorov-Smirnov distance to the Beta-Poisson law | < 0.015 |
+| same | direct | 12,000 | error of the mean transcript number; of the active-promoter fraction | < 0.15; < 0.02 |
+| Bursty protein, $a = 1.5$, $b = 6$ | direct | 8,000 | Kolmogorov-Smirnov distance to $\mathrm{NegBin}(a/\gamma, 1/(1+b))$ | < 0.03 |
+| Stiff dimerisation ($k = 50$, $k_d = 0.05$, $k_u = 1$, $g = 0.5$) | adaptive ($\varepsilon = 0.02$) against direct | 2,000 each | relative difference of the mean dimer number | < 5% |
+| Birth-death | strict tau-leap ($\tau = 0.5$) on a model that would go negative | 400 | an error is raised rather than a negative count returned | raised |
+| Birth-death | direct, one thread against several | 300 | identical final states | exact |
+| Telegraph in a dividing population | hybrid | 200 | population size held constant under `ConstantN`; doubling time under `FreeGrowth` | exact; within 10% |
+| Constitutive production with a memoryless timer | direct | 3,000 lineages | mean and standard deviation against the closed-form single-lineage law | < 0.5 each |
+| same | direct | branching population | mean against the closed-form population law; separation from the lineage law | < 1.0; > 1.5 |
+| Gamma interdivision times, $\mathrm{cv} = 0.25$ and $1$ | — | 20,000 draws | error of the mean and of the coefficient of variation | < 0.15; < 0.05 |
 
 # Supplementary Note 3: Parameters of all simulations
 
@@ -53,7 +71,7 @@ Supplementary Table 2. Parameters of every simulation in this Article.
 
 The division-time distribution is set by the sizer and is the same at every dose, because in this model the drug kills but does not slow growth. Times to death are broad (coefficient of variation {{death_cv_0_5}} at dose 0.5 and {{death_cv_2_0}} at dose 2) and their mean shifts by much less than the population decay rate, because most deaths occur among low-expressing cells whose hazard is already close to $h_{\max}$ at dose 0.5 ($\mathrm{EC}_{50} = 0.5$, $m = 2$); raising the dose mainly shortens the survival of cells with intermediate protection. The dose dependence of population decay is therefore carried by the fraction of cells that are protected, not by the kinetics of death of unprotected cells, which is the interpretation @iyer2025 give of their single-cell tracking data.
 
-Under continuous dosing at the highest dose (release period 0, dose 2 in Fig. 4h), the long-term growth rate is {{cont_pre}} per time unit for pre-existing tolerance, {{cont_cost}} when the resistant state carries a 50% growth cost and {{cont_ind}} for drug-induced tolerance; the schedules with the lowest long-term growth rate are {{best_pre}}, {{best_cost}} and {{best_ind}} respectively. For pre-existing tolerance without a cost, every release period raises the net growth rate; with the fitness cost, release periods of 5 and 10 time units are within 0.003 per time unit of continuous dosing at doses of 1 and 2; for drug-induced tolerance, dose 1 gives a lower net growth rate than dose 2 at every release period, and release periods of 20 time units or more raise the growth rate in every model. All values are single realisations with 300 founder cells.
+Under continuous dosing at the highest dose (release period 0, dose 2 in Fig. 4h), the long-term growth rate is {{cont_pre}} per time unit for pre-existing tolerance, {{cont_cost}} when the resistant state carries a 50% growth cost and {{cont_ind}} for drug-induced tolerance; the schedules with the lowest long-term growth rate are {{best_pre}}, {{best_cost}} and {{best_ind}} respectively. For pre-existing tolerance without a cost, every release period raises the net growth rate; with the fitness cost, release periods of 5 and 10 time units are within 0.003 per time unit of continuous dosing at doses of 1 and 2; for drug-induced tolerance, dose 1 gives a lower net growth rate than dose 2 at every release period, and release periods of 20 time units or more raise the growth rate in every model. Each point is a population of 300 founder cells. {{sched_seed_note}}
 
 # Supplementary Note 5: Benchmark details
 
@@ -89,10 +107,14 @@ Supplementary Table 4. Reference values used for calibration and validation (tra
 | of which survived without dividing | 102 / 99 / 53 | same |
 | HCT116 cells at drug addition; death fraction | 275; 0.64 | @iyer2025, Table 1 |
 | Plateau of the HCT116 kill curve | after ~100 h | @iyer2025, Fig 1b |
-| Lineage correlations of fate | present for sisters, first and second cousins; absent for third cousins | @iyer2025, Fig 5a |
+| Lineage correlations of fate | present for sisters, first and second cousins; absent for third cousins (reported graphically; no numeric coefficients given) | @iyer2025, Fig 5a |
+| Single-cell intermitotic and apoptosis times across doses | not significantly different (Kruskal-Wallis $P = 0.22$ and $P = 0.53$) while population decay rates differ about threefold | @iyer2025 |
+| Pre-resistant melanoma cells traced back from resistant fates | initial frequency ~1:1,000 to 1:10,000 | @emert2021 |
 | Pre-resistant melanoma cells | 1:50 to 1:500 per marker; EGFR-high cells give 7.9 ± 0.9 fold more resistant colonies | @shaffer2017 |
 | N15-0385 glioblastoma doubling time | 50 h | @lasri2020 |
-| Temozolomide elimination half-life | 2.1 h | @ostermann2004 |
+| Temozolomide elimination half-life | 1.8 h in plasma; 2.1 h in the cerebrospinal-fluid population model used here | @rudek2004; @ostermann2004 |
+| MGMT / alkyltransferase depletion in peripheral blood mononuclear cells | $-63\%$ at 14 days, $-73\%$ at 21 days on protracted schedules; nadir 18.0 ± 2.26% of initial on a compressed 1,000 mg/m² schedule | @tolcher2003; @middleton2000 |
+| Tumour MGMT activity in orthotopic GBM43 xenografts | depleted by day 6 on both schedules; still suppressed at day 22 only on the 21-day schedule; back to baseline in both by day 29 | @robinson2010 |
 | RTOG 0525 regimens | 150-200 mg/m² days 1-5 vs 75-100 mg/m² days 1-21 of 28-day cycles; median OS 16.6 vs 14.9 months | @gilbert2013 |
 | SWOG S1320 regimens | continuous vs 3 weeks off / 5 weeks on after an 8-week lead-in; median PFS 9.0 vs 5.5 months | @algazi2020 |
 
@@ -106,7 +128,10 @@ The ingredients of this framework have precedents, and several of its results co
 
 | Result in this Article | Already established | What this work adds |
 |---|---|---|
-| Stochastic reaction kinetics inside growing, dividing cells (Fig. 3) | Simulators of stochastic expression with growth and division exist [@bertaux2018; @piho2025abm], including version 1 of this framework [@lasri2022] | Gene replication, promoter inheritance, a drug layer, lineage statistics, observation models and inference in one forward model, so that a resistance phenotype is a heritable expression state with measurable kinetics rather than an assumed compartment |
+| Stochastic reaction kinetics inside growing, dividing cells (Fig. 3) | Simulators of stochastic expression with growth and division exist [@bertaux2018; @piho2025abm; @thomas2021], including version 1 of this framework [@lasri2022] | Gene replication, promoter inheritance, a drug layer, lineage statistics, observation models and inference in one forward model, so that a resistance phenotype is a heritable expression state with measurable kinetics rather than an assumed compartment |
+| Synthetic scRNA-seq from a known network in a dividing population, for imputation and network-inference benchmarking (Fig. 5) | Version 1 of this framework already did this [@lasri2022] | Gene replication and cell-cycle copy number, sizer and adder division rules in place of a timer, inherited promoter states, the lineage table, the drug layer, likelihood-free inference and the schedule optimiser; nothing in Fig. 5 that version 1 could also produce is presented as new |
+| Exact stationary distributions for growing, dividing cells differ between a single lineage and a population snapshot (Supplementary Note 14) | Solved exactly for bursty expression with replication, partitioning and general interdivision times [@beentjes2020], for the extended telegraph model with volume-dependent synthesis and size control [@jia2023], and framed as an ergodic principle [@thomas2017; @thomas2021] | The population and lineage layers are validated against those solutions in both modes, rather than only against single-cell stationary laws |
+| Inference of kinetic parameters from lineage-resolved data | Finite-state-projection inference from mother machines and lineage trees [@piho2024feedback] | Inference of drug parameters from population data, with the identifiability limit made explicit (Fig. 6c) |
 | Simulation of division trees for lineage-tracing methods | TedSim couples expression to division history [@pan2022tedsim]; Cassiopeia simulates topologies, heritable fitness and CRISPR barcodes [@jones2020cassiopeia] | Molecular content on the same tree: partitioning at division, promoter states, drug-induced death, and per-cell fates with the molecules that caused them |
 | Heritable expression states decide which cells survive a drug (Fig. 4) | Measured directly in barcoded and time-lapse experiments [@shaffer2017; @harmange2023; @iyer2025; @oren2021] | A generative model in which memory is one promoter timescale, reproducing the reported signatures quantitatively and predicting which of them discriminate pre-existing from induced tolerance |
 | Cell-cycle-aware inference of transcriptional kinetics is necessary (Fig. 3f, Fig. 6b) | Established from data and theory [@sukys2025; @zhang2025; @okochi2026scdivide] | A simulator that generates the data such methods assume, and a quantification of the bias incurred by a division-blind fit |
@@ -154,3 +179,27 @@ The window position is a modelling choice rather than a claim about either agent
 **Supplementary Fig. 5 | The case studies under cell-cycle-gated killing.** **a**, Net population decay rate over the first 30 time units of treatment against dose (solid, left axis) and the mean time to death of killed cells (dashed, right axis), with the hazard cycle-blind and with three quarters of it gated to a mid-cycle window. **b**, Concordance of lineage fate between sisters and between cousins, above the value expected if fates were independent, for the memory gene and the fast-switching control. **c**, Weeks after randomisation to loss of control for the three melanoma mechanisms and the three clinical schedules (mean ± s.d. of four seeds, censored at the end of follow-up), cycle-blind (solid) and cycle-gated (pale).
 
 {{cycle_case_note}}
+
+{{cycle_matched_note}}
+
+# Supplementary Note 14: Exact stationary laws for growing, dividing populations
+
+The kernels of Supplementary Note 2 are validated against stationary laws for a single cell at fixed volume. That leaves the layer above them untested against theory: growth, gene replication, partitioning at division, and the difference between watching one lineage and taking a snapshot of a population. Exact solutions for precisely this class of model exist. Beentjes, Perez-Carrasco and Grima solve the stationary distribution with bursty production, DNA replication, binomial partitioning at mitosis and Erlang or general interdivision times, and give different closed forms for the single-lineage and the population-snapshot setting [@beentjes2020]; Jia and Grima solve the extended telegraph model with volume-dependent synthesis, dosage compensation, partitioning, interdivision-time variability and cell-size control, again separately for lineages and populations [@jia2023]. The difference between the two settings is the ergodic principle: a snapshot of a growing population over-weights cells that have recently divided, and therefore recently lost half their molecules [@thomas2017; @thomas2021].
+
+Four analytically solvable members of that class were simulated with the population layer and compared with the exact solutions in both modes (`paper/scripts/fig9_validation.jl` for the simulations, `paper/scripts/exact_solutions.py` for the solutions). The single-lineage mode uses the `MotherMachine` population control, which keeps one daughter at random at every division, so the recorded cells are statistically independent lineages; the population mode uses free branching growth with uniform subsampling, which preserves the snapshot distribution.
+
+**Memoryless interdivision times.** For the first three models the interdivision time is exponential, so the number of molecules is a Markov process on its own and both stationary laws are available in closed form. Writing the generating function as $G(u) = \sum_j c_j u^j$ with $u = z - 1$, the factorial moments obey
+
+$$c_j = \frac{\sum_i \beta_i\, c_{j-i}}{\gamma j + \lambda\,(1 - 2^{-j})} \quad\text{(lineage)}, \qquad c_j = \frac{\sum_i \beta_i\, c_{j-i}}{\gamma j + \lambda\,(2 - 2^{1-j})} \quad\text{(population)},$$
+
+where $\gamma$ is the decay rate, $\lambda$ the division rate and $\beta_i$ the coefficient of $u^i$ contributed by production (for bursts of fixed size $b$ at rate $k_b$, $\beta_i = k_b\binom{b}{i}$). For the telegraph model the same expansion gives a two-by-two linear system per order, because the promoter state is inherited rather than partitioned. The mean is $k/(\gamma + \lambda/2)$ along a lineage and $k/(\gamma + \lambda)$ in a population, so the two differ by a third at $\gamma = \lambda$ and the comparison has ample power to tell them apart. Because the simulator advances cells by a fixed step $dt$ and divides them at the end of a step, the interdivision time it realises is geometric on that grid; the full pmf of the scheme is therefore the leading eigenvector of $[(1-p)I + \kappa p B]\,\mathrm{e}^{dt A}$ with $p = 1 - \mathrm{e}^{-dt/T}$, $A$ the reaction generator, $B$ binomial thinning and $\kappa = 1$ for a lineage or $2$ for a population, which is what the simulations are compared against; it agrees with the closed-form moments above as $dt \to 0$.
+
+**Deterministic cycle with gene replication.** The fourth model has a deterministic cycle, exponential volume growth, volume-scaled synthesis and gene replication at mid-cycle. Production is linear in volume and copy number and decay is first-order, so the count distribution at every cycle phase is exactly Poisson, with a mean that satisfies a linear recursion over the update steps and is halved at division. The two modes then differ only in how cycle phases are weighted, uniformly along a lineage and towards younger cells in a population; the population weights were obtained by iterating the age map of the scheme from the founder ages actually used, so nothing is assumed about convergence to a stable age distribution. The measured age distribution is compared with that prediction alongside the counts.
+
+![](figS6_exact.png)
+
+**Supplementary Fig. 6 | The population and lineage layers against exact solutions.** **a**, Simulated and exact stationary distributions for constitutive production with a memoryless interdivision time, in single-lineage and population-snapshot mode. **b**, Kolmogorov-Smirnov distance to the exact law of the matching mode, and to the exact law of the other mode, for every model; the dotted line is the 99% critical value at the sample size used. **c**, Kolmogorov-Smirnov distance against the update step, showing the discretisation of the interdivision time vanishing. **d**, Measured and predicted distribution of cell-cycle phase in the population, for the model with gene replication.
+
+{{exact_note}}
+
+{{exact_table}}

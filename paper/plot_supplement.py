@@ -226,3 +226,77 @@ try:
     save(fig, "figS5_cycle_robustness")
 except Exception as e:
     print("S5 skipped:", e)
+
+# S6: the population and lineage layers against exact stationary laws
+try:
+    import numpy as _np
+    val = pd.read_csv(os.path.join(OUT, "fig9_validation.csv"))
+    pmf = pd.read_csv(os.path.join(OUT, "fig9_pmf.csv"))
+    cnt = pd.read_csv(os.path.join(OUT, "fig9_counts.csv"))
+    LABEL = {"constitutive": "constitutive", "bursty": "bursts of 4", "telegraph": "telegraph",
+             "replication": "replication"}
+    MODES = ("lineage", "population")
+    fig = plt.figure(figsize=(7.2, 5.0))
+    gs = fig.add_gridspec(2, 2, hspace=0.62, wspace=0.42)
+
+    # (a) simulated against exact distributions, both modes, for the constitutive model
+    ax = fig.add_subplot(gs[0, 0])
+    base = val[val.case == "constitutive"].dt.iloc[0]
+    for i, mode in enumerate(MODES):
+        g = cnt[(cnt.case == "constitutive") & (cnt["mode"] == mode) & (cnt.kernel == "DirectSSA") & (cnt.dt == base)]
+        h = g.groupby("n").cells.sum()
+        n = _np.arange(0, 60)
+        freq = _np.array([h.get(k, 0) for k in n], dtype=float); freq /= freq.sum()
+        ax.step(n, freq, where="mid", color=C[i], lw=1.1, label=f"{mode} (simulated)")
+        e = pmf[pmf["mode"] == mode].set_index("n").exact
+        ax.plot(n, [e.get(k, 0.0) for k in n], ls="--", lw=1.0, color=INK2,
+                label="exact" if i == 0 else None)
+    ax.set_xlabel("molecules per cell"); ax.set_ylabel("frequency")
+    ax.legend(fontsize=6, loc="upper right")
+    ax.set_title("a   one model, two modes", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (b) distance to the exact law of the matching mode and of the other mode
+    ax = fig.add_subplot(gs[0, 1])
+    main = val[(val.case != "constitutive_dt") & (val.kernel == "DirectSSA")]
+    keys = [(c, m) for c in ("constitutive", "bursty", "telegraph", "replication") for m in MODES
+            if len(main[(main.case == c) & (main["mode"] == m)])]
+    x = _np.arange(len(keys)); w = 0.38
+    own = [main[(main.case == c) & (main["mode"] == m)].ks.max() for c, m in keys]
+    oth = [main[(main.case == c) & (main["mode"] == m)].ks_other_mode.min() for c, m in keys]
+    crit = [main[(main.case == c) & (main["mode"] == m)].ks_crit99.min() for c, m in keys]
+    ax.bar(x - w / 2, own, width=w, color=C[0], label="to its own mode")
+    ax.bar(x + w / 2, oth, width=w, color=C[1], label="to the other mode")
+    for xi, ci in zip(x, crit):
+        ax.plot([xi - 0.45, xi + 0.45], [ci, ci], ls=":", lw=0.9, color=INK2)
+    ax.set_yscale("log"); ax.set_ylabel("Kolmogorov–Smirnov distance")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{LABEL[c]}\n{m[:4]}." for c, m in keys], fontsize=5.5)
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
+    ax.set_title("b   agreement, and its power to discriminate", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (c) convergence in the update step
+    ax = fig.add_subplot(gs[1, 0])
+    dtv = val[val.case == "constitutive_dt"].sort_values("dt")
+    ax.plot(dtv.dt, dtv.ks, marker="o", ms=3.5, lw=1.2, color=C[0], label="measured")
+    ax.plot(dtv.dt, dtv.ks_crit99, ls=":", lw=0.9, color=INK2, label="99% critical value")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("update step / mean interdivision time"); ax.set_ylabel("Kolmogorov–Smirnov distance")
+    ax.legend(fontsize=6)
+    ax.set_title("c   the step-size bias vanishes", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (d) the emergent distribution of cell-cycle phase
+    ax = fig.add_subplot(gs[1, 1])
+    age = pd.read_csv(os.path.join(OUT, "fig9_agefit.csv"))
+    for i, mode in enumerate(MODES):
+        g = age[age["mode"] == mode].groupby("phase")[["observed", "expected"]].mean().reset_index()
+        k = max(1, len(g) // 60)
+        gg = g.iloc[::k]
+        ax.plot(gg.phase, gg.observed / gg.observed.sum(), lw=1.1, color=C[i], label=f"{mode} (measured)")
+        ax.plot(gg.phase, gg.expected / gg.expected.sum(), ls="--", lw=1.0, color=INK2,
+                label="predicted" if i == 0 else None)
+    ax.set_xlabel("cell-cycle phase"); ax.set_ylabel("fraction of cells")
+    ax.legend(fontsize=6)
+    ax.set_title("d   where the two modes differ", loc="left", fontweight="semibold", color="#2a2a28")
+    save(fig, "figS6_exact")
+except Exception as e:
+    print("S6 skipped:", e)

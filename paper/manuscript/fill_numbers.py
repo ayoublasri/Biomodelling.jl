@@ -25,11 +25,30 @@ def f2():
     put("speed_ratio", f"{r:.1f}-fold" if r >= 1 else f"{1/r:.1f}-fold (in favour of JumpProcesses.jl)")
     d = load("fig2f_runtime.csv"); row = d[(d.kernel == "HybridSSATau") & (d.cells == d.cells.max()) & (d.genes == 10)].iloc[0]
     put("runtime_10k", f"{row.seconds:.1f} s"); put("runtime_case", f"{int(row.cells)} cells × {int(row.genes)} telegraph genes × 200 steps (hybrid kernel)")
+    # scaling in the number of reactions is not the same for the two kernels, so quote both
+    parts = []
+    for kern in ("HybridSSATau", "DirectSSA"):
+        g = d[(d.kernel == kern) & (d.cells == d.cells.max())].sort_values("genes")
+        if len(g) < 2: continue
+        lo, hi = g.iloc[0], g.iloc[-1]
+        parts.append(f"{kern} {lo.seconds:.2f} s to {hi.seconds:.1f} s, a factor of {hi.seconds/lo.seconds:.0f} "
+                     f"for a factor of {hi.genes/lo.genes:.0f} in genes")
+    put("runtime_scaling", "; ".join(parts))
 
 @safe
 def f3():
     d = load("fig3c_heritability.csv").sort_values("k_switch")
     put("md_slow", f"{d.mother_daughter.iloc[0]:.2f}"); put("md_fast", f"{d.mother_daughter.iloc[-1]:.2f}")
+    # Fig. 3f plots the fitted transcription rate per unit volume and per twenty transcripts, so the
+    # text has to separate the raw change, the part of it that is volume, and the remainder.
+    f = load("fig3f_copynumber.csv").set_index("subset")
+    one, two, pool = f.loc["copies1"], f.loc["copies2"], f.loc["pooled"]
+    put("ktx_fold", f"{two.k_tx / one.k_tx:.1f}")
+    put("vol_fold", f"{two.mean_volume / one.mean_volume:.1f}")
+    put("ktx_per_vol_fold", f"{(two.k_tx / two.mean_volume) / (one.k_tx / one.mean_volume):.1f}")
+    put("kon_fold", f"{two.k_on / one.k_on:.1f}")
+    put("fit_one_copy", f"{one.k_on:.2f}, {one.k_off:.2f} and {one.k_tx / one.mean_volume / 20:.1f}")
+    put("fit_pooled", f"{pool.k_on:.2f}, {pool.k_off:.2f} and {pool.k_tx / pool.mean_volume / 20:.1f}")
 
 @safe
 def f4():
@@ -52,12 +71,32 @@ def f4():
     e = load("fig4e_clone_diversity.csv"); m = e.groupby("model").mean(numeric_only=True)
     put("clones_before", f"{m.loc['pre_existing', 'effective_clones_before']:.0f}"); put("clones_after_pre", f"{m.loc['pre_existing', 'effective_clones_after']:.0f}")
     put("clones_after_ind", f"{m.loc['drug_induced', 'effective_clones_after']:.0f} of {m.loc['drug_induced', 'effective_clones_before']:.0f}")
-    f = load("fig4f_schedules.csv")
+    try:
+        f = load("fig4f_schedules_seeds.csv"); nseed = int(f.seed.nunique())
+    except Exception:
+        f = load("fig4f_schedules.csv"); f["seed"] = 1; nseed = 1
+    agg = f.groupby(["model", "release_period", "dose"]).long_term_growth_rate.agg(["mean", "std", "count"]).reset_index()
+    gaps = []
     for model, tag in (("pre_existing", "pre"), ("pre_existing_cost", "cost"), ("drug_induced", "ind")):
-        g = f[f.model == model]; best = g.loc[g.long_term_growth_rate.idxmin()]
-        put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best.long_term_growth_rate:+.3f} per time unit)")
-        cont = g[(g.release_period == 0) & (g.dose == g.dose.max())].long_term_growth_rate.iloc[0]
+        g = agg[agg.model == model].sort_values("mean")
+        best, second = g.iloc[0], g.iloc[1]
+        sem = (best["std"] / np.sqrt(best["count"])) if best["count"] > 1 else float("nan")
+        err = "" if nseed == 1 else f" ± {best['std']:.3f} over {nseed} seeds"
+        put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best['mean']:+.3f}{err} per time unit)")
+        cont = g[(g.release_period == 0) & (g.dose == g.dose.max())]["mean"].iloc[0]
         put(f"cont_{tag}", f"{cont:+.3f}")
+        if nseed > 1:
+            gaps.append((tag, float(second["mean"] - best["mean"]), float(np.hypot(sem, second["std"] / np.sqrt(second["count"])))))
+    if gaps:
+        resolved = [t for t, d, e in gaps if d > 2 * e]
+        put("sched_seed_note",
+            f"Each point of the scan is the mean of {nseed} independent seeds. The gap between the best schedule and "
+            f"the next best is {min(d for _, d, _ in gaps):.3f} to {max(d for _, d, _ in gaps):.3f} per time unit, "
+            f"against a standard error of {min(e for _, _, e in gaps):.3f} to {max(e for _, _, e in gaps):.3f} on the "
+            f"difference, so the ranking of the top two schedules is resolved in {len(resolved)} of the "
+            f"{len(gaps)} mechanisms; elsewhere the scan identifies a region of good schedules rather than a single best one.")
+    else:
+        put("sched_seed_note", "")
     g = load("fig4g_memory_disruption.csv").groupby("treatment").mean(numeric_only=True)
     put("clones_none", f"{g.loc['none', 'surviving_clones']:.0f}"); put("clones_predrug", f"{g.loc['before_drug', 'surviving_clones']:.0f}"); put("clones_during", f"{g.loc['before_and_during', 'surviving_clones']:.0f}")
     put("cells_none", f"{g.loc['none', 'surviving_cells']:.0f}"); put("cells_during", f"{g.loc['before_and_during', 'surviving_cells']:.0f}")
@@ -66,6 +105,7 @@ def f4():
 def f5a():
     d = load("fig5a_memory_genes.csv")
     put("score_min", f"{d[d.memory_time < 2].score_true.mean():.1f}"); put("score_max", f"{d[d.memory_time > 100].score_true.mean():.1f}")
+    put("score_peak", f"{d.score_true.max():.1f}"); put("score_peak_seq", f"{d.score_seq.max():.1f}")
     y = (d.memory_time > 20).astype(int)
     put("auc_true", f"{roc_auc_score(y, d.score_true):.2f}"); put("auc_seq", f"{roc_auc_score(y, d.score_seq):.2f}")
     m = load("fig5bc_metrics.csv")
@@ -128,12 +168,29 @@ def f7():
     put("cal_memgen", f"{c['memory_generations']:.1f}"); put("cal_pon", f"{100 * c['p_on']:.1f}%"); put("cal_ec50", f"{c['EC50']:.1f}")
     put("cal_hmax", f"{c['h_max']:.3f}"); put("cal_ic50", f"{c['IC50']:.1f}")
     d = load("fig7a_fates.csv"); m = d.groupby("cisplatin_uM").mean(numeric_only=True)
-    err = lambda r: np.sqrt(np.mean([(r.died - r.obs_died) ** 2, (r.divided - r.obs_divided) ** 2, (r.survived - r.obs_survived) ** 2]))
-    put("rmse_train", f"{np.mean([err(m.loc[7.0]), err(m.loc[13.0])]):.3f}"); put("rmse_heldout", f"{err(m.loc[10.0]):.3f}")
+    # One definition throughout: the root-mean-square residual of the seed-averaged fate fractions,
+    # pooled over every fraction of the concentrations named (six numbers for training, three for held-out).
+    def resid(c):
+        r = m.loc[c]
+        return np.array([r.died - r.obs_died, r.divided - r.obs_divided, r.survived - r.obs_survived])
+    rms = lambda v: float(np.sqrt((np.concatenate(v) ** 2).mean()))
+    put("rmse_train", f"{rms([resid(7.0), resid(13.0)]):.3f}")
+    put("rmse_heldout", f"{rms([resid(10.0)]):.3f}")
+    # The colour scale of Fig. 7f is the calibration objective, not this error: it is evaluated on one
+    # seed and adds the memory prior, so it is smaller than the four-seed error reported in the text.
+    j = load("fig7j_cycle_fit.csv").set_index("key").value
+    obj, seed1 = float(c["distance"]), float(j["rmse_flat"])
+    put("cal_objective", f"{obj:.3f}")
+    put("cal_objective_parts", f"{seed1:.3f} of single-seed training error and {obj - seed1:.3f} of prior penalty")
     r = m.loc[10.0]; put("obs_10", f"{r.obs_died:.2f}, {r.obs_divided:.2f} and {r.obs_survived:.2f}"); put("pred_10", f"{r.died:.2f}, {r.divided:.2f} and {r.survived:.2f}")
     put("obs_died_7", f"{m.loc[7.0].obs_died:.2f}"); put("obs_died_13", f"{m.loc[13.0].obs_died:.2f}")
-    k = load("fig7c_kin_correlation.csv").groupby("relation").fate_correlation.mean()
+    kd = load("fig7c_kin_correlation.csv")
+    k = kd.groupby("relation").fate_correlation.mean()
     for key, rel in (("phi_sis", "sisters"), ("phi_c1", "first cousins"), ("phi_c2", "second cousins"), ("phi_c3", "third cousins"), ("phi_unrel", "unrelated")): put(key, f"{k[rel]:.2f}")
+    g3 = kd[kd.relation == "third cousins"].fate_correlation
+    half = 1.96 * g3.std(ddof=1) / np.sqrt(len(g3))
+    put("phi_c3_ci", f"95% confidence interval {g3.mean() - half:+.3f} to {g3.mean() + half:+.3f}")
+    put("phi_c3_seeds", f"{len(g3)}")
     t = load("fig7d_timing.csv").groupby(["event", "cisplatin_uM"]).mean_h.mean()
     put("deathtime_shift", f"{abs(t[('death', 13.0)] - t[('death', 7.0)]) / t[('death', 7.0)] * 100:.0f}%")
     kc = load("fig7b_killcurves.csv"); g = kc[np.isclose(kc.cisplatin_uM, 13.0)].reset_index(drop=True)
@@ -185,6 +242,72 @@ def f7b():
             f"a longer memory with fewer are hard to tell apart from fates alone.")
     except Exception:
         put("memslice_sentence", "")
+
+@safe
+def f9():
+    """Validation of the population and lineage layers against exact stationary laws."""
+    import numpy as np
+    v = load("fig9_validation.csv")
+    v = v[v.kernel == "DirectSSA"]
+    label = {"constitutive": "constitutive production", "bursty": "bursts of four molecules",
+             "telegraph": "two-state promoter", "replication": "volume-scaled synthesis with gene replication",
+             "constitutive_dt": "constitutive production (step-size scan)"}
+    main = v[(v.case != "constitutive_dt") & (v.dt == v[v.case == "constitutive"].dt.iloc[0])]
+    # one row per case and mode: pool the replicates by taking the worst distance and the mean of the means
+    rows, lines = [], []
+    for (case, mode), g in main.groupby(["case", "mode"], sort=False):
+        rows.append(dict(case=case, mode=mode, n=int(g.n_cells.sum()), reps=len(g),
+                         mean_sim=g.mean_sim.mean(), mean_exact=g.mean_exact.iloc[0],
+                         sd_sim=g.sd_sim.mean(), sd_exact=g.sd_exact.iloc[0],
+                         ks=g.ks.max(), ks_crit=g.ks_crit99.min(), ks_other=g.ks_other_mode.min()))
+    r = pd.DataFrame(rows)
+    passed = int((r.ks <= r.ks_crit).sum())
+    ratio = float((r.ks_other / r.ks).min())
+    put("exact_ks_max", f"{r.ks.max():.4f}")
+    put("exact_ks_crit", f"{r.ks_crit.min():.4f} to {r.ks_crit.max():.4f}")
+    put("exact_pass", f"{passed} of {len(r)}")
+    lin = r[r["mode"] == "lineage"].set_index("case"); pop = r[r["mode"] == "population"].set_index("case")
+    gaps = [f"{c}: {lin.loc[c, 'mean_exact']:.2f} along a lineage against {pop.loc[c, 'mean_exact']:.2f} in a population"
+            for c in lin.index if c in pop.index]
+    if passed == len(r):
+        head = (f"Every simulated distribution matches the exact law of its own mode: the largest "
+                f"Kolmogorov-Smirnov distance over the eight comparisons is {r.ks.max():.4f}, against 99% critical "
+                f"values of {r.ks_crit.min():.4f} to {r.ks_crit.max():.4f} at these sample sizes")
+    else:
+        worst = r.loc[r.ks.idxmax()]
+        head = (f"{passed} of the {len(r)} comparisons fall below the 99% critical value; the largest distance is "
+                f"{r.ks.max():.4f} for the {label.get(worst.case, worst.case)} model in {worst['mode']} mode, against "
+                f"a critical value of {worst.ks_crit:.4f}")
+    tail = (f"The test separates the two settings: measured against the exact law of the other mode, the same "
+            f"samples give distances at least {ratio:.0f} times larger, because a snapshot of a growing population "
+            f"over-weights cells that have just divided and so just lost half their molecules "
+            f"({'; '.join(gaps)} in mean molecule number)")
+    put("exact_result", f"{head}. {tail}")
+
+    # step-size convergence and the emergent age distribution
+    dtv = v[v.case == "constitutive_dt"].sort_values("dt")
+    conv = ", ".join(f"{row.ks:.4f} at $dt = {row.dt:g}$" for _, row in dtv.iterrows())
+    extra = ""
+    try:
+        a = load("fig9_agefit.csv")
+        g = a[a["mode"] == "population"]
+        tv = 0.5 * float(np.abs(g.observed - g.expected).sum())
+        extra = (f" In the population run of the replication model the measured distribution of cell-cycle phase "
+                 f"differs from the predicted one by a total variation distance of {tv:.3f}, so the age structure "
+                 f"that produces the snapshot weighting emerges from the branching dynamics rather than being imposed.")
+    except Exception:
+        pass
+    put("exact_note",
+        f"{head}. {tail}. Discretising the interdivision time to the update step is the only bias in the "
+        f"memoryless-timer comparison and it falls with the step ({conv}), so a step of a few hundredths of the "
+        f"interdivision time is enough for the discretisation to be undetectable at these sample sizes.{extra}")
+
+    hdr = ("| Model | Mode | Cells | Mean (simulated) | Mean (exact) | s.d. (simulated) | s.d. (exact) | "
+           "KS to own mode | 99% critical | KS to other mode |\n|---|---|---|---|---|---|---|---|---|---|")
+    for _, x in r.iterrows():
+        lines.append(f"| {label.get(x.case, x.case)} | {x['mode']} | {x.n:,} | {x.mean_sim:.3f} | {x.mean_exact:.3f} | "
+                     f"{x.sd_sim:.3f} | {x.sd_exact:.3f} | {x.ks:.4f} | {x.ks_crit:.4f} | {x.ks_other:.4f} |")
+    put("exact_table", "Supplementary Table 5. Simulated against exact stationary laws.\n\n" + hdr + "\n" + "\n".join(lines))
 
 @safe
 def f7c():
@@ -274,8 +397,9 @@ def f4c():
 
     # schedules: separate what survives (the dose) from what does not (the release period)
     def bs(df, m):
-        g = df[df.model == m]; r = g.loc[g.long_term_growth_rate.idxmin()]
-        return float(r.release_period), float(r.dose)
+        g = df[df.model == m].groupby(["release_period", "dose"]).long_term_growth_rate.mean()
+        rp, dose = g.idxmin()
+        return float(rp), float(dose)
     label = {"pre_existing": "pre-existing tolerance", "pre_existing_cost": "a fitness cost of resistance",
              "drug_induced": "drug-induced tolerance"}
     models = list(dict.fromkeys(s0.model))
@@ -340,6 +464,36 @@ def f4c():
         f"the best schedule is unchanged in {V.get('cyc8_same', '')} mechanisms and the model "
         f"{V.get('cyc8_trial', '')}")
 
+    # matched cycle-averaged mean hazard: the gate lowers the average hazard as well as making it
+    # phase-dependent, so a second arm raises h_max to hold the average fixed
+    try:
+        dm = load("fig4i_cycle_matched.csv"); cm = load("fig4i_cycle_matched_concordance.csv")
+        mk = kv("fig4i_cycle_matching.csv")
+        am, bm = dec(dm); a0, b0 = dec(d0); a1, b1 = dec(d1)
+        memm, fstm = exc(cm, "memory", "sisters"), exc(cm, "fast", "sisters")
+        try:
+            mm = load("fig8f_melanoma_cycle_matched.csv")
+            mel = (f" In the melanoma study the best schedule is unchanged in "
+                   f"{sum(best(mm, x) == best(m0, x) for x in mechs)} of {len(mechs)} mechanisms at the matched hazard as well.")
+        except Exception:
+            mel = ""
+        put("cycle_matched_note",
+            f"The gate does two things at once. It makes the hazard depend on cycle phase, and it lowers the hazard "
+            f"on average: over a uniform cycle phase the multiplier averages {mk['mean_multiplier_uniform_phase']:.3f}, "
+            f"and under the phase density these simulations realise, $f(\\varphi) = 2/(1+\\varphi)^2$ for a sizer with "
+            f"exponential growth in a growing population, {mk['mean_multiplier_realised']:.3f}. Half of the shallower "
+            f"dose response above is therefore just less killing. Repeating the comparison with the maximal hazard "
+            f"raised by $1/{mk['mean_multiplier_realised']:.3f}$, so that the cycle-averaged hazard matches the "
+            f"cycle-blind one ($h_{{\\max}} = {mk['h_max_matched']:.3f}$ against {mk['h_max_blind']:.3f}), gives a "
+            f"decay rate of {am:+.3f} to {bm:+.3f} per time unit over doses 0.5 to 2, against {a1:+.3f} to {b1:+.3f} "
+            f"at the unmatched gated hazard and {a0:+.3f} to {b0:+.3f} with no gate at all. At matched mean hazard "
+            f"the sister concordance above independence is {memm:+.3f} for the memory gene and {fstm:+.3f} for the "
+            f"fast-switching control, against {V.get('cyc4_mem_g', '')} and {V.get('cyc4_fast_g', '')} unmatched, so "
+            f"the conclusion that the gate cannot manufacture the kin signature does not rest on the gate also "
+            f"killing less.{mel}")
+    except Exception as e:
+        put("cycle_matched_note", "")
+
 @safe
 def f8():
     d = load("fig8a_melanoma_schedules.csv"); m = d.groupby(["mechanism", "schedule"]).mean(numeric_only=True)
@@ -373,7 +527,7 @@ def fsupp():
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
-for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f4c): f()
+for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f4c, f9): f()
 fsupp()
 
 def fill(template, target):
