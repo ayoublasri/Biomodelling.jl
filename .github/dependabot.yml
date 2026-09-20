@@ -1,0 +1,17 @@
+version: 2
+updates:
+  # The video tooling is the only npm tree in the repository; it is build-only,
+  # but it is what Dependabot alerts on, so keep it current.
+  - package-ecosystem: npm
+    directory: /video
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      remotion:
+        patterns: ['remotion', '@remotion/*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -7,11 +7,16 @@ video shows the same numbers as the white paper.
 ## Build
 
 ```bash
-npm install
-python scripts/make_charts.py     # regenerate public/chart_*.png from paper/output
-npm run studio                             # preview in the browser
-npm run render                             # write out/biomodelling.mp4
+npm ci --ignore-scripts          # lockfile install, no package install scripts
+python scripts/make_charts.py    # fetches Inter and rebuilds public/chart_*.png
+npm run studio                   # preview in the browser
+npm run render                   # write out/biomodelling.mp4
 ```
+
+Nothing here is used by the Julia package or shipped to anyone who installs it;
+this tree exists only to build the video. Inter is fetched by `make_charts.py`
+rather than committed, so the repository carries no font binaries. CI runs
+`npm audit` against the lockfile on every push.
 
 Rendering needs a Chrome headless shell. On a machine without one, pass an existing
 binary:

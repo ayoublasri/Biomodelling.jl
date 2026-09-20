@@ -55,6 +55,22 @@ and `docs/src/migration.md` for the migration guide.
 - CSV, Newick and AnnData-compatible HDF5 output (`HDF5` extension).
 - Test suite with statistical validation against analytic distributions.
 
+### Security
+- Upgraded the `video/` build tooling from Remotion 4.0.416 to 4.0.526, clearing
+  8 advisories (7 high) in transitive build dependencies: `extract-zip` symlink
+  path traversal and arbitrary file write, `webpack` buildHttp SSRF via allowlist
+  bypass, and `ws` memory disclosure and DoS. `npm audit` now reports none.
+- Every GitHub Actions workflow declares least-privilege `permissions:`.
+  CompatHelper no longer runs hourly on Julia 1.2 (a version that cannot load this
+  package) via an unpinned `@latest` action; it runs daily on Julia 1 with a pinned
+  action. TagBot is triggered by the registrator's comment rather than polling
+  hourly, and is gated on the actor.
+- Added `.github/dependabot.yml` (weekly npm and Actions updates), `SECURITY.md`
+  with a private reporting route, and a CI job that fails on any moderate or worse
+  npm advisory.
+- Stopped committing the Inter font binaries; the video build fetches them, matching
+  how the paper figures already worked.
+
 ### Changed
 - Minimum Julia version is 1.10.
 - Continuous integration moved from Travis CI to GitHub Actions.

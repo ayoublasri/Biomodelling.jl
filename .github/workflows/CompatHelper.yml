@@ -1,24 +1,21 @@
 name: CompatHelper
-
 on:
   schedule:
-    - cron: '00 * * * *'
-
+    - cron: '0 3 * * *'        # once a day, not once an hour
+  workflow_dispatch:
+permissions:
+  contents: write              # CompatHelper pushes a branch
+  pull-requests: write         # and opens the compat PR
 jobs:
   CompatHelper:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        julia-version: [1.2.0]
-        julia-arch: [x86]
-        os: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
-      - uses: julia-actions/setup-julia@latest
+      - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.julia-version }}
-      - name: Pkg.add("CompatHelper")
+          version: '1'         # the package supports >= 1.10; 1.2 could not even load it
+      - name: Install CompatHelper
         run: julia -e 'using Pkg; Pkg.add("CompatHelper")'
-      - name: CompatHelper.main()
+      - name: Run CompatHelper
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: julia -e 'using CompatHelper; CompatHelper.main()'

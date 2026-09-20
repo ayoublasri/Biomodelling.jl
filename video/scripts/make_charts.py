@@ -2,8 +2,26 @@ import os, numpy as np, pandas as pd, matplotlib
 matplotlib.use("Agg"); import matplotlib.pyplot as plt
 from matplotlib import font_manager
 HERE="/home/user/Biomodelling.jl/paper"; OUT=os.path.join(HERE,"output"); PUB="/home/user/Biomodelling.jl/video/public"
+# Inter is fetched rather than vendored, so the repository carries no font binaries.
+# Same source and weights as the paper figures, so the video sets in one family with them.
+_FONTS={"400":"https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
+        "600":"https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYMZg.ttf",
+        "800":"https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuDyYMZg.ttf"}
+def _ensure_fonts():
+    """Put Inter in video/public/fonts so Remotion can @font-face it, fetching only what is missing."""
+    import urllib.request, shutil
+    dest=os.path.join(PUB,"fonts"); os.makedirs(dest,exist_ok=True)
+    for w,url in _FONTS.items():
+        out=os.path.join(dest,f"Inter-{w}.ttf")
+        if os.path.exists(out): continue
+        local=os.path.join(HERE,"figures","fonts",f"Inter-{w}.ttf")   # reuse the paper's copy when present
+        try:
+            shutil.copyfile(local,out) if os.path.exists(local) else urllib.request.urlretrieve(url,out)
+        except Exception as e:
+            print(f"  could not obtain Inter-{w}: {e}; the video will fall back to a system sans")
+    return dest
 for w in ("400","600","800"):
-    fp=os.path.join(HERE,"figures","fonts",f"Inter-{w}.ttf")
+    fp=os.path.join(_ensure_fonts(),f"Inter-{w}.ttf")
     if os.path.exists(fp): font_manager.fontManager.addfont(fp)
 FAM="Inter" if any(f.name=="Inter" for f in font_manager.fontManager.ttflist) else "DejaVu Sans"
 C=["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4"]; INK,INK2,GRID="#0b0b0b","#575652","#dedcd6"
