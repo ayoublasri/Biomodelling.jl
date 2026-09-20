@@ -1,8 +1,8 @@
 ---
 title: "Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations"
 author:
-  - "Ayoub Lasri^1^"
-date: "^1^ Department of Physiology and Medical Physics, Royal College of Surgeons in Ireland, Dublin, Ireland. Correspondence: alasri@berache.com"
+  - "Ayoub Lasri"
+date: "Correspondence: alasri@berache.com"
 abstract: |
   Heritable differences in gene expression decide which cancer cells survive a drug, yet the simulators used to benchmark single-cell methods model neither growth nor division, and cannot generate such states. Here we present Biomodelling.jl 2.0, in which stochastic reaction kinetics run inside growing, dividing and drug-treated cells. Exact, hybrid and adaptive kernels are coupled to exponential growth, volume-scaled transcription, gene replication and division with binomial partitioning, to dose schedules and state-dependent killing, and to a lineage record, observation models and likelihood-free inference. Expression memory, cell-size scaling and cell-cycle-dependent bursting emerge from this physiology rather than being imposed. A single resistance gene with slow promoter switching reproduces the lineage and memory signatures of heritable drug tolerance, and the framework supplies ground truth that benchmarks of memory genes, network inference and perturbation prediction lack. Calibrated to time-lapse measurements of cisplatin-treated cells, it reproduces lineage correlations and the dose-invariance of single-cell timing, and its residual errors expose the limits of one switching gene. With a built-in optimiser it reproduces the opposite rankings of intermittent dosing reported in a melanoma trial and in xenografts, and shows the ranking to turn on two measurable cell properties, their growth under drug and their fitness without it.
 ---

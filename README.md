@@ -7,7 +7,7 @@ Mechanistic stochastic simulation of gene regulatory networks inside **growing,
 dividing and drug-treated cell populations**, with lineage tracking,
 single-cell observation models and likelihood-free inference.
 
-Author: Ayoub Lasri (Royal College of Surgeons in Ireland). Version 2.0 was
+Author: Ayoub Lasri. Version 2.0 was
 authored with [Claude](https://claude.ai) (Anthropic) under the author's
 direction. Version 1 of the framework was developed with Marc Sturrock and
 Vahid Shahrezaei and published in

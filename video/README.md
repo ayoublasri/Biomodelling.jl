@@ -1,6 +1,6 @@
 # LinkedIn showcase video
 
-A 44-second, 1080×1080 video for Biomodelling.jl 2.0, built with [Remotion](https://remotion.dev).
+A 60-second, 1080×1080 video for Biomodelling.jl 2.0, built with [Remotion](https://remotion.dev).
 Every chart in it is rendered from the simulation outputs in `paper/output/`, so the
 video shows the same numbers as the white paper.
 

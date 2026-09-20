@@ -5,9 +5,10 @@ import {
   BLUE, ChartCard, Fonts, Headline, INK, INK2, Kicker, PAPER, Progress, Reveal, Scene, Sub, ORANGE, PURPLE, GREEN,
 } from "./theme";
 
+// Paced for reading: every scene holds its text well past the reveal. 1800 frames = 60 s at 30 fps.
 const D = {
-  hook: 120, gap: 108, mech: 168, memory: 150,
-  persist: 150, calib: 165, ident: 150, clinic: 165, close: 150,
+  hook: 150, gap: 168, mech: 216, memory: 210,
+  persist: 210, calib: 225, ident: 210, clinic: 225, close: 186,
 };
 const order = ["hook", "gap", "mech", "memory", "persist", "calib", "ident", "clinic", "close"] as const;
 export const TOTAL = order.reduce((a, k) => a + D[k], 0);
@@ -23,7 +24,7 @@ const Hook: React.FC = () => (
     <Reveal><Kicker>the problem</Kicker></Reveal>
     <Reveal delay={4}><Headline>Two cells. Same genome.<br />Same drug.</Headline></Reveal>
     <Reveal delay={16} style={{ marginTop: 30 }}><TwoCells duration={D.hook} /></Reveal>
-    <Reveal delay={62}><Sub>One dies. One doesn&rsquo;t. Nothing in the sequence says which.</Sub></Reveal>
+    <Reveal delay={80}><Sub>One dies. One doesn&rsquo;t. Nothing in the sequence says which.</Sub></Reveal>
   </Scene>
 );
 
@@ -44,7 +45,7 @@ const Mech: React.FC = () => (
     <Reveal><Kicker>Biomodelling.jl 2.0</Kicker></Reveal>
     <Reveal delay={4}><Headline>Stochastic kinetics inside<br />growing, dividing cells.</Headline></Reveal>
     <Reveal delay={18} style={{ marginTop: 26 }}><CellCycle duration={D.mech} /></Reveal>
-    <Reveal delay={104}>
+    <Reveal delay={150}>
       <Sub>Genes replicate mid-cycle. Molecules partition at division. Both daughters inherit the promoter state.</Sub>
     </Reveal>
   </Scene>
@@ -102,7 +103,7 @@ const Close: React.FC = () => {
       </Reveal>
       <Reveal delay={20} style={{ marginTop: 40 }}>
         <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-          {["open source", "MIT licence", "212 tests", "white paper included"].map((c) => (
+          {["open source", "MIT licence", "calibrated to published data", "white paper included"].map((c) => (
             <div key={c} style={{
               fontSize: 25, fontWeight: 600, color: INK2, border: "1.6px solid #e0ded8",
               borderRadius: 999, padding: "11px 22px", background: "#fff",
@@ -115,7 +116,7 @@ const Close: React.FC = () => {
           github.com/ayoublasri/Biomodelling.jl
         </div>
         <div style={{ fontSize: 26, fontWeight: 400, color: INK2, marginTop: 12 }}>
-          Ayoub Lasri &middot; RCSI
+          Ayoub Lasri
         </div>
       </Reveal>
     </Scene>

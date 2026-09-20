@@ -1,6 +1,6 @@
 # LinkedIn post — video launch
 
-**Attach:** `biomodelling-showcase.mp4` (1080×1080, 44 s, silent — designed to read without sound)
+**Attach:** `biomodelling-showcase.mp4` (1080×1080, 60 s, silent — designed to read without sound)
 
 ---
 
@@ -36,7 +36,7 @@ modelling MGMT as the suicide enzyme it actually is predicts a dose-dense temozo
 advantage that RTOG 0525 did not find — which bounds how fast the drug can really be consuming
 MGMT in tumours.
 
-Open source, MIT, 212 tests, white paper included.
+Open source, MIT licensed, white paper included.
 
 github.com/ayoublasri/Biomodelling.jl
 
