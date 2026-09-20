@@ -29,12 +29,16 @@ const BURST = 4                         # molecules per burst in the bursty mode
 const K_ON, K_OFF, K_TX = 0.5, 1.0, 40.0
 const NMAX = 250                        # histogram range
 
-const DT = QUICK ? 0.01 : 0.002
+# The step divides the interdivision time an exact (binary) number of times, so that the
+# deterministic timer fires on the same step for every cell: with a step such as 0.002 the
+# comparison `age >= T` falls on a floating-point boundary and half the cells divide one
+# step late, which smears the cycle-phase lattice without changing the count distribution.
+const DT = QUICK ? 1 / 64 : 1 / 512
 const T_END = QUICK ? 6.0 : 12.0        # burn-in, in units of the mean interdivision time
 const N_LINEAGE = QUICK ? 4_000 : 40_000
 const N_POP_CAP = QUICK ? 4_000 : 15_000
 const N_POP_REPS = QUICK ? 2 : 5
-const DT_SCAN = QUICK ? [0.02, 0.01] : [0.02, 0.01, 0.005, 0.002]
+const DT_SCAN = QUICK ? [1 / 64, 1 / 128] : [1 / 64, 1 / 128, 1 / 256, 1 / 512]
 
 # ---------------------------------------------------------------- models
 # Every propensity is made volume-independent so that the comparison isolates division,

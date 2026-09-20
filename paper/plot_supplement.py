@@ -277,12 +277,15 @@ try:
     # (c) convergence in the update step
     ax = fig.add_subplot(gs[1, 0])
     dtv = val[val.case == "constitutive_dt"].sort_values("dt")
-    ax.plot(dtv.dt, dtv.ks, marker="o", ms=3.5, lw=1.2, color=C[0], label="measured")
-    ax.plot(dtv.dt, dtv.ks_crit99, ls=":", lw=0.9, color=INK2, label="99% critical value")
+    ax.plot(dtv["dt"], dtv.ks_scheme_vs_continuum, marker="o", ms=3.5, lw=1.2, color=C[0],
+            label="scheme against continuum (theory)")
+    ax.plot(dtv["dt"], dtv.ks_continuum, marker="s", ms=3.5, lw=1.2, color=C[1],
+            label="simulated against continuum")
+    ax.plot(dtv["dt"], dtv.ks_crit99, ls=":", lw=0.9, color=INK2, label="99% critical value")
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel("update step / mean interdivision time"); ax.set_ylabel("Kolmogorov–Smirnov distance")
     ax.legend(fontsize=6)
-    ax.set_title("c   the step-size bias vanishes", loc="left", fontweight="semibold", color="#2a2a28")
+    ax.set_title("c   the step-size bias is first order", loc="left", fontweight="semibold", color="#2a2a28")
 
     # (d) the emergent distribution of cell-cycle phase
     ax = fig.add_subplot(gs[1, 1])

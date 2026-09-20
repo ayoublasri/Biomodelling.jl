@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: paper-compute-${{ github.ref }}
+  group: paper-compute-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 env:

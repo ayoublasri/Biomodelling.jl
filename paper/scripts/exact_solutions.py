@@ -115,6 +115,28 @@ def leading_eigenvector(M, tol=1e-14, maxiter=200_000):
     return v, s
 
 
+def stationary_continuum(A, lam, population, nmax=NMAX):
+    """Stationary law of the continuous-time model, the dt -> 0 limit of `stationary_step`.
+
+    Lineage:    0 = [A + lam (B - I)] pi
+    Population: 0 = [A + 2 lam (B - I)] pi   (the growth rate lam cancels the extra daughter)
+    """
+    B = binomial_matrix(nmax)
+    blocks = A.shape[0] // (nmax + 1)
+    if blocks == 2:
+        Bfull = np.zeros_like(A)
+        Bfull[: nmax + 1, : nmax + 1] = B
+        Bfull[nmax + 1:, nmax + 1:] = B
+        B = Bfull
+    M = A + (2 if population else 1) * lam * (B - np.eye(A.shape[0]))
+    # shift to a non-negative matrix with the same null vector as its leading eigenvector
+    shift = float(np.abs(np.diag(M)).max()) * 1.01
+    v, _ = leading_eigenvector(M + shift * np.eye(M.shape[0]))
+    if blocks == 2:
+        v = v[: nmax + 1] + v[nmax + 1:]
+    return v / v.sum()
+
+
 def stationary_step(A, p, population, nmax=NMAX, dt=None):
     """Stationary distribution of one update step: exact kinetics over `dt`, then division."""
     L = expm(dt * A)
@@ -244,16 +266,20 @@ def main():
     J, lam, rep_f = int(cfg["steps_per_cycle"]), cfg["growth_rate"], cfg["replication_fraction"]
     lam_div = 1.0 / T_div
 
-    def exact_pmf(case, mode, dt):
-        pop = mode == "population"
-        p = 1 - np.exp(-dt / T_div)
+    def gen_of(case):
         if case in ("constitutive", "constitutive_dt"):
-            return stationary_step(generator_constitutive(k, gamma, 1), p, pop, dt=dt)
+            return generator_constitutive(k, gamma, 1)
         if case == "bursty":
-            return stationary_step(generator_constitutive(k / burst, gamma, burst), p, pop, dt=dt)
+            return generator_constitutive(k / burst, gamma, burst)
         if case == "telegraph":
-            return stationary_step(generator_telegraph(k_on, k_off, k_tx, gamma), p, pop, dt=dt)
+            return generator_telegraph(k_on, k_off, k_tx, gamma)
         raise KeyError(case)
+
+    def exact_pmf(case, mode, dt):
+        return stationary_step(gen_of(case), 1 - np.exp(-dt / T_div), mode == "population", dt=dt)
+
+    def continuum_pmf(case, mode):
+        return stationary_continuum(gen_of(case), lam_div, mode == "population")
 
     def exact_moments(case, mode):
         """Closed-form continuum moments, independent of the matrix solution."""
@@ -282,6 +308,10 @@ def main():
         if okey not in cache:
             cache[okey] = exact_pmf(case, other, float(dt))
         pmf_other = cache[okey]
+        ckey = (case, mode, "continuum")
+        if ckey not in cache:
+            cache[ckey] = continuum_pmf(case, mode)
+        pmf_cont = cache[ckey]
         for rep, gr in g.groupby("replicate", sort=False):
             h = histogram(gr)
             mean, var, n = moments_of(h)
@@ -292,7 +322,9 @@ def main():
                              n_cells=n, mean_sim=mean, mean_exact=ex_mean, mean_continuum=cm,
                              sd_sim=np.sqrt(var), sd_exact=np.sqrt(ex_var), sd_continuum=np.sqrt(cv),
                              ks=ks(h, pmf), ks_other_mode=ks(h, pmf_other),
-                             ks_crit99=1.628 / np.sqrt(n)))
+                             ks_continuum=ks(h, pmf_cont),
+                             ks_scheme_vs_continuum=float(np.max(np.abs(np.cumsum(pmf) - np.cumsum(pmf_cont)))),
+                             sem_mean=float(np.sqrt(var / n)), ks_crit99=1.628 / np.sqrt(n)))
         if case == "constitutive" and kern == "DirectSSA" and float(dt) == dt0:
             for n_, (ps, po) in enumerate(zip(pmf, pmf_other)):
                 if ps > 1e-9 or po > 1e-9:
@@ -303,6 +335,7 @@ def main():
     if len(rep_counts):
         ages = pd.read_csv(os.path.join(OUT, "fig9_ages.csv"))
         means = replication_means(k, gamma, lam, dt0, J, rep_f)
+        fine = replication_means(k, gamma, lam, dt0 / 50, J * 50, rep_f)
         founder = np.ones(J)                                   # founders placed uniformly on the grid
         w_lin = np.ones(J) / J
         pmf_lin = poisson_mixture(w_lin, means)
@@ -318,20 +351,31 @@ def main():
                 mean, var, n = moments_of(h)
                 ex_mean = float((np.arange(len(pmf)) * pmf).sum())
                 ex_var = float(((np.arange(len(pmf)) - ex_mean) ** 2 * pmf).sum())
+                w_fine = np.repeat(w, 50) / 50
+                pmf_cont = poisson_mixture(w_fine, fine)
                 rows.append(dict(case="replication", mode=mode, kernel="DirectSSA", dt=dt0,
                                  replicate=int(rep), n_cells=n, mean_sim=mean, mean_exact=ex_mean,
-                                 mean_continuum=np.nan, sd_sim=np.sqrt(var), sd_exact=np.sqrt(ex_var),
+                                 mean_continuum=float((np.arange(len(pmf_cont)) * pmf_cont).sum()),
+                                 sd_sim=np.sqrt(var), sd_exact=np.sqrt(ex_var),
                                  sd_continuum=np.nan, ks=ks(h, pmf), ks_other_mode=ks(h, pmf_other),
-                                 ks_crit99=1.628 / np.sqrt(n)))
+                                 ks_continuum=ks(h, pmf_cont),
+                                 ks_scheme_vs_continuum=float(np.max(np.abs(np.cumsum(pmf) - np.cumsum(pmf_cont)))),
+                                 sem_mean=float(np.sqrt(var / n)), ks_crit99=1.628 / np.sqrt(n)))
             a = ages[ages["mode"] == mode]
             if len(a):
                 ah = np.zeros(J)
                 for step, c in zip(a["age_step"].to_numpy(), a["cells"].to_numpy()):
                     ah[int(step)] += c
                 ah = ah / ah.sum()
-                for j in range(J):
-                    age_rows.append(dict(mode=mode, age_step=j, phase=j / J,
-                                         observed=ah[j], expected=w[j]))
+                # Compare the shape of the phase distribution rather than the exact lattice: the
+                # realised cycle length is an integer number of update steps, so a sub-step
+                # difference between cells shows up as an offset on the lattice and not in the shape.
+                nb = 20
+                edges = np.linspace(0, J, nb + 1).astype(int)
+                for b in range(nb):
+                    lo, hi = edges[b], edges[b + 1]
+                    age_rows.append(dict(mode=mode, bin=b, phase=(lo + hi) / (2 * J),
+                                         observed=float(ah[lo:hi].sum()), expected=float(w[lo:hi].sum())))
         pd.DataFrame(age_rows).to_csv(os.path.join(OUT, "fig9_agefit.csv"), index=False)
 
     df = pd.DataFrame(rows)
