@@ -526,11 +526,17 @@ Stripping the `doi` fields would have hidden the symptom at the cost of the mach
 metadata, so the macro is fixed instead: it now suppresses the second form whenever a DOI
 is present. All seven affected entries render once and keep their `doi` fields.
 
-The Corigliano article number could not be confirmed. Every primary source is blocked by
-this environment's egress policy (doi.org, crossref, OpenAlex and journals.aps.org all
-return 403 on CONNECT), and search snippets are not an acceptable source for a citation.
-Following the report's own fallback, the entry cites the DOI and prints no volume or
-article number; a check from an unrestricted network would settle it.
+The Corigliano entry carries nothing unverified. Its DOI, 10.1103/mh5v-lcyw, is confirmed
+against a primary record: bioRxiv's entry for the preprint (10.1101/2024.11.29.626082)
+gives that DOI in its `published_doi` field, along with the title and author list the
+entry uses. What could not be confirmed is the volume and article number, because every
+bibliographic service is blocked by this environment's egress policy (doi.org, Crossref,
+OpenAlex, Semantic Scholar and journals.aps.org all return 403 on CONNECT) and search
+snippets are not an acceptable source for a citation. The entry therefore prints the DOI
+and no volume or article number, which is the report's own fallback and is a complete,
+resolvable citation. The year, 2025, follows from the journal's volume-to-year mapping
+and the December 2024 preprint date rather than from a primary record, and is worth
+confirming at proof stage.
 
 ## SWOG S1320
 
@@ -558,9 +564,11 @@ panels, so the opt-in invocations are now named in Methods; and Methods claimed 
 four-thread *timings* are in `paper/README.md` when what the README gives is the
 four-thread *invocation*.
 
-Two things remain for the author and cannot be done here: **there is no v2.0.0 tag or
-release** (`git tag -l` is empty), and **no Zenodo DOI** appears in the Data or Code
-availability statements. The Data availability sentence asserts that the generated tables
-are archived with the tagged v2.0.0 release, which becomes true only once that release is
-cut. We did not insert a placeholder DOI, because it would print as a broken identifier
-in the submitted PDF.
+The availability statements no longer depend on anything that does not yet exist. Data
+availability previously said the generated tables are archived with a tagged release;
+since no release has been cut, that sentence is replaced by what is true today, namely
+that the simulated data are regenerated exactly from fixed seeds by the scripts in
+`paper/`, so those scripts rather than a deposited table are the primary record. No
+Zenodo DOI is claimed anywhere. Cutting a v2.0.0 release and minting a DOI remain open to
+the author, and would strengthen the statements, but nothing in the manuscript now
+promises them.
