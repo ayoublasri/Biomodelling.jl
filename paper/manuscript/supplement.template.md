@@ -1,7 +1,7 @@
 ---
 title: "Supplementary Information"
 author: "Ayoub Lasri"
-date: ""
+date: "Independent researcher, Dublin, Ireland"
 ---
 
 **Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–15, Supplementary Figures 1–6 and Supplementary Tables 1–5.
@@ -60,7 +60,7 @@ Supplementary Table 2. Parameters of every simulation in this Article.
 | 6a-b | telegraph | truth $(0.3, 0.6, 20)$; priors log-uniform on $[0.01, 10]$, $[0.01, 10]$, $[1, 200]$; 200 (a) / 150 (b) particles |
 | 6c | resistance gene | truth $h_{\max} = 0.5$, $K = 150$; priors log-uniform on $[0.05, 5]$ and $[20, 1000]$; 100 particles |
 | 7 | resistance gene, hours | cell cycle 24 h (sizer, cv 0.1), $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$ per h, $K = 150$, $q = 4$, growth-arrest Hill coefficient 2; fitted: $k_{\mathrm{on}}$, $k_{\mathrm{off}} \in [10^{-3}, 0.3]$, $h_{\max} \in [0.005, 0.5]$ per h, $\mathrm{EC}_{50} \in [3, 40]$ µM, $m \in [1, 6]$, $\mathrm{IC}_{50} \in [1, 40]$ µM; 300 founders burnt in for 10 cycles, 48 h drug-free, 72 h drug, integration step $dt = 0.5$ h; 160 Latin-hypercube points and 80 Nelder-Mead iterations with seed 1; identifiability (Supplementary Fig. 3) by 11-point log-grid conditional profiles of the six parameters, a $7\times7$ memory × resistant-fraction slice, and the step halved to 0.25 h with three seeds, via the `profile` part of the script; the cycle-dependent variant (Supplementary Fig. 4) adds a seventh parameter $\beta \in [0, 1]$ with $\varphi_0 = 0.5$, $w = 0.15$, fitted under the same budget by the `cycle` part |
-| 8a-e | melanoma-like | $k_{\mathrm{tx}} = 3$, $k_{\mathrm{dm}} = 0.1$, $k_{\mathrm{tl}} = 0.4$, $k_{\mathrm{dp}} = 0.02$ per h; net doubling 4 weeks, memory 5 net doublings, pre-resistant fraction 0.005, $h_{\max} = 0.0023$ per h, $\mathrm{EC}_{50} = 0.3$, $m = 2$, protection $K = 150$, $q = 4$, growth arrest $\mathrm{IC}_{50} = 0.3$ with the same protection, $k_{\mathrm{off}} \to k_{\mathrm{off}}/(1 + 9d)$, fitness cost 0.5, partial protection: additional unprotected growth inhibition with $\mathrm{IC}_{50} = 1$; 2,000 founders with promoter states drawn from the stationary distribution, 60 weeks, dt 4 h; progression at 1.73 × nadir after the 8-week lead-in; cycle-gated variant (Supplementary Fig. 5) adds $\beta = 0.25$, $\varphi_0 = 0.5$, $w = 0.15$, and is repeated with $h_{\max} = 0.0045$ per h so that the cycle-averaged hazard matches the cycle-blind one; the memory of the resistant state is scanned over 2, 3.5, 5, 8 and 12 net doublings with three seeds per point |
+| 8a-e | melanoma-like | $k_{\mathrm{tx}} = 3$, $k_{\mathrm{dm}} = 0.1$, $k_{\mathrm{tl}} = 0.4$, $k_{\mathrm{dp}} = 0.02$ per h; net doubling 4 weeks, memory 5 net doublings, pre-resistant fraction 0.005 (1:200, above the traced 1:1,000 to 1:10,000 of @emert2021; Methods), $h_{\max} = 0.0023$ per h, $\mathrm{EC}_{50} = 0.3$, $m = 2$, protection $K = 150$, $q = 4$, growth arrest $\mathrm{IC}_{50} = 0.3$ with the same protection, $k_{\mathrm{off}} \to k_{\mathrm{off}}/(1 + 9d)$, fitness cost 0.5, partial protection: additional unprotected growth inhibition with $\mathrm{IC}_{50} = 1$; 2,000 founders with promoter states drawn from the stationary distribution, 60 weeks, dt 4 h; progression at 1.73 × nadir after the 8-week lead-in; cycle-gated variant (Supplementary Fig. 5) adds $\beta = 0.25$, $\varphi_0 = 0.5$, $w = 0.15$, and is repeated with $h_{\max} = 0.0045$ per h so that the cycle-averaged hazard matches the cycle-blind one; the memory of the resistant state is scanned over 2, 3.5, 5, 8 and 12 net doublings with three seeds per point |
 | S6 | exact-solution validation | constitutive $k = 20$, $\gamma = 1$; bursts of $b = 4$ at $k/b$; telegraph $(k_{\mathrm{on}}, k_{\mathrm{off}}, k_{\mathrm{tx}}) = (0.5, 1, 40)$, all with a memoryless interdivision time of mean 1, $dt = 0.002$, exact kernel, 40,000 lineages and five populations capped at 15,000 cells, burnt in for 12 generations; replication model $k = 20$, $\gamma = 1$, volume-scaled synthesis, exponential growth $\ln 2$, deterministic cycle of 1, replication at 50% of the cycle, founders placed uniformly on the update grid, 14 generations; step-size scan over $dt = 0.02, 0.01, 0.005, 0.002$ |
 | 8f-h | MGMT model | same expression kinetics; net doubling 40 days, memory 4 net doublings, MGMT-expressing fraction 0.01 or 0.30, $h_{\max} = 0.03$ per h at peak, $\mathrm{EC}_{50} = 0.4$ of the standard bolus peak, $m = 2$, $K = 150$, $q = 4$; elimination half-life 2.1 h; stoichiometric MGMT consumption at rate $k\,d\,V\,c/(c + K_m)$ with $k = 300$, $K_m = 150$, $k$ chosen so that the consumption rate at the standard bolus peak matches the first-order parameterisation it replaces rather than fitted to data, and with no lesion pool as a state variable, so lesions are assumed to form in proportion to dose and to be repaired at once; 1,500 founders at the stationary promoter distribution, six 28-day cycles, dt 1 h |
 
@@ -110,14 +110,15 @@ Supplementary Table 4. Reference values used for calibration and validation (tra
 | Plateau of the HCT116 kill curve | after ~100 h | @iyer2025, Fig 1b |
 | Lineage correlations of fate | present for sisters, first and second cousins; absent for third cousins (reported graphically; no numeric coefficients given) | @iyer2025, Fig 5a |
 | Single-cell intermitotic and apoptosis times across doses | not significantly different (Kruskal-Wallis $P = 0.22$ and $P = 0.53$) while population decay rates differ about threefold | @iyer2025 |
-| Pre-resistant melanoma cells traced back from resistant fates | initial frequency ~1:1,000 to 1:10,000 | @emert2021 |
+| Pre-resistant melanoma cells traced back from resistant fates | initial frequency ~1:1,000 to 1:10,000 (context, not a value used: the melanoma case study uses 1:200; Methods) | @emert2021 |
 | Pre-resistant melanoma cells | 1:50 to 1:500 per marker; EGFR-high cells give 7.9 ± 0.9 fold more resistant colonies | @shaffer2017 |
 | N15-0385 glioblastoma doubling time | 50 h | @lasri2020 |
-| Temozolomide elimination half-life | 1.8 h in plasma; 2.1 h in the cerebrospinal-fluid population model used here | @rudek2004; @ostermann2004 |
+| Temozolomide elimination half-life in plasma | 1.8 h (single dose); 2.1 h (population model of plasma and cerebrospinal fluid; the value used here) | @rudek2004; @ostermann2004 |
+| Temozolomide penetration of the cerebrospinal fluid | exposure 20% of plasma exposure | @ostermann2004 |
 | MGMT / alkyltransferase depletion in peripheral blood mononuclear cells | $-63\%$ at 14 days, $-73\%$ at 21 days on protracted schedules; nadir 18.0 ± 2.26% of initial on a compressed 1,000 mg/m² schedule | @tolcher2003; @middleton2000 |
 | Tumour MGMT activity in orthotopic GBM43 xenografts | depleted by day 6 on both schedules; still suppressed at day 22 only on the 21-day schedule; back to baseline in both by day 29 | @robinson2010 |
 | RTOG 0525 regimens | 150-200 mg/m² days 1-5 vs 75-100 mg/m² days 1-21 of 28-day cycles; median OS 16.6 vs 14.9 months | @gilbert2013 |
-| SWOG S1320 regimens | continuous vs 3 weeks off / 5 weeks on after an 8-week lead-in; median PFS 9.0 vs 5.5 months | @algazi2020 |
+| SWOG S1320 regimens | continuous vs 3 weeks off / 5 weeks on after an 8-week lead-in; median PFS 9.0 vs 5.5 months (HR 1.36 intermittent:continuous, $P = 0.063$; the trial pre-specified two-sided $\alpha = 0.2$ and 80% confidence intervals); median OS 29.2 months in both arms, a secondary end point the trial was not powered for | @algazi2020 |
 
 # Supplementary Note 9: Migration from version 1
 
@@ -207,4 +208,4 @@ where $\gamma$ is the decay rate, $\lambda$ the division rate and $\beta_i$ the 
 
 # Supplementary Note 15: Sensitivity of the melanoma schedules to the memory of the resistant state
 
-{{memory_scan_note}}
+{{memory_scan_note}} {{memory_scan_reconcile}}

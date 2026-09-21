@@ -40,7 +40,7 @@
   </macro>
   <macro name="access">
     <choose>
-      <if variable="volume" type="article dataset software" match="any"/>
+      <if variable="volume DOI" type="article dataset software" match="any"/>
       <else-if variable="DOI">
         <text variable="DOI" prefix="doi:"/>
       </else-if>

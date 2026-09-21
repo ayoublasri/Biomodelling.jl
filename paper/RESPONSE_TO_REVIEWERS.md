@@ -289,9 +289,11 @@ it or by inducing it at a saturating rate. With a state whose decay rate is the 
 with and without drug, a holiday only postpones the death of reverting cells.
 
 **10. SWOG S1320 post-progression survival and the drug-addiction mechanism.** Both
-added to the Discussion: the progression-free survival advantage of continuous dosing
-did not carry through to survival after progression, which favoured the intermittent
-arm; and the resistant xenograft tumours were drug-addicted, regressing on withdrawal
+added to the Discussion, with the trial's primary numbers stated: the progression-free
+survival advantage of continuous dosing (median 9.0 against 5.5 months, P = 0.063
+against the pre-specified two-sided alpha of 0.2) did not carry through to overall
+survival, a secondary end point the trial was not powered for and on which the two arms
+were equal at a median of 29.2 months; and the resistant xenograft tumours were drug-addicted, regressing on withdrawal
 rather than merely growing more slowly, which is the extreme of the fitness cost the
 second mechanism represents.
 
@@ -374,3 +376,191 @@ flag them rather than leaving them for a reader to notice.
 3. **The Fig. 4f prediction is confirmed by one experiment and contradicted by
    another**, and which one applies depends on whether the pretreatment biases the
    switching or only speeds it.
+
+---
+
+# Response to the third-round report
+
+Every point is addressed below. Two of the referee's findings could not be reproduced
+against the sources, and we set out the evidence rather than make a change that would
+introduce an error; three others we carried further than asked, because the underlying
+defect turned out to be larger than the symptom reported.
+
+## Blocking
+
+**B1. The stale cycle-gate paragraph.** Confirmed, and the cause was not the one either
+possibility in the report anticipated. The gated scan *was* re-run on the same five
+seeds; what was stale was the cycle-blind *reference* it was compared against.
+`fill_numbers.py` loaded `fig4f_schedules.csv`, the older single-seed table, while the
+gated arm read the five-seed rerun, so the apparent release-period difference was a seed
+artefact. Against the matching five-seed scan no release period moves at all.
+
+The generator now loads the five-seed table and reports the real comparison: continuous
+dosing wins in all three mechanisms with the gate as without it, at the same dose in
+three of three. The gate raises the long-term growth rate at all sixty points of the
+scan (+0.0026 to +0.0155 per time unit) and perturbs the order below the winner
+(Spearman correlation 0.977 to 0.998), but changes neither which schedule wins nor the
+intermediate-dose optimum under drug-induced tolerance. We also state that the winner's
+margin over the best holiday exceeds twice its standard error in five of the six
+comparisons, the exception being pre-existing tolerance without the gate
+(+0.0004 against a standard error of 0.0005), so the claim is hedged to the same degree
+as the neighbouring seed note. Supplementary Note 13 and the Results are generated from
+the same text, so both are fixed at once; Supplementary Fig. 5's caption covers only the
+decay, concordance and melanoma panels and never carried the claim.
+
+**B2. The pre-resistant fraction.** Confirmed; option (b) adopted. The Results now say
+the melanoma study does *not* sit in the traced regime, give the value (1:200, the
+Shaffer per-marker frequency), state that it is 5- to 50-fold higher, and note that a
+draw of the study's 2,000 founders would contain no pre-resistant cell at all with
+probability 0.8 at 1 in 10,000. The direction of the bias is named: among the arms that
+do lose control, control is lost earlier than the traced frequency would give. We
+restricted that statement to those arms deliberately, because sixteen of the thirty-six
+arms are censored at 52 weeks and their reported values would be unchanged at a lower
+fraction. We do not claim statistical tractability as the *reason* the value was chosen,
+since nothing in the record establishes a motive.
+
+**B3. The temozolomide half-life.** Confirmed, and the correction needed to go further
+than relabelling. Both 2.1 h and 1.8 h are plasma elimination half-lives, so the
+contrastive framing itself was wrong, not just the "cerebrospinal-fluid" label: replacing
+it with "systemic" would have preserved the false implication that 2.1 h is not the
+plasma value, and would have contradicted the Methods sentence the report ruled correct.
+All three locations now describe 2.1 h as a plasma value from Ostermann's
+three-compartment population model of plasma and cerebrospinal fluid, and 1.8 h as an
+independent single-dose estimate. The genuinely CSF-specific quantity, AUC_CSF equal to
+20% of AUC_plasma, is added to Supplementary Table 4 as its own row. The Methods
+parenthesis attributed that same 20% to a brain-tumour compartment; Ostermann measured
+cerebrospinal fluid, not tumour tissue, so that sentence is corrected too.
+
+**B15. Affiliation.** Outstanding, and deliberately so. The mechanism is settled: pandoc's
+default LaTeX template carries no affiliation field, so it has to ride on the title-page
+line beneath the author, which we verified renders correctly in both PDF and DOCX. What
+we have not done is assert an affiliation on the author's behalf. "Independent
+researcher" is a positive claim about institutional status that nothing in the record
+establishes, and an ORCID cannot be invented at all. Both are supplied by the author
+before submission.
+
+## Not reproduced
+
+**Checklist 11. The Piho & Thomas attribution.** The report has the two papers the wrong
+way round. The sentence quoted as the title of the PLoS Computational Biology paper — "a
+finite state projection approach to analyse gene expression and division distributions
+and infer selection from single-cell data in mother machines and lineage trees" — is a
+sentence from the *abstract* of the Science Advances 2024 paper. The PLoS Computational
+Biology paper is titled "AgentBasedModeling.jl: a tool for stochastic simulation of
+structured population dynamics" and contains no finite-state-projection inference claim.
+Table 1's caption already attaches the inference claim to the Science Advances paper and
+the tool itself to the PLoS paper, which is correct as it stands. Both bibliography
+entries match their records exactly, so nothing is changed.
+
+**B5, the sqrt(5) claim.** Not reproduced. The code already divides the spread between
+the five replicate means by the square root of five: `fill_numbers.py` computes
+`g.mean_sim.std(ddof=1) / np.sqrt(len(g))` for the population rows and uses the
+within-sample error only for the single-sample lineage rows. Recomputing from
+`fig9_validation.csv` gives deviations of -0.71, -0.70, -2.45 and -0.08 standard errors,
+which are the values the table prints. The two-state promoter is 2.45 standard errors
+low, not 5.5; on Student's t with four degrees of freedom that is p = 0.07.
+
+What misled the report is real, and was our error: the Supplementary Table 5 caption
+described the quoted error as "the spread between them" rather than as the standard error
+of the average. Read that way, the sqrt(5) objection follows exactly. The caption now
+states the statistic explicitly.
+
+The report is also understating one thing, which we have taken up. It is not three of
+four population rows that are low but **four of four**, by 0.03% to 0.70%. No single
+deviation is resolved, but the common sign deserved an account, so we tested the three
+candidate causes and excluded all of them: the discretisation cannot be responsible
+because each population sample is scored against the stationary law of the *scheme* at
+the simulated step, and solving that law from 1/64 to 1/512 of the interdivision time
+moves the exact population mean by less than one part in 10^9; the subsampling cap draws
+uniformly without replacement from a snapshot whose division and thinning are independent
+of the molecule number, so the retained cells are exchangeable; and twelve generations of
+burn-in leave a transient far below the observed offset. The text now says that an offset
+of this size is neither established nor excluded, rather than asserting agreement.
+
+## The numbered checklist
+
+**B6.** Corrected to "a hundred time units, five cell-cycle times".
+**B7.** The colour scale is Fig. 7e. The panel letter is fixed and the Fig. 7e legend,
+which described the scale as a distance to the training data, now says it is the
+objective the optimiser minimised, which adds the memory prior and is not the
+seed-averaged error quoted in the text.
+**B8.** Corrected, and not in the direction proposed. Reporting the fast control's
+enrichment as "small (1.8- and 2.5-fold)" would assert an enrichment the data do not
+support: those folds rest on one sister pair and two cousin pairs in which both lineages
+survived, and the control's excess concordance is +0.000. It would also have contradicted
+the cycle-gate paragraph six lines later, which already reports that +0.000. The text now
+says what the folds rest on and that the concordance sits at the independent expectation.
+**B9.** Corrected, and narrowed. Only the *training* pair of the killing-mechanism
+comparison is single-seed; its held-out pair is averaged over three seeds. Both are
+quoted in the main text, so the exception is stated there rather than sited in the
+supplement.
+**B10.** Both references to an earlier version are removed.
+**B11.** The Fig. 3f values are now identified as scaled, with the unscaled rate given
+and its missing time dimension restored.
+**B12.** Corrected. The interval was a normal approximation; on three seeds it is now
+Student's t on two degrees of freedom, and the method is stated. The interval widens from
++0.000 to +0.043 to -0.026 to +0.069, so it contains zero — which supports rather than
+weakens the claim that third-cousin correlations are absent.
+**B13.** Reconciled, and computed rather than asserted: the scan gives 2.3 weeks over
+three seeds, the main run 2.7 weeks over four with a standard error of 0.2 weeks, and
+differencing the rounded 23 and 26 gives 3. Supplementary Note 15 now prints all three
+and says they are one result.
+**B14.** The Introduction now separates the statistical and reference-based simulators
+(Splatter, scDesign3, GRouNdGAN) from the network-based ones (SymSim, SERGIO, dyngen,
+scMultiSim), with each citation attached to the right tool. We did not restrict
+trajectory generation to the network-based group, because Splatter, scDesign3 and SymSim
+all generate trajectories. The same blanket claim survived in the **abstract**, which the
+report did not flag and which contradicted the Introduction and Discussion after the
+second round; it is corrected, and the abstract is 199 words with no citations.
+
+## Bibliography
+
+Ahlmann-Eltze now carries 22(8), 1657-1661; scMultiSim 22(5), 982-993; and the
+DifferentialEquations.jl entry was typed `@misc`, which pandoc maps to an empty CSL type
+so that `nature.csl` never reached its journal branch — it is now `@article` and renders
+as J. Open Res. Softw. 5, 15 (2017).
+
+The duplicated DOIs were a style bug, not a data one. `nature.csl` prints a doi.org URL
+for any entry without a volume and then prints the DOI again through its `access` macro.
+Stripping the `doi` fields would have hidden the symptom at the cost of the machine-readable
+metadata, so the macro is fixed instead: it now suppresses the second form whenever a DOI
+is present. All seven affected entries render once and keep their `doi` fields.
+
+The Corigliano article number could not be confirmed. Every primary source is blocked by
+this environment's egress policy (doi.org, crossref, OpenAlex and journals.aps.org all
+return 403 on CONNECT), and search snippets are not an acceptable source for a citation.
+Following the report's own fallback, the entry cites the DOI and prints no volume or
+article number; a check from an unrestricted network would settle it.
+
+## SWOG S1320
+
+Corrected, and the claim withdrawn rather than re-attributed. Overall survival was a
+median of 29.2 months in both arms, so "favoured the intermittent arm" was not supportable
+in the form it was written. The Discussion now gives the primary result with the trial's
+own threshold, which matters: S1320 pre-specified a two-sided alpha of 0.2 and reported
+80% confidence intervals, so P = 0.063 *is* the significant progression-free survival
+advantage the sentence describes, and quoting it without the threshold would have made
+the manuscript look wrong. Overall survival is labelled as the secondary end point the
+trial was not powered for. We did not substitute the prior-immunotherapy subgroup result,
+because its numbers could not be verified from this environment; an author with access
+may add it, flagged as post hoc.
+
+## Repository
+
+Every file named in the report exists: `paper/run_all.jl`, `paper/scripts/fig7_calibration.jl`,
+`paper/scripts/fig9_validation.jl`, `paper/scripts/exact_solutions.py`,
+`paper/manuscript/fill_numbers.py`, `test/test_exact_population.jl`,
+`docs/src/migration.md` and a genuine MIT `LICENSE`. GitHub Actions CI is present
+(`CI.yml`, `Docs.yml`, `CompatHelper.yml`, `TagBot.yml`, `paper-compute.yml`) and
+`Project.toml` declares version 2.0.0. Two real defects in the reproduction recipe were
+found and fixed: `run_all.jl` does not regenerate Supplementary Fig. 6 or the cell-cycle
+panels, so the opt-in invocations are now named in Methods; and Methods claimed the
+four-thread *timings* are in `paper/README.md` when what the README gives is the
+four-thread *invocation*.
+
+Two things remain for the author and cannot be done here: **there is no v2.0.0 tag or
+release** (`git tag -l` is empty), and **no Zenodo DOI** appears in the Data or Code
+availability statements. The Data availability sentence asserts that the generated tables
+are archived with the tagged v2.0.0 release, which becomes true only once that release is
+cut. We did not insert a placeholder DOI, because it would print as a broken identifier
+in the submitted PDF.

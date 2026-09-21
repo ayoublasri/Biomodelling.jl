@@ -66,6 +66,16 @@ def f4():
     n = c.n_pairs.round().astype(int); same = (c.concordance * n).round().astype(int); disc = n - same
     deaths = (c.death_fraction * 2 * n).round().astype(int); both_die = ((deaths - disc) / 2).round().astype(int); both_survive = same - both_die
     c["p_survive"] = (2 * both_survive + disc) / (2 * n); c["p_cond"] = (2 * both_survive) / np.maximum(2 * both_survive + disc, 1)
+    c["both_survive"] = both_survive
+    # the fast-switching control's fold enrichment rests on a handful of surviving pairs, so the
+    # text has to say how many rather than report the fold as though it were resolved
+    def word(k):
+        return ("no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")[k] if k < 10 else str(k)
+    def npairs(rel):
+        r = c[(c.model == "fast") & (c.relation == rel)]
+        return int(r.both_survive.iloc[0]) if len(r) else 0
+    ns, nc = npairs("sisters"), npairs("cousins")
+    put("fast_pairs", f"{word(ns)} sister pair{'' if ns == 1 else 's'} and {word(nc)} cousin pair{'' if nc == 1 else 's'}")
     for model, mtag in (("memory", ""), ("fast", "_fast")):
         for rel, rtag in (("sisters", "sis"), ("cousins", "cous")):
             r = c[(c.model == model) & (c.relation == rel)].iloc[0]
@@ -191,8 +201,12 @@ def f7():
     k = kd.groupby("relation").fate_correlation.mean()
     for key, rel in (("phi_sis", "sisters"), ("phi_c1", "first cousins"), ("phi_c2", "second cousins"), ("phi_c3", "third cousins"), ("phi_unrel", "unrelated")): put(key, f"{k[rel]:.2f}")
     g3 = kd[kd.relation == "third cousins"].fate_correlation
-    half = 1.96 * g3.std(ddof=1) / np.sqrt(len(g3))
-    put("phi_c3_ci", f"95% confidence interval {g3.mean() - half:+.3f} to {g3.mean() + half:+.3f}")
+    # three seeds, so the interval is Student's t on n - 1 degrees of freedom; the normal
+    # approximation would be narrow enough to exclude zero as an artefact of the approximation
+    from scipy import stats as _st
+    half = float(_st.t.ppf(0.975, len(g3) - 1)) * g3.std(ddof=1) / np.sqrt(len(g3))
+    put("phi_c3_ci", f"95% confidence interval {g3.mean() - half:+.3f} to {g3.mean() + half:+.3f}, "
+                     f"Student's t on {('one','two','three','four')[min(len(g3)-2,3)]} degrees of freedom")
     put("phi_c3_seeds", f"{len(g3)}")
     t = load("fig7d_timing.csv").groupby(["event", "cisplatin_uM"]).mean_h.mean()
     put("deathtime_shift", f"{abs(t[('death', 13.0)] - t[('death', 7.0)]) / t[('death', 7.0)] * 100:.0f}%")
@@ -279,6 +293,24 @@ def f8b():
            f"With a fitness cost of resistance the ranking is unchanged over the same range."))
     put("memory_scan_range", f"{gaps[lo]:.0f} weeks at {lo:.0f} net doublings of memory to {gaps[hi]:.1f} weeks at {hi:.0f}")
 
+    # the scan and the main melanoma run report the same quantity with different seed counts, and
+    # the main text differences two rounded times, so state the reconciliation rather than leave
+    # a reader to wonder why 2.3 and 3 weeks describe one result
+    try:
+        mm = load("fig8a_melanoma_schedules.csv")
+        mm = mm[mm.mechanism == "no fitness cost"].groupby("schedule").ttp_baseline_weeks.agg(["mean", "std", "count"])
+        cont, inter = mm.loc["continuous"], mm.loc["intermittent (S1320)"]
+        gap_main = float(inter["mean"] - cont["mean"])
+        se_main = float(np.sqrt(cont["std"] ** 2 / cont["count"] + inter["std"] ** 2 / inter["count"]))
+        put("memory_scan_reconcile",
+            f"The main text quotes this arm as {cont['mean']:.0f} weeks against {inter['mean']:.0f}, so differencing "
+            f"the rounded times gives {round(inter['mean']) - round(cont['mean']):.0f} weeks; the unrounded "
+            f"difference over the {int(cont['count'])} seeds of that run is {gap_main:.1f} weeks with a standard "
+            f"error of {se_main:.1f} weeks, against {gaps[base]:.1f} weeks over the {int(d.seed.nunique())} seeds "
+            f"of this scan. The three numbers are one result, reported at different seed counts and roundings.")
+    except Exception as e:
+        put("memory_scan_reconcile", "")
+
 @safe
 def f9():
     """Validation of the population and lineage layers against exact stationary laws."""
@@ -321,11 +353,27 @@ def f9():
             f"{lin.ks_crit99.min():.4f} to {lin.ks_crit99.max():.4f})" if lin_pass == len(lin) else
             f"Of the {len(lin)} single-lineage samples, {lin_pass} fall below the 99% critical value; the largest "
             f"distance is {lin.ks.max():.4f}")
+    # the replicate means are all slightly low; say so rather than let "within z s.e." imply
+    # a symmetric scatter, and give the worst case its p-value on the right reference distribution
+    from scipy import stats as _st
+    pz = {k: z for k, z in zs.items() if k[1] == "population"}
+    nlow = sum(1 for z in pz.values() if z < 0)
+    reps_pop = int(pop.groupby("case").size().max())
+    worst = min(pz.values(), key=lambda z: z) if pz else 0.0
+    pworst = float(2 * (1 - _st.t.cdf(abs(worst), reps_pop - 1)))
+    pop_rel = [(row["mean_sim"] - row["mean_exact"]) / row["mean_exact"] * 100
+               for _, row in r[r["mode"] == "population"].iterrows()]
     popsent = (f"A population snapshot is not an independent sample, because its cells share ancestors, so the "
                f"independent critical value understates the true one and the population mode is judged on the "
-               f"agreement of its replicate means with the exact mean. Over the four models those means sit within "
-               f"{zmax:.1f} standard errors of the exact values ({pop_pass} of the {len(pop)} individual samples also "
-               f"fall below the independent critical value, the largest distance being {pop.ks.max():.4f})")
+               f"agreement of its replicate means with the exact mean. Those means sit within {zmax:.1f} standard "
+               f"errors of the exact values ({pop_pass} of the {len(pop)} individual samples also fall below the "
+               f"independent critical value, the largest distance being {pop.ks.max():.4f}). All "
+               f"{('two','three','four','five')[len(pz)-2] if 2 <= len(pz) <= 5 else len(pz)} population means are "
+               f"nonetheless slightly low, by {abs(max(pop_rel)):.2f}% to "
+               f"{abs(min(pop_rel)):.2f}%; no single deviation is resolved, the largest being {abs(worst):.1f} "
+               f"standard errors ($p = {pworst:.2f}$, Student's t), but the common sign is not accounted for by "
+               f"the discretisation, the subsampling cap or the burn-in, each of which is excluded in "
+               f"Supplementary Note 14")
     tail = (f"Scored against the exact law of the other mode, the same samples give distances at least "
             f"{ratio:.0f} times larger, so the comparison has ample power to tell the two settings apart. The two "
             f"differ because a snapshot of a growing population over-weights cells that have just divided and so "
@@ -358,20 +406,36 @@ def f9():
         f"between the stationary law of the scheme and that of the continuous-time model: {conv}. It is first order "
         f"in the step and already below the 99% critical value at this sample size ({floor:.4f}) for every step "
         f"tested, so a step of a few percent of the interdivision time is enough for the discretisation to be "
-        f"undetectable here.{extra}")
+        f"undetectable here. The small common negative offset of the population means is not explained by "
+        f"that discretisation: the exact law each population sample is scored against is the stationary law of "
+        f"the scheme at the simulated step, and solving it at steps from 1/64 to 1/512 of the interdivision time "
+        f"moves the exact population mean by less than one part in $10^{{9}}$, while it moves the lineage mean by "
+        f"the amounts tabulated above. Nor is it the subsampling cap, which draws cells uniformly without "
+        f"replacement from a snapshot whose division and thinning are independent of the molecule number, so the "
+        f"retained cells are exchangeable; nor the burn-in, since the population mean relaxes at the sum of the "
+        f"decay and growth rates and twelve generations leave a transient far below the observed offset. On the "
+        f"evidence available it is the scatter of five runs on four degrees of freedom, and an offset of this "
+        f"size is neither established nor excluded.{extra}")
 
-    hdr = ("| Model | Mode | Cells per sample | Samples | Mean (simulated) | Mean (exact) | s.d. (simulated) | "
-           "s.d. (exact) | Mean in s.e. | Largest KS | Independent 99% | KS to other mode |\n"
-           "|---|---|---|---|---|---|---|---|---|---|---|---|")
-    lines = [f"| {label.get(x.case, x.case)} | {x['mode']} | {x.n:,} | {x.reps} | {x.mean_sim:.3f} ± {x.sem_mean:.3f} | "
+    short = {"constitutive": "constitutive", "bursty": "bursty",
+             "telegraph": "two-state", "replication": "replication"}
+    # explicit proportional widths: twelve equal columns overflowed their boxes and collided
+    hdr = ("| Model | Mode | Mean (sim.) | s.e. | Mean (exact) | s.d. (sim.) | s.d. (exact) | "
+           "Mean in s.e. | Largest KS | Indep. 99% | KS, other mode |\n"
+           "|:-----------|:-----------|------:|-----:|------:|------:|------:|-----:|------:|------:|------:|")
+    lines = [f"| {short.get(x.case, x.case)} | {x['mode']} | {x.mean_sim:.3f} | {x.sem_mean:.3f} | "
              f"{x.mean_exact:.3f} | {x.sd_sim:.3f} | {x.sd_exact:.3f} | {zs[(x.case, x['mode'])]:+.2f} | "
              f"{x.ks:.4f} | {x.ks_crit:.4f} | {x.ks_other:.4f} |"
              for _, x in r.iterrows()]
+    nlin = int(r[r["mode"] == "lineage"].n.max()); npop = int(r[r["mode"] == "population"].n.max())
     put("exact_table",
-        "Supplementary Table 5. Simulated against exact stationary laws. The mean is the average over samples and "
-        "its error the spread between them; \"mean in s.e.\" is the difference from the exact mean in those units. "
-        "\"Largest KS\" is the worst Kolmogorov-Smirnov distance over the samples of the row, and the independent "
-        "critical value beside it is exact for the lineage rows and an under-estimate for the population rows.\n\n"
+        f"Supplementary Table 5. Simulated against exact stationary laws. Lineage rows are one sample of "
+        f"{nlin:,} cells; population rows are the mean over {reps_pop} independent runs of {npop:,} cells each. "
+        f"The quoted error on a population mean is the standard error of that average, the spread between the "
+        f"{reps_pop} run means divided by the square root of {reps_pop}, and on a lineage mean it is the standard "
+        f"error within the single sample; \"mean in s.e.\" is the difference from the exact mean in those units. "
+        f"\"Largest KS\" is the worst Kolmogorov-Smirnov distance over the samples of the row, and the independent "
+        f"critical value beside it is exact for the lineage rows and an under-estimate for the population rows.\n\n"
         + hdr + "\n" + "\n".join(lines))
 
 @safe
@@ -433,7 +497,14 @@ def f4c():
     import numpy as np
     d0 = load("fig4c_decay_vs_dose.csv"); d1 = load("fig4i_cycle_decay.csv")
     c0 = load("fig4d_fate_concordance.csv"); c1 = load("fig4i_cycle_concordance.csv")
-    s0 = load("fig4f_schedules.csv"); s1 = load("fig4i_cycle_schedules.csv")
+    # the gated scan is the five-seed rerun, so the cycle-blind reference must be the five-seed
+    # scan too; comparing it against the older single-seed table manufactured a release-period
+    # difference that is a seed artefact rather than an effect of the gate
+    try:
+        s0 = load("fig4f_schedules_seeds.csv")
+    except Exception:
+        s0 = load("fig4f_schedules.csv")
+    s1 = load("fig4i_cycle_schedules.csv")
     m0 = load("fig8a_melanoma_schedules.csv"); m1 = load("fig8f_melanoma_cycle.csv")
 
     # decay rates are reported as a range, not a ratio: the gated rate crosses zero at low dose
@@ -460,26 +531,70 @@ def f4c():
     put("cyc4_ratio", f"{mem1 / fst1:.0f}-fold" if fst1 > 1e-6 else "far")
     put("cyc4_confound_word", "does" if fst1 > max(0.02, 2 * abs(fst0)) else "does not")
 
-    # schedules: separate what survives (the dose) from what does not (the release period)
+    # schedules: the gate shifts the level of every growth rate, so report the shift, the winner
+    # and the order below the winner separately rather than collapsing them into one verdict
+    def sched(df, m):
+        return df[df.model == m].groupby(["release_period", "dose"]).long_term_growth_rate.agg(
+            ["mean", "std", "count"])
     def bs(df, m):
-        g = df[df.model == m].groupby(["release_period", "dose"]).long_term_growth_rate.mean()
-        rp, dose = g.idxmin()
+        rp, dose = sched(df, m)["mean"].idxmin()
         return float(rp), float(dose)
     label = {"pre_existing": "pre-existing tolerance", "pre_existing_cost": "a fitness cost of resistance",
              "drug_induced": "drug-induced tolerance"}
     models = list(dict.fromkeys(s0.model))
     same_dose = sum(bs(s0, m)[1] == bs(s1, m)[1] for m in models)
     moved = [m for m in models if bs(s0, m)[0] != bs(s1, m)[0]]
-    if not moved:
-        put("cyc4_sched", f"the best schedule is unchanged in all {len(models)} models")
+    continuous_both = all(bs(d, m)[0] == 0.0 for d in (s0, s1) for m in models)
+
+    # how far the gate lifts the whole surface, and how far it reorders it below the winner
+    rise = np.concatenate([(sched(s1, m)["mean"] - sched(s0, m)["mean"]).dropna().values for m in models])
+    rho = [sched(s0, m)["mean"].corr(sched(s1, m)["mean"], method="spearman") for m in models]
+    put("cyc4_rise", f"{rise.min():+.4f} to {rise.max():+.4f} per time unit at all {len(rise)} points of the scan"
+        if (rise > 0).all() else f"{rise.min():+.4f} to {rise.max():+.4f} per time unit")
+    put("cyc4_rank", f"{min(rho):.3f} to {max(rho):.3f}")
+
+    # is the winner's margin over the best holiday larger than the seed noise on it?
+    def margin(df, m):
+        g = sched(df, m); rp = g.index.get_level_values(0)
+        c, h = g[rp == 0.0]["mean"].idxmin(), g[rp > 0.0]["mean"].idxmin()
+        n = max(float(g.loc[c, "count"]), 1.0)
+        se = float(np.sqrt((g.loc[c, "std"] ** 2 + g.loc[h, "std"] ** 2) / n))
+        return float(g.loc[h, "mean"] - g.loc[c, "mean"]), se
+    marg = [margin(d, m) for d in (s0, s1) for m in models]
+    resolved = [g > 2 * se for g, se in marg]
+    weakest = marg[resolved.index(False)] if not all(resolved) else None
+    put("cyc4_margin",
+        f"the margin over the best holiday exceeds twice its standard error in all {len(marg)} comparisons"
+        if all(resolved) else
+        f"the margin over the best holiday exceeds twice its standard error in {sum(resolved)} of the "
+        f"{len(marg)} comparisons, the exception being {label.get(models[0], models[0])} without the gate "
+        f"({weakest[0]:+.4f} against a standard error of {weakest[1]:.4f})")
+
+    # the intermediate-dose optimum, quoted only when the grid actually carries those points
+    def at(df, m, rp, dose):
+        g = sched(df, m)["mean"]
+        return float(g.loc[(rp, dose)]) if (rp, dose) in g.index else None
+    lo1, hi1 = at(s1, "drug_induced", 0.0, 1.0), at(s1, "drug_induced", 0.0, 2.0)
+    lo0, hi0 = at(s0, "drug_induced", 0.0, 1.0), at(s0, "drug_induced", 0.0, 2.0)
+    interdose = None not in (lo1, hi1, lo0, hi0) and lo1 < hi1 and lo0 < hi0
+    put("cyc4_interdose", f" nor the intermediate-dose optimum under drug-induced tolerance ({lo1:+.4f} against "
+                          f"{hi1:+.4f} under the gate and {lo0:+.4f} against {hi0:+.4f} without it)"
+        if interdose else "")
+
+    if continuous_both and not moved:
+        put("cyc4_sched",
+            f"continuous dosing wins in all {len(models)} models with the gate as without it, at the same dose in "
+            f"{same_dose} of {len(models)}. The gate raises the long-term growth rate ({V.get('cyc4_rise', '')}), "
+            f"which is what confining three quarters of the hazard to a window of the cycle implies, and it "
+            f"perturbs the order of the schedules below the winner (Spearman correlation {V.get('cyc4_rank', '')} "
+            f"between the gated and cycle-blind orderings), but it changes neither which schedule wins"
+            f"{V.get('cyc4_interdose', '')}. Across the two scans {V.get('cyc4_margin', '')}")
     else:
-        to_zero = all(bs(s1, m)[0] == 0.0 for m in moved)
-        which = " and with ".join(label.get(m, m) for m in moved)
+        which = " and with ".join(label.get(m, m) for m in moved) if moved else "some mechanisms"
         put("cyc4_sched",
             f"the best dose is unchanged in {same_dose} of {len(models)} models, but the best release period is "
-            f"not. With {which}, the holidays that won without the gate "
-            + ("collapse to continuous dosing" if to_zero else "move") +
-            ", because a gated hazard kills the reverting cells more slowly on re-exposure")
+            f"not: it moves with {which}. The gate raises the long-term growth rate "
+            f"({V.get('cyc4_rise', '')}) and reorders the scan (Spearman correlation {V.get('cyc4_rank', '')})")
 
     def best(df, mm):
         g = df[df.mechanism == mm].groupby("schedule").ttp_baseline_weeks.mean()
@@ -509,8 +624,8 @@ def f4c():
         f"inherited state; it {V.get('cyc4_confound_word', '')} do so to any useful degree, lifting the sister "
         f"concordance of the memoryless fast-switching control only to {V.get('cyc4_fast_g', '')} above "
         f"independence (from {V.get('cyc4_fast_b', '')}), against {V.get('cyc4_mem_g', '')} for the memory gene, "
-        f"so the kin signature still reads expression memory rather than the cycle. The schedule conclusions are "
-        f"the fragile ones, because {V.get('cyc4_sched', '')}")
+        f"so the kin signature still reads expression memory rather than the cycle. In the schedule scan, "
+        f"{V.get('cyc4_sched', '')}")
     put("cycle_case_note",
         f"Population decay still rises with dose ({V.get('cyc4_decay', '')}), at roughly half the rate, and the "
         f"mean time to death of killed cells stays nearly dose-invariant ({V.get('cyc4_dtime', '')}), so the "
@@ -520,8 +635,8 @@ def f4c():
         f"expression state at all. It {V.get('cyc4_confound_word', '')}: in the fast-switching control, which has "
         f"no usable memory, the sister concordance above independence rises only from {V.get('cyc4_fast_b', '')} "
         f"to {V.get('cyc4_fast_g', '')}, while the memory gene sits at {V.get('cyc4_mem_g', '')}, "
-        f"{V.get('cyc4_ratio', '')} larger. What the "
-        f"gate does change is the schedule scan: {V.get('cyc4_sched', '')}. In the melanoma study the best "
+        f"{V.get('cyc4_ratio', '')} larger. In the "
+        f"schedule scan, {V.get('cyc4_sched', '')}. In the melanoma study the best "
         f"schedule is unchanged in {V.get('cyc8_same', '')} mechanisms and the model {V.get('cyc8_trial', '')}; "
         f"the full ordering of the three schedules survives in {V.get('cyc8_full', '')} mechanisms "
         f"({V.get('cyc8_flipped', '')}).")
