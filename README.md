@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/ayoublasri/Biomodelling.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ayoublasri/Biomodelling.jl)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22894286.svg)](https://doi.org/10.5281/zenodo.22894286)
 
 Mechanistic stochastic simulation of gene regulatory networks inside **growing,
 dividing and drug-treated cell populations**, with lineage tracking,

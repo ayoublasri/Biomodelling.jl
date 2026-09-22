@@ -564,14 +564,13 @@ panels, so the opt-in invocations are now named in Methods; and Methods claimed 
 four-thread *timings* are in `paper/README.md` when what the README gives is the
 four-thread *invocation*.
 
-The availability statements no longer depend on anything that does not yet exist. Data
-availability previously said the generated tables are archived with a tagged release;
-since no release has been cut, that sentence is replaced by what is true today, namely
-that the simulated data are regenerated exactly from fixed seeds by the scripts in
-`paper/`, so those scripts rather than a deposited table are the primary record. No
-Zenodo DOI is claimed anywhere. Cutting a v2.0.0 release and minting a DOI remain open to
-the author, and would strengthen the statements, but nothing in the manuscript now
-promises them.
+The availability statements are now backed by an archive. Version 2.0.0 is tagged and
+released, and the release is deposited at Zenodo under the concept DOI
+10.5281/zenodo.22894286, which resolves to the current version rather than to a frozen
+leaf. Both Data availability and Code availability name it, and the repository carries a
+DOI badge and a `CITATION.cff`. Data availability continues to say that the simulated
+data are regenerated exactly from fixed seeds by the scripts in `paper/`, because those
+scripts remain the primary record; the archive carries them.
 
 ---
 
