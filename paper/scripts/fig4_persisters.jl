@@ -221,7 +221,9 @@ CYC = CycleSensitivity(baseline = 0.25, center = 0.5, width = 0.15)
 # The gate does two things at once: it makes the hazard depend on cycle phase, and it lowers the
 # hazard on average. Averaged over a uniform cycle phase the multiplier is 0.532; the phase density
 # realised here is f(φ) = 2/(1+φ)² (a sizer with exponential growth, in a growing population), which
-# gives 0.508. A second arm therefore raises h_max by 1/0.508 so that the cycle-averaged hazard
+# gives 0.508. φ is the fraction of the volume increment completed, as `cycle_progress` defines it for a
+# sizer, not the fraction of the cycle time elapsed; under the age density 2 ln2 · 2^(-φ) it would be 0.528.
+# A second arm therefore raises h_max by 1/0.508 so that the cycle-averaged hazard
 # matches the cycle-blind one, separating gating from a simple reduction in average killing.
 const CYC_MEAN_PHASE = 0.5318
 const CYC_MEAN_REALISED = 0.5083

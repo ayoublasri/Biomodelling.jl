@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/ayoublasri/Biomodelling.jl/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/ayoublasri/Biomodelling.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/ayoublasri/Biomodelling.jl)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22894286.svg)](https://doi.org/10.5281/zenodo.22894286)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22894285.svg)](https://doi.org/10.5281/zenodo.22894285)
 
 Mechanistic stochastic simulation of gene regulatory networks inside **growing,
 dividing and drug-treated cell populations**, with lineage tracking,
@@ -120,8 +120,15 @@ text.
 
 ## Citation
 
+Archived releases are on Zenodo. The concept DOI
+[10.5281/zenodo.22894285](https://doi.org/10.5281/zenodo.22894285) always
+resolves to the latest release; cite the version DOI
+[10.5281/zenodo.22894286](https://doi.org/10.5281/zenodo.22894286) for v2.0.0,
+the release used for every result in the accompanying article.
+
 If you use Biomodelling.jl, please cite the software itself using the metadata in
 `CITATION.cff` (GitHub's "Cite this repository" button renders it), together with
+
 the white paper above and the version 1 article: Lasri, A., Shahrezaei, V. and Sturrock, M. Benchmarking imputation
 methods for network inference using a novel method of synthetic scRNA-seq data
 generation. *BMC Bioinformatics* **23**, 236 (2022).

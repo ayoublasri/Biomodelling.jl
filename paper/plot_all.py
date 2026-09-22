@@ -310,7 +310,16 @@ def fig5():
         for i, m in enumerate(methods):
             vals = [d[(d.method == m) & (d.dataset == o)].aupr.mean() if ((d.method == m) & (d.dataset == o)).any() else np.nan for o in order]
             ax.bar(x + (i - (len(methods) - 1) / 2) * w, vals, width=w, color=mcol[m], label=m)
-        ax.axhline(d.random_aupr.mean(), color=INK2, ls=":", lw=0.8); ax.text(len(order) - 0.5, d.random_aupr.mean(), "random", fontsize=6, color=INK2, ha="right", va="bottom")
+        # Pearson and Spearman are scored on undirected pairs and GENIE3 on ordered pairs, so the
+        # two evaluations have different random baselines (45 of 435 against 45 of 870); a single
+        # line at their average put GENIE3 below "random" on the sequenced datasets when it was in
+        # fact above its own baseline
+        for sel, name, va in ((~d.directed, "random, undirected pairs", "bottom"),
+                              (d.directed, "random, directed edges", "bottom")):
+            if not sel.any(): continue
+            b = d[sel].random_aupr.mean()
+            ax.axhline(b, color=INK2, ls=":", lw=0.8)
+            ax.text(len(order) - 0.5, b, name, fontsize=5.5, color=INK2, ha="right", va=va)
         names = {"fixed_volume": "fixed volume", "population_counts": "dividing: counts", "population_concentration": "dividing: concentration", "population_cycle_regressed": "dividing: cycle-regressed", "sequenced_counts": "sequenced: counts", "sequenced_normalized": "sequenced: normalised"}
         ax.set_xticks(x); ax.set_xticklabels([names[o] for o in order], fontsize=5.5, rotation=30, ha="right", rotation_mode="anchor"); ax.set_ylabel("AUPR"); ax.legend(fontsize=5.5); label(ax, "b", "GRN inference under growth and division")
     @panel
@@ -337,17 +346,28 @@ def fig5():
 # ------------------------------------------------------------------ Figure 6
 def fig6():
     fig = plt.figure(figsize=(7.2, 6.6)); gs = gridspec.GridSpec(3, 2, figure=fig, hspace=0.95, wspace=0.34)
+    # Prior supports of fig6_inference.jl: LogUniform(0.01, 10) on the two switching rates and
+    # LogUniform(1, 200) on the transcription rate. Binning over the accepted range instead put the
+    # lowest particle in the leftmost bin, which with an effective sample size of a few tens reads
+    # as a spike against a boundary that is not the prior's; bin over the whole support instead.
+    PRIOR6 = {"k_on": (0.01, 10.0), "k_off": (0.01, 10.0), "k_tx": (1.0, 200.0)}
     def posterior_panels(cell, particles_file, summary_file, letter, title, ref_prefix, ref_label):
         p = load(particles_file); s = kv(summary_file)
+        pw = p.weight.to_numpy(dtype=float); ess = pw.sum() ** 2 / (pw ** 2).sum()
         sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.5)
         for i, k in enumerate(("k_on", "k_off", "k_tx")):
             ax = fig.add_subplot(sub[i])
-            ax.hist(np.log10(p[k]), bins=25, weights=p.weight, color=C[0], alpha=0.8)
+            lo, hi = np.log10(PRIOR6[k][0]), np.log10(PRIOR6[k][1])
+            ax.hist(np.log10(p[k]), bins=30, range=(lo, hi), weights=p.weight, color=C[0], alpha=0.8)
+            ax.set_xlim(lo, hi)
             ax.axvline(np.log10(s[f"true_{k}"]), color=INK, lw=1.2, label="truth")
             ax.axvline(np.log10(s[f"{ref_prefix}_{k}"]), color=C[7], lw=1.2, ls="--", label=ref_label)
             if f"abc_median_{k}" in s: ax.axvline(np.log10(s[f"abc_median_{k}"]), color=C[0], lw=1.0, ls=":", label="posterior median")
             ax.set_xlabel(f"log₁₀ {k}"); ax.set_yticks([])
-            if i == 0: label(ax, letter, title); ax.set_ylabel("posterior")
+            if i == 0:
+                label(ax, letter, title); ax.set_ylabel("posterior")
+                ax.text(0.03, 0.97, f"ESS {ess:.0f}/{len(p)}", transform=ax.transAxes, fontsize=5.8,
+                        color=INK2, ha="left", va="top")
             if i == 1: ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.36), ncol=3, fontsize=6.4,
                                  columnspacing=1.6, handlelength=1.6)
     @panel
@@ -475,16 +495,23 @@ def fig8():
         ax.set_ylabel("weeks to loss of control"); ax.legend(fontsize=5.5, loc="upper left", labelspacing=0.3); label(ax, "d", "clinical schedules")
     @panel
     def e(cell):
-        sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.15)
+        sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.5)
         for i, (mech, tag) in enumerate(MECHS):
             ax = fig.add_subplot(sub[i]); t = load(f"fig8c_melanoma_optimum_{tag}.csv")
             sc = ax.scatter(t.period_weeks, t.duty, c=t.ttp_weeks, cmap="viridis", s=14, lw=0, label="schedule evaluated")
-            best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0, label="optimum")
+            # where several schedules reach the censoring limit, idxmax returns the first of a tie
+            # rather than a winner, so the marker is labelled "best point" and the text says which
+            best = t.loc[t.ttp_weeks.idxmax()]; ax.plot([best.period_weeks], [best.duty], marker="*", ms=9, color=C[7], lw=0, label="best point")
             ax.set_xscale("log"); ax.set_ylim(0.03, 1.15); ax.set_xlim(t.period_weeks.min() / 1.35, t.period_weeks.max() * 1.35); ax.set_xlabel("period (weeks)"); ax.set_title(mech, fontsize=6.5, color=INK2, pad=3)
             if i == 0: ax.set_ylabel("fraction of time on drug"); label(ax, "e", None)
             else: ax.set_yticklabels([])
             if i == 1: ax.legend(fontsize=5.5, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.36), handletextpad=0.4, columnspacing=1.5)
-        fig.colorbar(sc, ax=ax, fraction=0.08, pad=0.04, label="weeks to loss of control")
+            # the three mechanisms cover different ranges of the end point (about 23-27, 39-52 and
+            # 31-52 weeks) and each scatter is normalised to its own, so a single colour bar taken
+            # from the last panel read the 27-week optimum of the no-fitness-cost scan as about 52
+            cb = fig.colorbar(sc, ax=ax, fraction=0.09, pad=0.03)
+            cb.ax.tick_params(labelsize=5.5); cb.outline.set_linewidth(0.5)
+            if i == 2: cb.set_label("weeks to loss of control", fontsize=6)
     @panel
     def f(ax):
         d = load("fig8d_gbm_trajectories.csv"); d = d[d.mechanism == "MGMT consumed by drug"]
