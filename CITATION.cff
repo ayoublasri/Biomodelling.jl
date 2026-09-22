@@ -6,7 +6,15 @@ abstract: "Biomodelling.jl 2.0 simulates stochastic reaction kinetics inside cel
 version: "2.0.0"
 date-released: "2026-09-22"
 license: MIT
-doi: "10.5281/zenodo.22894286"
+doi: "10.5281/zenodo.22894285"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22894285"
+    description: "Concept DOI; resolves to the latest release."
+  - type: doi
+    value: "10.5281/zenodo.22894286"
+    description: "Version DOI for v2.0.0, the release used for every result in the accompanying Article."
+
 repository-code: "https://github.com/ayoublasri/Biomodelling.jl"
 url: "https://github.com/ayoublasri/Biomodelling.jl"
 keywords:
@@ -19,7 +27,8 @@ keywords:
 authors:
   - family-names: Lasri
     given-names: Ayoub
-    affiliation: "Independent researcher, Dublin, Ireland"
+    orcid: "https://orcid.org/0000-0003-0806-9072"
+    affiliation: "Berache Limited, Dublin, Ireland"
     email: alasri@berache.com
   - family-names: Sturrock
     given-names: Marc

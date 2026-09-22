@@ -75,8 +75,10 @@ def paired_margin(df, model):
     diff = w[other] - w[best]
     n = len(w)
     gap = float(diff.mean()); se = float(diff.std(ddof=1) / np.sqrt(n))
-    p = float(_st.ttest_rel(w[other], w[best]).pvalue) if n > 1 else float("nan")
-    return dict(model=model, best=best, other=other, gap=gap, se=se, p=p, n=n, resolved=bool(p < 0.05))
+    tt = _st.ttest_rel(w[other], w[best]) if n > 1 else None
+    p = float(tt.pvalue) if tt is not None else float("nan")
+    t = float(tt.statistic) if tt is not None else float("nan")
+    return dict(model=model, best=best, other=other, gap=gap, se=se, p=p, t=t, n=n, resolved=bool(p < 0.05))
 
 @safe
 def f4():
@@ -84,7 +86,9 @@ def f4():
     d = load("fig4c_decay_vs_dose.csv").sort_values("dose")
     lo = d[d.dose == 0.5].decay_rate.iloc[0]; hi = d[d.dose == 2.0].decay_rate.iloc[0]
     put("decay_lo", f"{lo:.3f}"); put("decay_hi", f"{hi:.3f}"); put("decay_fold", f"{hi / lo:.1f}")
-    dd = d[d.dose > 0]
+    # the sentence these two feed says "Between doses 0.5 and 2", so the window has to be the one
+    # the decay rates above are taken over; over 0.25 to 2 the death time runs from 8.5 to 6.2
+    dd = d[d.dose >= 0.5]
     put("divtime_change", f"{abs(dd.division_time_mean.iloc[-1] - dd.division_time_mean.iloc[0]) / dd.division_time_mean.iloc[0] * 100:.1f}%")
     put("deathtime_range", f"{dd.death_time_mean.max():.1f} to {dd.death_time_mean.min():.1f}")
     c = load("fig4d_fate_concordance.csv")
@@ -115,9 +119,11 @@ def f4():
         f = load("fig4f_schedules.csv"); f["seed"] = 1; nseed = 1
     agg = f.groupby(["model", "release_period", "dose"]).long_term_growth_rate.agg(["mean", "std", "count"]).reset_index()
     marg = []
+    scatter = {}
     for model, tag in (("pre_existing", "pre"), ("pre_existing_cost", "cost"), ("drug_induced", "ind")):
         g = agg[agg.model == model].sort_values("mean")
         best = g.iloc[0]
+        scatter[model] = float(best["std"])
         err = "" if nseed == 1 else f", ± {best['std']:.4f} over {nseed} seeds"
         put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best['mean']:+.4f} per time unit{err})")
         cont = g[(g.release_period == 0) & (g.dose == g.dose.max())]["mean"].iloc[0]
@@ -127,16 +133,24 @@ def f4():
     if marg:
         won = [m for m in marg if m["resolved"]]
         lost = [m for m in marg if not m["resolved"]]
-        detail = "; ".join(f"{LABEL_MECH.get(m['model'], m['model'])} {m['gap']:+.4f} against {m['se']:.4f}, "
-                           f"$P = {m['p']:.2f}$" for m in lost)
+        # gap and standard error to five decimals, with the t statistic: rounding both to four
+        # decimals made a gap of 0.00026 against a standard error of 0.00013 read as a ratio of
+        # three, which on four degrees of freedom would be P = 0.04 rather than the true P = 0.11
+        detail = "; ".join(f"{LABEL_MECH.get(m['model'], m['model'])} {m['gap']:+.5f} against {m['se']:.5f}, "
+                           f"$t = {m['t']:.2f}$ on {m['n'] - 1} d.f., $P = {m['p']:.2f}$" for m in lost)
+        # the seed-to-seed scatter is not the error on the paired differences, and is not uniformly
+        # larger than them either, so state the ratio rather than assert an ordering
+        ratios = [scatter[m["model"]] / m["gap"] for m in marg if m["model"] in scatter and m["gap"] > 0]
+        rel = (f"which is {min(ratios):.1f} to {max(ratios):.1f} times the paired differences"
+               if ratios else "which is not a measure of the paired differences")
         put("sched_seed_note",
             f"Each point of the scan is the mean of {nseed} independent seeds, and every schedule is run on the same "
             f"{nseed} seeds, so schedules are compared by their paired differences, in which the shared founder "
             f"population cancels; the spread quoted beside each winner above is the seed-to-seed scatter of its "
-            f"absolute growth rate, which is larger than the paired differences and is not the error on them. The "
+            f"absolute growth rate, {rel} and is not the error on them. The "
             f"winning schedule beats the best schedule with a non-zero release period by "
-            f"{min(m['gap'] for m in marg):.4f} to {max(m['gap'] for m in marg):.4f} per time unit against paired "
-            f"standard errors of {min(m['se'] for m in marg):.4f} to {max(m['se'] for m in marg):.4f}, a margin that "
+            f"{min(m['gap'] for m in marg):.5f} to {max(m['gap'] for m in marg):.5f} per time unit against paired "
+            f"standard errors of {min(m['se'] for m in marg):.5f} to {max(m['se'] for m in marg):.5f}, a margin that "
             f"a two-sided paired t-test resolves at the 5% level in {len(won)} of the {len(marg)} mechanisms"
             + (f", the one in which the resistant state carries a fitness cost"
                if len(won) == 1 and won[0]["model"] == "pre_existing_cost" else "")
@@ -144,6 +158,23 @@ def f4():
                if lost else "."))
     else:
         put("sched_seed_note", "")
+    # the dose from which every schedule shrinks the population: at dose 0.5 the longest holidays
+    # still leave it growing, so decline cannot be claimed to be universal from that dose upwards
+    try:
+        gc = agg[agg.model == "pre_existing_cost"]
+        thr = min(x for x in sorted(gc.dose.unique()) if (gc[gc.dose >= x]["mean"] < 0).all())
+        grew = gc[(gc.dose < thr) & (gc["mean"] > 0)]
+        lo = grew[grew.dose == grew.dose.max()].sort_values("release_period")
+        if len(lo):
+            which = " and ".join(f"{r.release_period:g}" for _, r in lo.iterrows())
+            rates = " and ".join(f"{r['mean']:+.4f}" for _, r in lo.iterrows())
+            put("cost_decline", f"the population declines under every schedule at dose {thr:g} and above, and at "
+                                f"dose {lo.dose.iloc[0]:g} under every schedule but the longest holidays, where it "
+                                f"still grows (release periods of {which} time units, {rates} per time unit)")
+        else:
+            put("cost_decline", f"the population declines under every schedule at dose {thr:g} and above")
+    except Exception:
+        put("cost_decline", "")
     # under the paired test the fitness-cost holidays are not equal to continuous dosing, so the
     # text cannot say they "match" it; report how many of them are resolvably worse
     try:
@@ -204,7 +235,6 @@ def f5():
     # the random baseline differs between the directed (GENIE3) and undirected (correlation) evaluations
     put("aupr_random_dir", f"{m[m.directed].random_aupr.mean():.2f}")
     put("aupr_random_undir", f"{m[~m.directed].random_aupr.mean():.2f}")
-    put("aupr_random", f"{m.random_aupr.mean():.2f}")
     for meth, tag in (("pearson", "p"), ("genie3", "g")):
         base = m[(m.method == meth) & (m.dataset == "sequenced_counts")].aupr.mean()
         for ds, dtag in (("imputed_knn_smoothing", "knn"), ("imputed_magic", "magic")):
@@ -249,6 +279,11 @@ def f7():
     put("cal_objective_parts", f"{seed1:.3f} of single-seed training error and {obj - seed1:.3f} of prior penalty")
     r = m.loc[10.0]; put("obs_10", f"{r.obs_died:.2f}, {r.obs_divided:.2f} and {r.obs_survived:.2f}"); put("pred_10", f"{r.died:.2f}, {r.divided:.2f} and {r.survived:.2f}")
     put("obs_died_7", f"{m.loc[7.0].obs_died:.2f}"); put("obs_died_13", f"{m.loc[13.0].obs_died:.2f}")
+    # the simulated death fractions of Fig. 7a and the counts behind the observed ones, so that the text
+    # can say which of the two it is quoting (the timing shift below is simulated, the fractions observed)
+    put("sim_died_7", f"{m.loc[7.0].died:.2f}"); put("sim_died_13", f"{m.loc[13.0].died:.2f}")
+    put("obs_died_counts", f"{m.loc[7.0].obs_died * m.loc[7.0].obs_n:.0f} of {m.loc[7.0].obs_n:.0f} and "
+                           f"{m.loc[13.0].obs_died * m.loc[13.0].obs_n:.0f} of {m.loc[13.0].obs_n:.0f} cells")
     kd = load("fig7c_kin_correlation.csv")
     k = kd.groupby("relation").fate_correlation.mean()
     for key, rel in (("phi_sis", "sisters"), ("phi_c1", "first cousins"), ("phi_c2", "second cousins"), ("phi_c3", "third cousins"), ("phi_unrel", "unrelated")): put(key, f"{k[rel]:.2f}")
@@ -326,11 +361,14 @@ def f8b():
     base = 5.0 if 5.0 in gens else gens[len(gens) // 2]
     cost = d[d.mechanism == "fitness cost"]
     censored = bool((~cost.progressed_baseline.astype(bool)).all())
+    partial_scanned = "partial protection" in set(d.mechanism)
     put("memory_scan_note",
         f"The melanoma study gives the resistant state a memory of five net population doublings, about 20 weeks, "
         f"which is a modelling choice and not a measurement, and it is the quantity that decides whether resistant "
         f"cells revert during a three-week holiday. Repeating the schedule comparison over memories from {lo:.0f} to "
-        f"{hi:.0f} net doublings, with {int(d.seed.nunique())} seeds at each point, leaves the ranking in place: "
+        f"{hi:.0f} net doublings, with {int(d.seed.nunique())} seeds at each point, leaves the ranking in place in "
+        + ("every arm of the main comparison: " if partial_scanned else
+           "the two arms it covers, without and with a fitness cost of resistance: ")
         + ("without a fitness cost both interrupted schedules keep control longer than continuous dosing at every "
            "memory tested" if order_keeps else
            "without a fitness cost the ranking of continuous against intermittent dosing changes over this range") +
@@ -342,7 +380,12 @@ def f8b():
         f"would make the case for holidays stronger, not weaker. "
         + (f"With a fitness cost of resistance no schedule loses control within the follow-up at any memory in this "
            f"range, so that arm is insensitive to the assumption." if censored else
-           f"With a fitness cost of resistance the ranking is unchanged over the same range."))
+           f"With a fitness cost of resistance the ranking is unchanged over the same range.")
+        + ("" if partial_scanned else
+           " The scan covers those two arms only. The third arm of Fig. 8a–d, in which resistant cells are only "
+           "partly protected and grow at half speed under drug, is the arm that reproduces the ranking of SWOG "
+           "S1320, with continuous dosing keeping control longest; it was not scanned, so how far that ranking "
+           "depends on the assumed memory is not established here."))
     put("memory_scan_range", f"{gaps[lo]:.0f} weeks at {lo:.0f} net doublings of memory to {gaps[hi]:.1f} weeks at {hi:.0f}")
 
     # the scan and the main melanoma run report the same quantity with different seed counts, and
@@ -567,9 +610,11 @@ def f4c():
     put("cyc4_decay", f"{a1:+.3f} to {b1:+.3f} per time unit over doses 0.5 to 2, against {a0:+.3f} to {b0:+.3f} "
                       f"without the gate")
     def dtr(d):
-        g = d[d.dose > 0].death_time_mean.dropna(); return float(g.min()), float(g.max())
+        # the same window as dec() above, which the sentence names as doses 0.5 to 2
+        g = d[d.dose >= 0.5].death_time_mean.dropna(); return float(g.min()), float(g.max())
     q1, q0 = dtr(d1), dtr(d0)
-    put("cyc4_dtime", f"{q1[0]:.1f} to {q1[1]:.1f} against {q0[0]:.1f} to {q0[1]:.1f} time units")
+    put("cyc4_dtime", f"{q1[0]:.1f} to {q1[1]:.1f} against {q0[0]:.1f} to {q0[1]:.1f} time units over the same "
+                      f"doses")
 
     def exc(df, m, r):
         g = df[(df.model == m) & (df.relation == r)]
@@ -714,7 +759,7 @@ def f4c():
         put("cycle_matched_note",
             f"The gate does two things at once. It makes the hazard depend on cycle phase, and it lowers the hazard "
             f"on average: over a uniform cycle phase the multiplier averages {mk['mean_multiplier_uniform_phase']:.3f}, "
-            f"and under the phase density these simulations realise, $f(\\varphi) = 2/(1+\\varphi)^2$ for a sizer with "
+            f"and under the phase density these simulations realise, $f(\\varphi) = 2/(1+\\varphi)^2$ for volume-based cycle progress under a sizer with "
             f"exponential growth in a growing population, {mk['mean_multiplier_realised']:.3f}. Half of the shallower "
             f"dose response above is therefore just less killing. Repeating the comparison with the maximal hazard "
             f"raised by $1/{mk['mean_multiplier_realised']:.3f}$, so that the cycle-averaged hazard matches the "
@@ -736,11 +781,36 @@ def f8():
             r = m.loc[(mech, sched)]
             put(f"ttp_{stag}_{mtag}", f"{r.ttp_baseline_weeks:.0f}" + ("" if r.progressed_baseline > 0.99 else "+"))
             put(f"ttpn_{stag}_{mtag}", f"{r.ttp_nadir_weeks:.0f}" + ("" if r.progressed_nadir > 0.99 else "+"))
+            # end-of-simulation burden: in the fitness-cost arm every schedule is censored on the
+            # declared end point, so the xenograft ranking is visible only in this quantity
+            put(f"nend_{stag}_{mtag}", f"{r.N_end_over_N0:.2f}")
         put(f"dose_adapt_{mtag}", f"{100 * m.loc[(mech, 'adaptive (50 %)')].cumulative_dose_weeks / m.loc[(mech, 'continuous')].cumulative_dose_weeks:.0f}%")
         put(f"dose_int_{mtag}", f"{100 * m.loc[(mech, 'intermittent (S1320)')].cumulative_dose_weeks / m.loc[(mech, 'continuous')].cumulative_dose_weeks:.0f}%")
+    # A schedule that never loses control is censored at the end of follow-up, so schedules that reach it
+    # are tied and identify no optimum: report the tie rather than whichever of them idxmax returns first.
+    # The optimiser evaluates the full n_grid x n_grid grid first and refines afterwards (src/perturb/optimize.jl),
+    # so the first 16 rows are the 4 x 4 grid of fig8_schedules.jl.
+    cens = float(load("fig8a_melanoma_schedules.csv").ttp_baseline_weeks.max())
     for tag, key in (("no_fitness_cost", "opt_nocost"), ("fitness_cost", "opt_cost"), ("partial_protection", "opt_partial")):
         t = load(f"fig8c_melanoma_optimum_{tag}.csv"); b = t.loc[t.ttp_weeks.idxmax()]
-        put(key, f"a period of {b.period_weeks:.1f} weeks with {100 * b.duty:.0f}% of the time on drug ({b.ttp_weeks:.0f} weeks to loss of control)")
+        gr = t.head(16)
+        tied = gr[gr.ttp_weeks >= cens - 1e-6]; duties = sorted(tied.duty.unique())
+        if len(tied) > 1 and len(duties) == 1 and duties[0] >= 1.0:
+            # every tied point is continuous dosing at a different nominal period, which is one schedule
+            # and not a tie between schedules: here the scan does identify a winner, just not an
+            # intermittent one, so it must not be reported as "no best schedule"
+            put(key, f"continuous dosing is the only schedule that keeps control for the whole "
+                     f"{cens:.0f}-week follow-up: the {len(tied)} of the {len(gr)} grid points that reach the "
+                     f"censoring limit are all at a duty cycle of 100%, which is the same schedule whatever "
+                     f"the nominal period")
+        elif len(tied) > 1:
+            put(key, f"no best schedule is identified: {len(tied)} of the {len(gr)} grid points reach the "
+                     f"{cens:.0f}-week censoring limit without loss of control, at every duty cycle of "
+                     f"{100 * duties[0]:.0f}% or more and at every period from {tied.period_weeks.min():.1f} "
+                     f"to {tied.period_weeks.max():.0f} weeks")
+        else:
+            put(key, f"a period of {b.period_weeks:.1f} weeks with {100 * b.duty:.0f}% of the time on drug "
+                     f"({b.ttp_weeks:.0f} weeks to loss of control)")
     g = load("fig8d_gbm_regimens.csv").groupby(["population", "mechanism", "regimen"]).mean(numeric_only=True)
     for pop, ptag in (("MGMT methylated (1 % expressing)", "meth"), ("MGMT unmethylated (30 % expressing)", "unmeth")):
         for mech, gtag in (("MGMT stable", "stable"), ("MGMT consumed by drug", "consumed")):
@@ -758,9 +828,19 @@ def fsupp():
     d = load("fig4c_times.csv")
     for dose, g in d[d.event == "death"].groupby("dose"):
         put(f"death_cv_{str(dose).replace('.', '_')}", f"{g.time.std() / g.time.mean():.2f}")
+    pname = {"k_on": "$k_{\\mathrm{on}}$", "k_off": "$k_{\\mathrm{off}}$", "k_tx": "$k_{\\mathrm{tx}}$",
+             "h_max": "$h_{\\max}$", "K": "$K$"}
     for tag in ("fig6a", "fig6b", "fig6c"):
         sch = load(f"{tag}_schedule.csv")
         put(f"{tag}_gens", f"{int(sch.generation.max())}"); put(f"{tag}_eps", f"{sch.epsilon.iloc[-1]:.3g}"); put(f"{tag}_acc", f"{100 * sch.acceptance.iloc[-1]:.0f}%")
+        # Effective sample size of the final generation by Kish's formula on the stored importance
+        # weights: the number of equally weighted particles the weighted sample is worth. It is not
+        # written by the inference script, but the weights are, so it is recovered from them here.
+        pt = load(f"{tag}_particles.csv"); pw = pt.weight.to_numpy(dtype=float)
+        put(f"{tag}_ess", f"{pw.sum() ** 2 / (pw ** 2).sum():.0f} of {len(pw)}")
+        # the accepted range of each parameter, which shows whether any particle sits on a prior edge
+        put(f"{tag}_span", ", ".join(f"{pname.get(c, c)} {pt[c].min():.3g} to {pt[c].max():.3g}"
+                                     for c in pt.columns if c != "weight"))
 for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f8b, f4c, f9): f()
 fsupp()
 
