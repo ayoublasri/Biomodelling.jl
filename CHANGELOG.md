@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.0 (unreleased)
+## v2.0.0 (2026-09-22)
 
 Breaking release. The package is reorganised around six layers: model, kernels,
 cells and populations, perturbations, lineage, observation, plus inference and

@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+type: software
+title: "Biomodelling.jl: a Julia package for stochastic simulation of gene expression in growing, dividing and drug-treated cells"
+abstract: "Biomodelling.jl 2.0 simulates stochastic reaction kinetics inside cells that grow, replicate their genes, divide with molecular partitioning, and are treated with drugs on explicit schedules. Exact, hybrid and adaptive kernels couple to volume-scaled transcription, inherited promoter states, a lineage record, observation models, likelihood-free inference and a schedule optimiser. Expression memory, cell-size scaling and cell-cycle-dependent bursting emerge from the physiology rather than being imposed."
+version: "2.0.0"
+date-released: "2026-09-22"
+license: MIT
+repository-code: "https://github.com/ayoublasri/Biomodelling.jl"
+url: "https://github.com/ayoublasri/Biomodelling.jl"
+keywords:
+  - stochastic simulation
+  - single-cell
+  - gene expression
+  - cell division
+  - drug resistance
+  - Julia
+authors:
+  - family-names: Lasri
+    given-names: Ayoub
+    affiliation: "Independent researcher, Dublin, Ireland"
+    email: alasri@berache.com
+  - family-names: Sturrock
+    given-names: Marc
+  - family-names: Shahrezaei
+    given-names: Vahid

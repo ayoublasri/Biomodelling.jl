@@ -427,13 +427,13 @@ def fig7():
         best = t.iloc[0]; ax.plot([best.EC50], [best.h_max], marker="*", ms=10, color=C[7], lw=0, label="calibrated")
         ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("EC50 (µM)"); ax.set_ylabel("h_max (per h)")
         cb = fig.colorbar(sc, ax=ax, fraction=0.055, pad=0.03)
-        cb.set_label("distance to training data", fontsize=6.6); cb.ax.tick_params(labelsize=6)
+        cb.set_label("objective (single seed + prior)", fontsize=6.6); cb.ax.tick_params(labelsize=6)
         cb.outline.set_linewidth(0.5)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=2, fontsize=6.2); label(ax, "e", "calibration landscape")
     @panel
     def f(ax):
         c = kv("fig7_calibration.csv")
-        rows = [("k_on (per h)", c["k_on"]), ("k_off (per h)", c["k_off"]), ("memory (generations)", c["memory_generations"]), ("fraction resistant", c["p_on"]), ("h_max (per h)", c["h_max"]), ("EC50 (µM)", c["EC50"]), ("Hill m", c["m_h"]), ("IC50 growth (µM)", c["IC50"]), ("distance", c["distance"])]
+        rows = [("k_on (per h)", c["k_on"]), ("k_off (per h)", c["k_off"]), ("memory (generations)", c["memory_generations"]), ("fraction resistant", c["p_on"]), ("h_max (per h)", c["h_max"]), ("EC50 (µM)", c["EC50"]), ("Hill m", c["m_h"]), ("IC50 growth (µM)", c["IC50"]), ("objective (+ prior)", c["distance"])]
         ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
         for i, (k, v) in enumerate(rows):
             ax.text(0.02, 0.95 - i * 0.105, k, fontsize=6, va="top", color=INK2); ax.text(0.98, 0.95 - i * 0.105, f"{v:.3g}", fontsize=6, va="top", ha="right", color=INK)

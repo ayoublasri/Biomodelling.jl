@@ -401,7 +401,7 @@ three of three. The gate raises the long-term growth rate at all sixty points of
 scan (+0.0026 to +0.0155 per time unit) and perturbs the order below the winner
 (Spearman correlation 0.977 to 0.998), but changes neither which schedule wins nor the
 intermediate-dose optimum under drug-induced tolerance. We also state that the winner's
-margin over the best holiday exceeds twice its standard error in five of the six
+margin over the best holiday is resolved by a paired t-test in four of the six
 comparisons, the exception being pre-existing tolerance without the gate
 (+0.0004 against a standard error of 0.0005), so the claim is hedged to the same degree
 as the neighbouring seed note. Supplementary Note 13 and the Results are generated from
@@ -572,3 +572,101 @@ that the simulated data are regenerated exactly from fixed seeds by the scripts 
 Zenodo DOI is claimed anywhere. Cutting a v2.0.0 release and minting a DOI remain open to
 the author, and would strengthen the statements, but nothing in the manuscript now
 promises them.
+
+---
+
+# Response to the publication-readiness report
+
+## R1 — the two Fig. 4h statistics
+
+Reconciled, and the diagnosis differs from the report's in a way worth stating, because it
+changes what had to be fixed.
+
+**The two counts were not arithmetically inconsistent.** The report says that for the
+fitness-cost arm the "next best" schedule and the "best holiday" are the same heatmap cell.
+They are not. The second-best-overall cell coincides with the best-holiday cell for
+pre-existing tolerance, both (release 10, dose 2), and for drug-induced tolerance, both
+(release 10, dose 1), but *not* for the fitness-cost arm, where the second best overall is
+(release 0, dose 1) — a different dose at continuous dosing — and the best holiday is
+(release 5, dose 2). The arms are inverted in the report. For the two arms where the cells do
+coincide the two statements already agreed; they differed only where they described genuinely
+different cells.
+
+**Three real defects underlay the confusion, and the report's remedy fixes all of them.**
+First, two different contrasts were reported under the same word "resolved". Second, the
+standard error discarded the common-random-number design: every schedule in a scan is run on
+the same five seeds, from a bit-identical burn-in population, so the two cell means are
+coupled and the unpaired root-sum-of-squares is not a standard error of their difference at
+all. Third, and most consequential, "twice the standard error" is not a 5% test at five seeds.
+
+**On that last point the report's own proposed rule would have repeated an error this review
+process already corrected once.** The two-sided 5% point of Student's t on four degrees of
+freedom is 2.776, not 2. The gap is not academic: ungated drug-induced tolerance sits at 2.02
+paired standard errors, which "twice the standard error" calls resolved and a paired t-test
+does not ($P = 0.11$). This is the same mistake as the normal-approximation interval in the
+previous round's Fig. 7c, and we have applied the same correction.
+
+We therefore adopt, and state in Methods, a single convention: schedules are compared by their
+paired differences over the shared seeds, and a margin is called resolved when a two-sided
+paired t-test rejects equality at the 5% level. Under it the two contrasts give the same count
+and the same member in the ungated scan — one of three mechanisms, the fitness-cost arm — so
+the two statements can no longer diverge. Across both scans the margin is resolved in four of
+the six comparisons, the exceptions being pre-existing and drug-induced tolerance without the
+gate.
+
+One caution against a natural but wrong justification: paired standard errors are *not*
+uniformly tighter here. The ratio of unpaired to paired ranges from 5.85 down to 0.83, and in
+two of the nine contrasts the paired error is the larger. The case for pairing is validity,
+not power, and the text says so.
+
+Four consequences of the change that the convention alone would not have caught:
+
+- The fitness-cost sentence said holidays of up to ten time units "match" continuous dosing.
+  Under a paired test three of those four schedules are resolvably worse, so the false equality
+  is replaced by the count and the range.
+- The Fig. 4 legend said the box marks "the most effective schedule" in panels where the text
+  now says the ranking is unresolved; it is qualified.
+- Methods carried no statement of how schedules are compared; it now carries the convention,
+  including the 2.776 multiplier.
+- The spread printed beside each winner is the seed-to-seed scatter of the absolute growth
+  rate, roughly 0.0012 per time unit for the fitness-cost arm, and sat immediately before a
+  claim that a 0.0014 margin is resolved. A reader dividing one by the other would conclude
+  that nothing is resolved. The note now says in one clause that the comparisons use paired
+  differences, in which the shared founder population cancels.
+
+## R2 — SymSim and GRouNdGAN
+
+Confirmed and corrected, with both claims verified against the primary records rather than
+taken on report. GRouNdGAN imposes a user-defined causal network in its generator, so that
+"genes are causally expressed under the control of their regulating transcription factors";
+SymSim's full text contains no occurrence of "regulatory network", "GRN" or "transcription
+factor", and its kinetic parameters are products of cell-specific and gene-specific factors
+for a two-state promoter. The two tools have swapped groups.
+
+Two departures from the suggested wording. We did not write that Splatter, scDesign3 and
+SymSim fail to "represent regulation", because SymSim's own authors describe their
+extrinsic-variability mechanism as a model of transcription regulation; what the evidence
+establishes is the absence of a *network*, and that is what the sentence now claims. And we
+kept the negative claim scoped to the simulators named in that sentence rather than making it
+universal, since TedSim and Cassiopeia, named two sentences later, are marked partial rather
+than absent for molecular partitioning in Table 1.
+
+The report's third point does not arise: SymSim is not a column of Table 1, so there was no
+Table 1 contradiction for it. GRouNdGAN's marks there — a tick for networks with known ground
+truth, a dash for SSA or tau-leaping kinetics — were already correct, and it was the
+Introduction that disagreed with them.
+
+## R3 — the Fig. 7f label
+
+Done, and extended one step. The panel entry now reads "objective (single seed + prior)". The
+colour bar of Fig. 7e still read "distance to training data" for the identical quantity, which
+would have left the figure naming it two ways even after the panel-f fix, so it carries the
+same label now.
+
+## Repository
+
+Every one of the twelve paths the report could not confirm exists and is git-tracked, at the
+sizes listed in the audit. So does every other path cited anywhere in Data availability, Code
+availability, Software or the artificial-intelligence statement. One genuine defect surfaced
+in the sweep and is fixed: the Fig. 3 legend cited `fig3f_copynumber.csv` without its
+directory, the only bare data-file name in the Article; it now reads `paper/output/`.

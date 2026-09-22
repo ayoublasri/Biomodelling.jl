@@ -119,8 +119,9 @@ text.
 
 ## Citation
 
-If you use Biomodelling.jl, please cite the white paper above and the version 1
-article: Lasri, A., Shahrezaei, V. and Sturrock, M. Benchmarking imputation
+If you use Biomodelling.jl, please cite the software itself using the metadata in
+`CITATION.cff` (GitHub's "Cite this repository" button renders it), together with
+the white paper above and the version 1 article: Lasri, A., Shahrezaei, V. and Sturrock, M. Benchmarking imputation
 methods for network inference using a novel method of synthetic scRNA-seq data
 generation. *BMC Bioinformatics* **23**, 236 (2022).
 <https://doi.org/10.1186/s12859-022-04778-9>

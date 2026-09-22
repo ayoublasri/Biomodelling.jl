@@ -53,6 +53,31 @@ def f3():
     put("fit_one_copy", f"{one.k_on:.2f}, {one.k_off:.2f} and {one.k_tx / one.mean_volume / 20:.1f}")
     put("fit_pooled", f"{pool.k_on:.2f}, {pool.k_off:.2f} and {pool.k_tx / pool.mean_volume / 20:.1f}")
 
+LABEL_MECH = {"pre_existing": "pre-existing tolerance", "pre_existing_cost": "a fitness cost of resistance",
+              "drug_induced": "drug-induced tolerance"}
+
+def paired_margin(df, model):
+    """Winner against the best schedule with a non-zero release period, paired over shared seeds.
+
+    Every schedule in a scan is run on the same seeds (common random numbers), so the two cell
+    means are coupled and sqrt((s_a^2 + s_b^2)/n) is not a standard error of their difference.
+    The paired standard error is valid whatever the coupling, which matters here because it is
+    positive for some mechanisms and negative for others. With five seeds the two-sided 5% point
+    of Student's t on four degrees of freedom is 2.776, not 2, so the test is stated as a t-test.
+    """
+    from scipy import stats as _st
+    w = df[df.model == model].pivot_table(index="seed", columns=["release_period", "dose"],
+                                          values="long_term_growth_rate")
+    mu = w.mean()
+    best = mu.idxmin()
+    holidays = [c for c in mu.index if c[0] > 0]
+    other = mu[holidays].idxmin() if holidays else mu.drop(index=best).idxmin()
+    diff = w[other] - w[best]
+    n = len(w)
+    gap = float(diff.mean()); se = float(diff.std(ddof=1) / np.sqrt(n))
+    p = float(_st.ttest_rel(w[other], w[best]).pvalue) if n > 1 else float("nan")
+    return dict(model=model, best=best, other=other, gap=gap, se=se, p=p, n=n, resolved=bool(p < 0.05))
+
 @safe
 def f4():
     put("mem_time", f"{1 / (0.002 + 0.02):.0f}")
@@ -89,27 +114,54 @@ def f4():
     except Exception:
         f = load("fig4f_schedules.csv"); f["seed"] = 1; nseed = 1
     agg = f.groupby(["model", "release_period", "dose"]).long_term_growth_rate.agg(["mean", "std", "count"]).reset_index()
-    gaps = []
+    marg = []
     for model, tag in (("pre_existing", "pre"), ("pre_existing_cost", "cost"), ("drug_induced", "ind")):
         g = agg[agg.model == model].sort_values("mean")
-        best, second = g.iloc[0], g.iloc[1]
-        sem = (best["std"] / np.sqrt(best["count"])) if best["count"] > 1 else float("nan")
+        best = g.iloc[0]
         err = "" if nseed == 1 else f", ± {best['std']:.4f} over {nseed} seeds"
         put(f"best_{tag}", f"release period {best.release_period:g}, dose {best.dose:g} (growth rate {best['mean']:+.4f} per time unit{err})")
         cont = g[(g.release_period == 0) & (g.dose == g.dose.max())]["mean"].iloc[0]
         put(f"cont_{tag}", f"{cont:+.4f}")
         if nseed > 1:
-            gaps.append((tag, float(second["mean"] - best["mean"]), float(np.hypot(sem, second["std"] / np.sqrt(second["count"])))))
-    if gaps:
-        resolved = [t for t, d, e in gaps if d > 2 * e]
+            marg.append(paired_margin(f, model))
+    if marg:
+        won = [m for m in marg if m["resolved"]]
+        lost = [m for m in marg if not m["resolved"]]
+        detail = "; ".join(f"{LABEL_MECH.get(m['model'], m['model'])} {m['gap']:+.4f} against {m['se']:.4f}, "
+                           f"$P = {m['p']:.2f}$" for m in lost)
         put("sched_seed_note",
-            f"Each point of the scan is the mean of {nseed} independent seeds. The gap between the best schedule and "
-            f"the next best is {min(d for _, d, _ in gaps):.4f} to {max(d for _, d, _ in gaps):.4f} per time unit, "
-            f"against a standard error of {min(e for _, _, e in gaps):.4f} to {max(e for _, _, e in gaps):.4f} on the "
-            f"difference, so the ranking of the top two schedules is resolved in {len(resolved)} of the "
-            f"{len(gaps)} mechanisms; elsewhere the scan identifies a region of good schedules rather than a single best one.")
+            f"Each point of the scan is the mean of {nseed} independent seeds, and every schedule is run on the same "
+            f"{nseed} seeds, so schedules are compared by their paired differences, in which the shared founder "
+            f"population cancels; the spread quoted beside each winner above is the seed-to-seed scatter of its "
+            f"absolute growth rate, which is larger than the paired differences and is not the error on them. The "
+            f"winning schedule beats the best schedule with a non-zero release period by "
+            f"{min(m['gap'] for m in marg):.4f} to {max(m['gap'] for m in marg):.4f} per time unit against paired "
+            f"standard errors of {min(m['se'] for m in marg):.4f} to {max(m['se'] for m in marg):.4f}, a margin that "
+            f"a two-sided paired t-test resolves at the 5% level in {len(won)} of the {len(marg)} mechanisms"
+            + (f", the one in which the resistant state carries a fitness cost"
+               if len(won) == 1 and won[0]["model"] == "pre_existing_cost" else "")
+            + (f". Elsewhere the scan identifies a region of good schedules rather than a single best one ({detail})."
+               if lost else "."))
     else:
         put("sched_seed_note", "")
+    # under the paired test the fitness-cost holidays are not equal to continuous dosing, so the
+    # text cannot say they "match" it; report how many of them are resolvably worse
+    try:
+        from scipy import stats as _st
+        w = f[f.model == "pre_existing_cost"].pivot_table(index="seed", columns=["release_period", "dose"],
+                                                          values="long_term_growth_rate")
+        base = (0.0, float(max(c[1] for c in w.columns)))
+        cells = [c for c in w.columns if 0 < c[0] <= 10 and c[1] >= 1.0]   # the doses the sentence is about
+        ps = {c: float(_st.ttest_rel(w[c], w[base]).pvalue) for c in cells}
+        worse = [c for c in cells if ps[c] < 0.05 and (w[c] - w[base]).mean() > 0]
+        gaps = [float((w[c] - w[base]).mean()) for c in cells]
+        put("cost_holiday", f"release periods of up to 10 time units at doses of 1 and 2 cost little, though "
+                            f"{len(worse)} of those {len(cells)} are resolvably worse than continuous dosing "
+                            f"at the highest dose "
+                            f"({min(gaps):+.4f} to {max(gaps):+.4f} per time unit, "
+                            f"{V.get('cont_cost', '')} per time unit under continuous dose 2)")
+    except Exception:
+        put("cost_holiday", "")
     g = load("fig4g_memory_disruption.csv").groupby("treatment").mean(numeric_only=True)
     put("clones_none", f"{g.loc['none', 'surviving_clones']:.0f}"); put("clones_predrug", f"{g.loc['before_drug', 'surviving_clones']:.0f}"); put("clones_during", f"{g.loc['before_and_during', 'surviving_clones']:.0f}")
     put("cells_none", f"{g.loc['none', 'surviving_cells']:.0f}"); put("cells_during", f"{g.loc['before_and_during', 'surviving_cells']:.0f}")
@@ -553,22 +605,24 @@ def f4c():
         if (rise > 0).all() else f"{rise.min():+.4f} to {rise.max():+.4f} per time unit")
     put("cyc4_rank", f"{min(rho):.3f} to {max(rho):.3f}")
 
-    # is the winner's margin over the best holiday larger than the seed noise on it?
-    def margin(df, m):
-        g = sched(df, m); rp = g.index.get_level_values(0)
-        c, h = g[rp == 0.0]["mean"].idxmin(), g[rp > 0.0]["mean"].idxmin()
-        n = max(float(g.loc[c, "count"]), 1.0)
-        se = float(np.sqrt((g.loc[c, "std"] ** 2 + g.loc[h, "std"] ** 2) / n))
-        return float(g.loc[h, "mean"] - g.loc[c, "mean"]), se
-    marg = [margin(d, m) for d in (s0, s1) for m in models]
-    resolved = [g > 2 * se for g, se in marg]
-    weakest = marg[resolved.index(False)] if not all(resolved) else None
+    # same paired convention as the ungated scan: the schedules share seeds, so the margin is a
+    # paired difference and is tested by a paired t-test rather than against twice an unpaired error
+    marg = [dict(paired_margin(d, m), scan=tag) for tag, d in (("without the gate", s0), ("under the gate", s1))
+            for m in models]
+    won = [m for m in marg if m["resolved"]]
+    lost = [m for m in marg if not m["resolved"]]
+    def _ex(m):
+        return (f"{label.get(m['model'], m['model'])} {m['scan']} ({m['gap']:+.4f} against a paired standard "
+                f"error of {m['se']:.4f})")
+    if not lost:
+        exc_clause = ""
+    elif len(lost) == 1:
+        exc_clause = f", the exception being {_ex(lost[0])}"
+    else:
+        exc_clause = (", the exceptions being " + ", ".join(_ex(m) for m in lost[:-1]) + " and " + _ex(lost[-1]))
     put("cyc4_margin",
-        f"the margin over the best holiday exceeds twice its standard error in all {len(marg)} comparisons"
-        if all(resolved) else
-        f"the margin over the best holiday exceeds twice its standard error in {sum(resolved)} of the "
-        f"{len(marg)} comparisons, the exception being {label.get(models[0], models[0])} without the gate "
-        f"({weakest[0]:+.4f} against a standard error of {weakest[1]:.4f})")
+        f"a two-sided paired t-test resolves the margin over the best holiday at the 5% level in "
+        + (f"all {len(marg)} comparisons" if not lost else f"{len(won)} of the {len(marg)} comparisons{exc_clause}"))
 
     # the intermediate-dose optimum, quoted only when the grid actually carries those points
     def at(df, m, rp, dose):
