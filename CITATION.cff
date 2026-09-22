@@ -6,6 +6,7 @@ abstract: "Biomodelling.jl 2.0 simulates stochastic reaction kinetics inside cel
 version: "2.0.0"
 date-released: "2026-09-22"
 license: MIT
+doi: "10.5281/zenodo.22894286"
 repository-code: "https://github.com/ayoublasri/Biomodelling.jl"
 url: "https://github.com/ayoublasri/Biomodelling.jl"
 keywords:
