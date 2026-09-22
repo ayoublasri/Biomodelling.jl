@@ -9,6 +9,14 @@ Manifest.toml
 /paper/manuscript/manuscript.md
 /paper/manuscript/manuscript.tex
 /paper/manuscript/tableS_runtime.md
+/paper/manuscript/paper1/02_results.md
+/paper/manuscript/paper1/supplement.md
+/paper/manuscript/paper1/paper1.md
+/paper/manuscript/paper1/paper1.tex
+/paper/manuscript/paper2/02_results.md
+/paper/manuscript/paper2/supplement.md
+/paper/manuscript/paper2/paper2.md
+/paper/manuscript/paper2/paper2.tex
 /paper/figures/fonts/
 /paper/figures/fig1_framework.html
 /paper/figures/fig1_raw.png

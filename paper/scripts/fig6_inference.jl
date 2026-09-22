@@ -25,7 +25,7 @@ if "a" in parts
         θ = copy(θt); θ[j] *= f
         @printf("(a) distance with %s × %.1f: %.3f\n", nm, f, mean(dist_a(θ, Xoshiro(600 + i)) for i in 1:3))
     end
-    abc_a = abc_smc(dist_a, prior; n_particles = 200, generations = 10, rng = Xoshiro(2), names = [:k_on, :k_off, :k_tx], verbose = true)
+    abc_a = abc_smc(dist_a, prior; n_particles = 1000, generations = 10, rng = Xoshiro(2), names = [:k_on, :k_off, :k_tx], verbose = true)
     save_csv("fig6a_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_a.particles, abc_a.weights))
     save_csv("fig6a_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_a.epsilons), abc_a.epsilons, abc_a.acceptance))
     save_kv("fig6a_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
@@ -56,7 +56,7 @@ if "b" in parts
     θt = [truth.k_on, truth.k_off, truth.k_tx]
     floor_b = [dist_b(θt, Xoshiro(700 + i)) for i in 1:5]
     @printf("(b) distance at truth: %.3f ± %.3f\n", mean(floor_b), std(floor_b))
-    abc_b = abc_smc(dist_b, prior; n_particles = 150, generations = 10, rng = Xoshiro(4), names = [:k_on, :k_off, :k_tx], verbose = true)
+    abc_b = abc_smc(dist_b, prior; n_particles = 900, generations = 10, rng = Xoshiro(4), names = [:k_on, :k_off, :k_tx], verbose = true)
     save_csv("fig6b_particles.csv", ["k_on", "k_off", "k_tx", "weight"], hcat(abc_b.particles, abc_b.weights))
     save_csv("fig6b_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_b.epsilons), abc_b.epsilons, abc_b.acceptance))
     save_kv("fig6b_summary.csv", ["true_k_on" => truth.k_on, "true_k_off" => truth.k_off, "true_k_tx" => truth.k_tx,
@@ -98,7 +98,7 @@ if "c" in parts
         s = summaries_c(r)
         sqrt(mean((s .- sobs_c) .^ 2))
     end
-    abc_c = abc_smc(dist_c, [LogUniform(0.05, 5.0), LogUniform(20.0, 1000.0)]; n_particles = 100, generations = 5, rng = Xoshiro(6), names = [:h_max, :K], verbose = true)
+    abc_c = abc_smc(dist_c, [LogUniform(0.05, 5.0), LogUniform(20.0, 1000.0)]; n_particles = 500, generations = 5, rng = Xoshiro(6), names = [:h_max, :K], verbose = true)
     save_csv("fig6c_particles.csv", ["h_max", "K", "weight"], hcat(abc_c.particles, abc_c.weights))
     save_csv("fig6c_schedule.csv", ["generation", "epsilon", "acceptance"], hcat(1:length(abc_c.epsilons), abc_c.epsilons, abc_c.acceptance))
     save_kv("fig6c_summary.csv", ["true_h_max" => truth_c.h_max, "true_K" => truth_c.K, "abc_mean_h_max" => posterior_mean(abc_c)[1], "abc_mean_K" => posterior_mean(abc_c)[2],

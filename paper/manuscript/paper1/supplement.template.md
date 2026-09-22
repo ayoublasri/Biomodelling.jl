@@ -4,7 +4,7 @@ author: "Ayoub Lasri"
 date: "Berache Limited, Dublin, Ireland"
 ---
 
-**Mechanistic simulation of heritable expression states, cell division and drug response in single-cell populations.** Supplementary Notes 1–15, Supplementary Figures 1–6 and Supplementary Tables 1–5.
+**Mechanistic simulation of heritable expression states and drug tolerance in growing, dividing single-cell populations.** Supplementary Notes 1–14, Supplementary Figures 1–6 and Supplementary Tables 1–5.
 
 # Supplementary Note 1: Stationary laws used for validation
 
@@ -60,9 +60,7 @@ Supplementary Table 2. Parameters of every simulation in this Article.
 | 6a-b | telegraph | truth $(0.3, 0.6, 20)$; priors log-uniform on $[0.01, 10]$, $[0.01, 10]$, $[1, 200]$; 200 (a) / 150 (b) particles |
 | 6c | resistance gene | truth $h_{\max} = 0.5$, $K = 150$; priors log-uniform on $[0.05, 5]$ and $[20, 1000]$; 100 particles |
 | 7 | resistance gene, hours | cell cycle 24 h (sizer, cv 0.1), $k_{\mathrm{tx}} = 30$, $k_{\mathrm{dm}} = 1$, $k_{\mathrm{tl}} = 4$, $k_{\mathrm{dp}} = 0.2$ per h, $K = 150$, $q = 4$, growth-arrest Hill coefficient $m_g = 2$; fitted: $k_{\mathrm{on}}$, $k_{\mathrm{off}} \in [10^{-3}, 0.3]$, $h_{\max} \in [0.005, 0.5]$ per h, $\mathrm{EC}_{50} \in [3, 40]$ µM, death Hill coefficient $m \in [1, 6]$, $\mathrm{IC}_{50} \in [1, 40]$ µM; 300 founders burnt in for 10 cycles, 48 h drug-free, 72 h drug, integration step $dt = 0.5$ h; 160 Latin-hypercube points and 80 Nelder-Mead iterations with seed 1; identifiability (Supplementary Fig. 3) by 11-point log-grid conditional profiles of the six parameters, a $7\times7$ memory × resistant-fraction slice, and the step halved to 0.25 h with three seeds, via the `profile` part of the script; the cycle-dependent variant (Supplementary Fig. 4) adds a seventh parameter $\beta \in [0, 1]$ with $\varphi_0 = 0.5$, $w = 0.15$, fitted under the same budget by the `cycle` part |
-| 8a-e | melanoma-like | $k_{\mathrm{tx}} = 3$, $k_{\mathrm{dm}} = 0.1$, $k_{\mathrm{tl}} = 0.4$, $k_{\mathrm{dp}} = 0.02$ per h; net doubling 4 weeks, memory 5 net doublings, pre-resistant fraction 0.005 (1:200, above the traced 1:1,000 to 1:10,000 of @emert2021; Methods), $h_{\max} = 0.0023$ per h, $\mathrm{EC}_{50} = 0.3$, $m = 2$, protection $K = 150$, $q = 4$, growth arrest $\mathrm{IC}_{50} = 0.3$, $m_g = 2$, with the same protection, $k_{\mathrm{off}} \to k_{\mathrm{off}}/(1 + 9d)$, fitness cost 0.5, partial protection: additional unprotected growth inhibition with $\mathrm{IC}_{50} = 1$; 2,000 founders with promoter states drawn from the stationary distribution, 60 weeks, dt 4 h; progression from the nadir at 1.73 × the running minimum after the 8-week lead-in, loss of control at 1.2 × the pre-treatment size; cycle-gated variant (Supplementary Fig. 5) adds $\beta = 0.25$, $\varphi_0 = 0.5$, $w = 0.15$, and is repeated with $h_{\max} = 0.0045$ per h so that the cycle-averaged hazard matches the cycle-blind one; the memory of the resistant state is scanned over 2, 3.5, 5, 8 and 12 net doublings with three seeds per point |
 | S6 | exact-solution validation | constitutive $k = 20$, $\gamma = 1$; bursts of $b = 4$ at $k/b$; telegraph $(k_{\mathrm{on}}, k_{\mathrm{off}}, k_{\mathrm{tx}}) = (0.5, 1, 40)$, all with a memoryless interdivision time of mean 1, $dt = 0.002$, exact kernel, 40,000 lineages and five populations capped at 15,000 cells, burnt in for 12 generations; replication model $k = 20$, $\gamma = 1$, volume-scaled synthesis, exponential growth $\ln 2$, deterministic cycle of 1, replication at 50% of the cycle, founders placed uniformly on the update grid, 14 generations; step-size scan over $dt = 0.02, 0.01, 0.005, 0.002$ |
-| 8f-h | MGMT model | same expression kinetics; net doubling 40 days, memory 4 net doublings, MGMT-expressing fraction 0.01 or 0.30, $h_{\max} = 0.03$ per h at peak, $\mathrm{EC}_{50} = 0.4$ of the standard bolus peak, $m = 2$, $K = 150$, $q = 4$; elimination half-life 2.1 h; stoichiometric MGMT consumption at rate $k\,d\,V\,c/(c + K_m)$ with $k = 300$, $K_m = 150$, $k$ chosen so that the consumption rate at the standard bolus peak matches the first-order parameterisation it replaces rather than fitted to data, and with no lesion pool as a state variable, so lesions are assumed to form in proportion to dose and to be repaired at once; 1,500 founders at the stationary promoter distribution, six 28-day cycles, dt 1 h |
 
 # Supplementary Note 4: Additional persister simulations
 
@@ -110,15 +108,8 @@ Supplementary Table 4. Reference values used for calibration and validation (tra
 | Plateau of the HCT116 kill curve | after ~100 h; the U2OS curves show no biphasic decay at any of the three concentrations | @iyer2025, Fig 1b,e |
 | Lineage correlations of fate (HCT116 only; the U2OS dataset tracked one randomly chosen daughter per division, so sister and cousin pairs cannot be formed in it) | present for first and second cousins; absent for third cousins (reported graphically; no numeric coefficients given); the memory of at least two to three generations these imply sets the prior used in the calibration | @iyer2025, Fig 5a |
 | Single-cell intermitotic and apoptosis times across doses (U2OS) | not significantly different (Kruskal-Wallis $P = 0.22$ and $P = 0.53$) while population decay rates differ about threefold | @iyer2025 |
-| Pre-resistant melanoma cells traced back from resistant fates | initial frequency ~1:1,000 to 1:10,000 (context, not a value used: the melanoma case study uses 1:200; Methods) | @emert2021 |
+| Pre-resistant melanoma cells traced back from resistant fates | initial frequency ~1:1,000 to 1:10,000 (context, not a value used: the simulations here use 1:200; Methods) | @emert2021 |
 | Pre-resistant melanoma cells | 1:50 to 1:500 per marker; EGFR-high cells give 7.9 ± 0.9 fold more resistant colonies | @shaffer2017 |
-| N15-0385 glioblastoma doubling time | 50 h | @lasri2020 |
-| Temozolomide elimination half-life in plasma | 1.8 h (single dose); 2.1 h (population model of plasma and cerebrospinal fluid; the value used here) | @rudek2004; @ostermann2004 |
-| Temozolomide penetration of the cerebrospinal fluid | exposure 20% of plasma exposure | @ostermann2004 |
-| MGMT / alkyltransferase depletion in peripheral blood mononuclear cells | $-63\%$ at 14 days, $-73\%$ at 21 days on protracted schedules; nadir 18.0 ± 2.26% of initial on a compressed 1,000 mg/m² schedule | @tolcher2003; @middleton2000 |
-| Tumour MGMT activity in orthotopic GBM43 xenografts | depleted by day 6 on both schedules; still suppressed at day 22 only on the 21-day schedule; back to baseline in both by day 29 | @robinson2010 |
-| RTOG 0525 regimens | 150-200 mg/m² days 1-5 vs 75-100 mg/m² days 1-21 of 28-day cycles; median OS 16.6 vs 14.9 months | @gilbert2013 |
-| SWOG S1320 regimens | continuous vs 3 weeks off / 5 weeks on after an 8-week lead-in; median PFS 9.0 vs 5.5 months (HR 1.36 intermittent:continuous, $P = 0.063$; the trial pre-specified two-sided $\alpha = 0.2$ and 80% confidence intervals); median OS 29.2 months in both arms, a secondary end point the trial was not powered for | @algazi2020 |
 
 # Supplementary Note 9: Migration from version 1
 
@@ -138,11 +129,8 @@ The ingredients of this framework have precedents, and several of its results co
 | Heritable expression states decide which cells survive a drug (Fig. 4) | Measured directly in barcoded and time-lapse experiments [@shaffer2017; @harmange2023; @iyer2025; @oren2021] | A generative model in which memory is one promoter timescale, reproducing the reported signatures quantitatively and predicting which of them discriminate pre-existing from induced tolerance |
 | Cell-cycle-aware inference of transcriptional kinetics is necessary (Fig. 3f, Fig. 6b) | Established from data and theory [@sukys2025; @zhang2025; @okochi2026scdivide] | A simulator that generates the data such methods assume, and a quantification of the bias incurred by a division-blind fit |
 | Benchmarks of network inference from single-cell data | Extensive benchmarks exist [@pratapa2020; @dibaeinia2020; @lasri2022] | The growth and cell-cycle confound with known ground truth: how much accuracy is lost in a dividing population, and how much cell-cycle regression recovers (Fig. 5b) |
-| The benefit of treatment holidays depends on a cost of resistance and on turnover (Fig. 8a-e) | Compartment models of adaptive therapy [@zhang2017adaptive; @strobl2021] | The same dependence from single cells whose resistance is a heritable expression state; cost and degree of protection become cell properties that lineage experiments measure; partial protection reverses the ranking even without a cost |
 | Perturbing the retention of a resistant state changes the outcome (Fig. 4f) | Phenotypic-switching theory [@gunnarsson2020] and memory-disrupting compounds [@harmange2023] | The timing requirement (disruption must continue during exposure) and a lineage-resolved readout, the number of surviving clones |
 | An intermediate dose can be optimal against drug-induced tolerance (Fig. 4h) | Reported for induced persisters [@corigliano2025] | Reproduced; the accompanying benefit of release periods does not appear here, which the text attributes to the decay of the induced state in this model rather than to a disagreement about data |
-| MGMT expression selects glioblastoma cells under temozolomide (Fig. 8f-h) | Phenotypic selection with stable inheritance [@lasri2020] | Pharmacokinetics, the RTOG 0525 regimens, consumption of MGMT by the drug, and the fractionation that minimises the final population at fixed cumulative dose |
-| Dose-dense temozolomide does not improve survival, in methylated and unmethylated tumours alike | Clinical result [@gilbert2013] | A mechanistic account for unmethylated tumours, where the model reproduces the null with MGMT stable and breaks it only when the drug consumes MGMT, which makes the per-lesion consumption rate the measurement that separates the regimens there; in methylated tumours the model predicts a dose-dense advantage from cumulative dose alone, with MGMT stable, a divergence from the trial that consumption deepens but does not cause and that bounds the model's dose response instead |
 
 # Supplementary Note 11: Identifiability and numerical robustness of the calibration
 
@@ -170,19 +158,20 @@ The lethality of cisplatin is enhanced during replication, so where a cell sits 
 
 The two mechanisms are not exclusive, and the experiment that separates them is not a fate count: it is a measurement of cell-cycle position at the moment the drug arrives, which time-lapse imaging with a cycle reporter provides directly. Until that is done, the heritable-expression reading of the calibrated parameters should be understood as one of two accounts that these fate fractions cannot tell apart.
 
-# Supplementary Note 13: Cell-cycle-dependent killing in the persister and melanoma case studies
+# Supplementary Note 13: Cell-cycle-dependent killing in the persister simulations
 
-Supplementary Note 12 shows that the cisplatin fate data cannot decide whether cells are spared because they inherited a protective state or because they were outside the replication window. The persister simulations of Fig. 4 and the melanoma simulations of Fig. 8a–e use a hazard with no cell-cycle dependence at all, so the same question applies to them: do their conclusions rest on that choice? We repeated both with three quarters of the death hazard confined to a window around mid-cycle ($\beta = 0.25$, $\varphi_0 = 0.5$, $w = 0.15$), leaving everything else unchanged.
+Supplementary Note 12 shows that the cisplatin fate data cannot decide whether cells are spared because they inherited a protective state or because they were outside the replication window. The persister simulations of Fig. 4 use a hazard with no cell-cycle dependence at all, so the same question applies to them: do their conclusions rest on that choice? We repeated them with three quarters of the death hazard confined to a window around mid-cycle ($\beta = 0.25$, $\varphi_0 = 0.5$, $w = 0.15$), leaving everything else unchanged.
 
-The window position is a modelling choice rather than a claim about either agent. The persister study uses a generic drug and commits to no mechanism; the melanoma study is built on a BRAF/MEK inhibitor, which does not create replication-coupled lesions as a platinum drug does, although it does act on cells that are traversing the cycle. What these runs test is therefore robustness to a strong cell-cycle gate of any kind, not the phase specificity of a particular drug.
+The window position is a modelling choice rather than a claim about any particular agent: the persister study uses a generic drug and commits to no mechanism. What these runs test is therefore robustness to a strong cell-cycle gate of any kind, not the phase specificity of a named drug.
 
-![](figS5_cycle_robustness.png)
+![](figS5_cycle_robustness_p1.png)
 
-**Supplementary Fig. 5 | The case studies under cell-cycle-gated killing.** Three arms throughout: the cycle-blind hazard; three quarters of it gated to a mid-cycle window; and the same gate with the maximal hazard raised so that the cycle-averaged hazard matches the cycle-blind one. **a**, Net population decay rate over the first 30 time units of treatment against dose (solid, left axis) and the mean time to death of killed cells (dashed, right axis). At matched mean hazard the dose response returns to the cycle-blind curve, which is what shows that the shallower response under the gate was the lower average hazard rather than the gating. **b**, Concordance of lineage fate between sisters and between cousins, above the value expected if fates were independent, for the memory gene and the fast-switching control; at matched hazard the gate leaves no excess concordance at all in the control, which has no usable memory. **c**, Weeks after randomisation to loss of control for the three melanoma mechanisms and the three clinical schedules (mean ± s.d. of four seeds, censored at the end of follow-up), cycle-blind (solid), cycle-gated (mid) and gated at matched hazard (pale).
+**Supplementary Fig. 5 | The persister simulations under cell-cycle-gated killing.** Three arms throughout: the cycle-blind hazard; three quarters of it gated to a mid-cycle window; and the same gate with the maximal hazard raised so that the cycle-averaged hazard matches the cycle-blind one. **a**, Net population decay rate over the first 30 time units of treatment against dose (solid, left axis) and the mean time to death of killed cells (dashed, right axis). At matched mean hazard the dose response returns to the cycle-blind curve, which is what shows that the shallower response under the gate was the lower average hazard rather than the gating. **b**, Concordance of lineage fate between sisters and between cousins, above the value expected if fates were independent, for the memory gene and the fast-switching control; at matched hazard the gate leaves no excess concordance at all in the control, which has no usable memory.
 
-{{cycle_case_note}} {{cycle_mel_note}}
+{{cycle_case_note}}
 
-{{cycle_matched_note}} {{cycle_matched_mel_note}}
+{{cycle_matched_note}}
+
 
 # Supplementary Note 14: Exact stationary laws for growing, dividing populations
 
@@ -205,7 +194,3 @@ where $\gamma$ is the decay rate, $\lambda$ the division rate and $\beta_i$ the 
 {{exact_note}}
 
 {{exact_table}}
-
-# Supplementary Note 15: Sensitivity of the melanoma schedules to the memory of the resistant state
-
-{{memory_scan_note}} {{memory_scan_reconcile}}

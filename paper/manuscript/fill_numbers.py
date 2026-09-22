@@ -382,7 +382,7 @@ def f8b():
            f"range, so that arm is insensitive to the assumption." if censored else
            f"With a fitness cost of resistance the ranking is unchanged over the same range.")
         + ("" if partial_scanned else
-           " The scan covers those two arms only. The third arm of Fig. 8a–d, in which resistant cells are only "
+           " The scan covers those two arms only. The third arm of the schedule comparison, in which resistant cells are only "
            "partly protected and grow at half speed under drug, is the arm that reproduces the ranking of SWOG "
            "S1320, with continuous dosing keeping control longest; it was not scanned, so how far that ranking "
            "depends on the assumed memory is not established here."))
@@ -735,7 +735,9 @@ def f4c():
         f"no usable memory, the sister concordance above independence rises only from {V.get('cyc4_fast_b', '')} "
         f"to {V.get('cyc4_fast_g', '')}, while the memory gene sits at {V.get('cyc4_mem_g', '')}, "
         f"{V.get('cyc4_ratio', '')} larger. In the "
-        f"schedule scan, {V.get('cyc4_sched', '')}. In the melanoma study the best "
+        f"schedule scan, {V.get('cyc4_sched', '')}.")
+    put("cycle_mel_note",
+        f"In the melanoma study the best "
         f"schedule is unchanged in {V.get('cyc8_same', '')} mechanisms and the model {V.get('cyc8_trial', '')}; "
         f"the full ordering of the three schedules survives in {V.get('cyc8_full', '')} mechanisms "
         f"({V.get('cyc8_flipped', '')}).")
@@ -769,9 +771,10 @@ def f4c():
             f"the sister concordance above independence is {memm:+.3f} for the memory gene and {fstm:+.3f} for the "
             f"fast-switching control, against {V.get('cyc4_mem_g', '')} and {V.get('cyc4_fast_g', '')} unmatched, so "
             f"the conclusion that the gate cannot manufacture the kin signature does not rest on the gate also "
-            f"killing less.{mel}")
+            f"killing less.")
+        put("cycle_matched_mel_note", mel.strip())
     except Exception as e:
-        put("cycle_matched_note", "")
+        put("cycle_matched_note", ""); put("cycle_matched_mel_note", "")
 
 @safe
 def f8():
@@ -844,14 +847,22 @@ def fsupp():
 for f in (f2, f2b, f3, f4, f4g, f5a, f5, f6, f7, f7b, f7c, f8, f8b, f4c, f9): f()
 fsupp()
 
-def fill(template, target):
-    tpl = open(os.path.join(HERE, template)).read()
+def fill(path):
+    """Fill one *.template.md in place, writing <name>.md beside it."""
+    target = path[: -len(".template.md")] + ".md"
+    tpl = open(path).read()
     used = set(re.findall(r"{{([a-z_0-9]+)}}", tpl))
     missing = sorted(used - set(V))
     empty = sorted(k for k in used & set(V) if not str(V[k]).strip())
-    if empty: print(f"  [{target}: EMPTY placeholders: {empty}]")
+    rel = os.path.relpath(target, HERE)
+    if empty: print(f"  [{rel}: EMPTY placeholders: {empty}]")
     out = re.sub(r"{{([a-z_0-9]+)}}", lambda m: str(V.get(m.group(1), "[" + m.group(1) + "]")), tpl)
-    open(os.path.join(HERE, target), "w").write(out)
-    print(f"{target}: filled from {len(V)} values; missing:", missing)
-fill("02_results.template.md", "02_results.md")
-if os.path.exists(os.path.join(HERE, "supplement.template.md")): fill("supplement.template.md", "supplement.md")
+    open(target, "w").write(out)
+    print(f"{rel}: filled from {len(V)} values; missing:", missing)
+
+# The same value dictionary serves the integrated preprint and both split papers, so a number can
+# never disagree between them: they are filled from one run over paper/output.
+for d in (HERE, os.path.join(HERE, "paper1"), os.path.join(HERE, "paper2")):
+    if not os.path.isdir(d): continue
+    for name in sorted(os.listdir(d)):
+        if name.endswith(".template.md"): fill(os.path.join(d, name))

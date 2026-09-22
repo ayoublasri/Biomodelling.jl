@@ -174,77 +174,83 @@ try:
     mel1 = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle.csv"))
     mel0 = pd.read_csv(os.path.join(OUT, "fig8a_melanoma_schedules.csv"))
 
-    fig = plt.figure(figsize=(7.2, 5.2))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.05], hspace=0.62, wspace=0.62)
-
-    ax = fig.add_subplot(gs[0, 0])
-    try:
-        decm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched.csv"))
-    except Exception:
-        decm = None
-    series = [(dec0, "cycle-blind", C[0], "o"), (dec1, "cycle-gated", C[1], "s")]
-    if decm is not None:
-        series.append((decm, "gated, matched hazard", C[2], "^"))
-    for df, lab, col, mk in series:
-        ax.plot(df.dose, df.decay_rate, marker=mk, ms=3.5, lw=1.3, color=col, label=lab)
-    ax.set_xlabel("dose"); ax.set_ylabel("population decay rate")
-    ax2 = ax.twinx(); ax2.grid(False)
-    for df, lab, col, mk in series:
-        g = df[df.dose > 0]
-        ax2.plot(g.dose, g.death_time_mean, marker=mk, ms=3, lw=1.0, ls="--", color=col, alpha=0.6)
-    ax2.set_ylabel("mean death time (dashed)", fontsize=6.5, labelpad=2); ax2.tick_params(labelsize=6.5)
-    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
-    ax.set_title("a   decay and single-cell timing", loc="left", fontweight="semibold", color="#2a2a28")
-
-    ax = fig.add_subplot(gs[0, 1])
-    keys = [(m, r) for m in ("memory", "fast") for r in ("sisters", "cousins")]
-    def excess(df, m, r):
-        g = df[(df.model == m) & (df.relation == r)]
-        return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else _np.nan
-    try:
-        conm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched_concordance.csv"))
-    except Exception:
-        conm = None
-    arms_b = [(con0, "cycle-blind", C[0]), (con1, "cycle-gated", C[1])]
-    if conm is not None:
-        arms_b.append((conm, "gated, matched hazard", C[2]))
-    x = _np.arange(len(keys)); w = 0.8 / len(arms_b)
-    for i, (df, lab, col) in enumerate(arms_b):
-        ax.bar(x + (i - (len(arms_b) - 1) / 2) * w, [excess(df, m, r) for m, r in keys],
-               width=w, color=col, label=lab)
-    ax.axhline(0, color=INK, lw=0.6)
-    ax.set_xticks(x); ax.set_xticklabels([f"{m}\n{r}" for m, r in keys], fontsize=6)
-    ax.set_ylabel("excess concordance")
-    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
-    ax.set_title("b   do related cells still share fates?", loc="left", fontweight="semibold", color="#2a2a28")
-
-    ax = fig.add_subplot(gs[1, :])
-    mechs = [m for m in dict.fromkeys(mel0.mechanism)]
-    scheds = [s for s in dict.fromkeys(mel0.schedule)]
-    x = _np.arange(len(mechs)); w = 0.8 / (2 * len(scheds))
-    try:
-        melm = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle_matched.csv"))
-        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.55), (melm, "gated, matched hazard", 0.3))
-    except Exception:
-        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))
-    w = 0.8 / (len(arms) * len(scheds))
-    for j, s in enumerate(scheds):
-        for k, (df, lab, alpha) in enumerate(arms):
-            vals = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.mean() for m in mechs]
-            sds = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.std() for m in mechs]
-            off = (j * len(arms) + k - (len(arms) * len(scheds) - 1) / 2) * w
-            ax.bar(x + off, vals, yerr=sds, width=w, color=C[j], alpha=alpha, capsize=1.2,
-                   label=(s if k == 0 else None))
-    cens = mel0.ttp_baseline_weeks.max()
-    ax.axhline(cens, color=INK2, ls=":", lw=0.8)
-    ax.text(len(mechs) - 0.55, cens + 0.8, "end of follow-up", fontsize=5.5, color=INK2, ha="right")
-    ax.set_xticks(x); ax.set_xticklabels(["no fitness cost", "fitness cost", "partial protection"], fontsize=6.5)
-    ax.set_ylabel("weeks to loss of control")
-    h, l = ax.get_legend_handles_labels()
-    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for _, _, a in arms]; l += [lab for _, lab, _ in arms]
-    ax.legend(h, l, fontsize=5.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
-    ax.set_title("c   melanoma schedule ranking", loc="left", fontweight="semibold", color="#2a2a28")
-    save(fig, "figS5_cycle_robustness")
+    # One figure for the integrated preprint, and the same panels split between the two papers:
+    # the persister panels belong beside Fig. 4 and the melanoma panel beside the case studies.
+    for _which, _name, _size, _grid in (
+            ("all", "figS5_cycle_robustness",    (7.2, 5.2), (2, 2)),
+            ("p1",  "figS5_cycle_robustness_p1", (7.2, 2.7), (1, 2)),
+            ("p2",  "paper2_figS1_cycle",        (5.2, 3.2), (1, 1))):
+        fig = plt.figure(figsize=_size)
+        gs = fig.add_gridspec(*_grid, height_ratios=([1.0, 1.05] if _grid[0] == 2 else None),
+                              hspace=0.62, wspace=0.62)
+        if _which in ("all", "p1"):
+            ax = fig.add_subplot(gs[0, 0])
+            try:
+                decm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched.csv"))
+            except Exception:
+                decm = None
+            series = [(dec0, "cycle-blind", C[0], "o"), (dec1, "cycle-gated", C[1], "s")]
+            if decm is not None:
+                series.append((decm, "gated, matched hazard", C[2], "^"))
+            for df, lab, col, mk in series:
+                ax.plot(df.dose, df.decay_rate, marker=mk, ms=3.5, lw=1.3, color=col, label=lab)
+            ax.set_xlabel("dose"); ax.set_ylabel("population decay rate")
+            ax2 = ax.twinx(); ax2.grid(False)
+            for df, lab, col, mk in series:
+                g = df[df.dose > 0]
+                ax2.plot(g.dose, g.death_time_mean, marker=mk, ms=3, lw=1.0, ls="--", color=col, alpha=0.6)
+            ax2.set_ylabel("mean death time (dashed)", fontsize=6.5, labelpad=2); ax2.tick_params(labelsize=6.5)
+            ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+            ax.set_title("a   decay and single-cell timing", loc="left", fontweight="semibold", color="#2a2a28")
+            ax = fig.add_subplot(gs[0, 1])
+            keys = [(m, r) for m in ("memory", "fast") for r in ("sisters", "cousins")]
+            def excess(df, m, r):
+                g = df[(df.model == m) & (df.relation == r)]
+                return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else _np.nan
+            try:
+                conm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched_concordance.csv"))
+            except Exception:
+                conm = None
+            arms_b = [(con0, "cycle-blind", C[0]), (con1, "cycle-gated", C[1])]
+            if conm is not None:
+                arms_b.append((conm, "gated, matched hazard", C[2]))
+            x = _np.arange(len(keys)); w = 0.8 / len(arms_b)
+            for i, (df, lab, col) in enumerate(arms_b):
+                ax.bar(x + (i - (len(arms_b) - 1) / 2) * w, [excess(df, m, r) for m, r in keys],
+                       width=w, color=col, label=lab)
+            ax.axhline(0, color=INK, lw=0.6)
+            ax.set_xticks(x); ax.set_xticklabels([f"{m}\n{r}" for m, r in keys], fontsize=6)
+            ax.set_ylabel("excess concordance")
+            ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+            ax.set_title("b   do related cells still share fates?", loc="left", fontweight="semibold", color="#2a2a28")
+        if _which in ("all", "p2"):
+            ax = fig.add_subplot(gs[1, :] if _which == "all" else gs[0, 0])
+            mechs = [m for m in dict.fromkeys(mel0.mechanism)]
+            scheds = [s for s in dict.fromkeys(mel0.schedule)]
+            x = _np.arange(len(mechs)); w = 0.8 / (2 * len(scheds))
+            try:
+                melm = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle_matched.csv"))
+                arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.55), (melm, "gated, matched hazard", 0.3))
+            except Exception:
+                arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))
+            w = 0.8 / (len(arms) * len(scheds))
+            for j, s in enumerate(scheds):
+                for k, (df, lab, alpha) in enumerate(arms):
+                    vals = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.mean() for m in mechs]
+                    sds = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.std() for m in mechs]
+                    off = (j * len(arms) + k - (len(arms) * len(scheds) - 1) / 2) * w
+                    ax.bar(x + off, vals, yerr=sds, width=w, color=C[j], alpha=alpha, capsize=1.2,
+                           label=(s if k == 0 else None))
+            cens = mel0.ttp_baseline_weeks.max()
+            ax.axhline(cens, color=INK2, ls=":", lw=0.8)
+            ax.text(len(mechs) - 0.55, cens + 0.8, "end of follow-up", fontsize=5.5, color=INK2, ha="right")
+            ax.set_xticks(x); ax.set_xticklabels(["no fitness cost", "fitness cost", "partial protection"], fontsize=6.5)
+            ax.set_ylabel("weeks to loss of control")
+            h, l = ax.get_legend_handles_labels()
+            h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for _, _, a in arms]; l += [lab for _, lab, _ in arms]
+            ax.legend(h, l, fontsize=5.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
+            ax.set_title(("c" if _which == "all" else "a") + "   melanoma schedule ranking", loc="left", fontweight="semibold", color="#2a2a28")
+        save(fig, _name)
 except Exception as e:
     print("S5 skipped:", e)
 
