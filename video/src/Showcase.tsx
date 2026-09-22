@@ -97,7 +97,7 @@ const Ident = chartScene("ident", "honest inference", PURPLE,
 const Clinic = chartScene("clinic", "clinical schedules", ORANGE,
   <>Continuous or intermittent?<br />It depends on the cells.</>,
   "chart_schedules.png",
-  <>Two measurable properties decide it: how resistant cells grow without the drug, and how much the drug still slows them.</>);
+  <>Three measurable properties decide it: how resistant cells grow under the drug, how they fare without it, and whether the drug holds the resistant state in place.</>);
 
 const Close: React.FC = () => {
   const f = useCurrentFrame();
