@@ -265,7 +265,13 @@ def fig4():
         ax.set_xlabel("time"); ax.set_ylabel("fraction of high-expressing cells"); ax.set_ylim(0, 1); ax.legend(fontsize=5.5); label(ax, "g", "phenotypic selection persists")
     @panel
     def h(cell):
-        d = load("fig4f_schedules.csv")
+        # prefer the replicated scan when it is available, and plot the mean over seeds
+        try:
+            d = load("fig4f_schedules_seeds.csv")
+            nseed = int(d.seed.nunique())
+            d = d.groupby(["model", "release_period", "dose"], as_index=False).long_term_growth_rate.mean()
+        except Exception:
+            d = load("fig4f_schedules.csv"); nseed = 1
         models = [("pre_existing", "pre-existing"), ("pre_existing_cost", "pre-existing, fitness cost"), ("drug_induced", "drug-induced")]
         sub = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=cell, wspace=0.12)
         vmax = np.abs(d.long_term_growth_rate).max()
@@ -279,7 +285,8 @@ def fig4():
             else: ax.set_yticklabels([])
             for (r, c), v in np.ndenumerate(piv.values): ax.text(c, r, f"{v:+.3f}", ha="center", va="center", fontsize=4.5, color=("white" if abs(v) > 0.6 * vmax else INK))
             r0, c0 = np.unravel_index(np.nanargmin(piv.values), piv.values.shape); ax.add_patch(plt.Rectangle((c0 - 0.5, r0 - 0.5), 1, 1, fill=False, ec=INK, lw=1.2))
-        fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04, label="net growth rate")
+        fig.colorbar(im, ax=ax, fraction=0.06, pad=0.04,
+                     label=f"net growth rate{'' if nseed == 1 else f' (mean of {nseed} seeds)'}")
     a(fig.add_subplot(gs[0, 0])); b(fig.add_subplot(gs[0, 1])); c(fig.add_subplot(gs[0, 2])); d(fig.add_subplot(gs[1, 0])); e(fig.add_subplot(gs[1, 1])); f(fig.add_subplot(gs[1, 2])); g(fig.add_subplot(gs[2, 0])); h(gs[2, 1:])
     save(fig, "fig4_persisters")
 
@@ -420,13 +427,13 @@ def fig7():
         best = t.iloc[0]; ax.plot([best.EC50], [best.h_max], marker="*", ms=10, color=C[7], lw=0, label="calibrated")
         ax.set_xscale("log"); ax.set_yscale("log"); ax.set_xlabel("EC50 (µM)"); ax.set_ylabel("h_max (per h)")
         cb = fig.colorbar(sc, ax=ax, fraction=0.055, pad=0.03)
-        cb.set_label("distance to training data", fontsize=6.6); cb.ax.tick_params(labelsize=6)
+        cb.set_label("objective (single seed + prior)", fontsize=6.6); cb.ax.tick_params(labelsize=6)
         cb.outline.set_linewidth(0.5)
         ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=2, fontsize=6.2); label(ax, "e", "calibration landscape")
     @panel
     def f(ax):
         c = kv("fig7_calibration.csv")
-        rows = [("k_on (per h)", c["k_on"]), ("k_off (per h)", c["k_off"]), ("memory (generations)", c["memory_generations"]), ("fraction resistant", c["p_on"]), ("h_max (per h)", c["h_max"]), ("EC50 (µM)", c["EC50"]), ("Hill m", c["m_h"]), ("IC50 growth (µM)", c["IC50"]), ("distance", c["distance"])]
+        rows = [("k_on (per h)", c["k_on"]), ("k_off (per h)", c["k_off"]), ("memory (generations)", c["memory_generations"]), ("fraction resistant", c["p_on"]), ("h_max (per h)", c["h_max"]), ("EC50 (µM)", c["EC50"]), ("Hill m", c["m_h"]), ("IC50 growth (µM)", c["IC50"]), ("objective (+ prior)", c["distance"])]
         ax.axis("off"); ax.set_xlim(0, 1); ax.set_ylim(0, 1)
         for i, (k, v) in enumerate(rows):
             ax.text(0.02, 0.95 - i * 0.105, k, fontsize=6, va="top", color=INK2); ax.text(0.98, 0.95 - i * 0.105, f"{v:.3g}", fontsize=6, va="top", ha="right", color=INK)

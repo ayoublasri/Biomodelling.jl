@@ -178,15 +178,22 @@ try:
     gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.05], hspace=0.62, wspace=0.62)
 
     ax = fig.add_subplot(gs[0, 0])
-    ax.plot(dec0.dose, dec0.decay_rate, marker="o", ms=3.5, lw=1.3, color=C[0], label="cycle-blind")
-    ax.plot(dec1.dose, dec1.decay_rate, marker="s", ms=3.5, lw=1.3, color=C[1], label="cycle-gated")
+    try:
+        decm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched.csv"))
+    except Exception:
+        decm = None
+    series = [(dec0, "cycle-blind", C[0], "o"), (dec1, "cycle-gated", C[1], "s")]
+    if decm is not None:
+        series.append((decm, "gated, matched hazard", C[2], "^"))
+    for df, lab, col, mk in series:
+        ax.plot(df.dose, df.decay_rate, marker=mk, ms=3.5, lw=1.3, color=col, label=lab)
     ax.set_xlabel("dose"); ax.set_ylabel("population decay rate")
     ax2 = ax.twinx(); ax2.grid(False)
-    d0 = dec0[dec0.dose > 0]; d1 = dec1[dec1.dose > 0]
-    ax2.plot(d0.dose, d0.death_time_mean, marker="o", ms=3, lw=1.0, ls="--", color=C[0], alpha=0.6)
-    ax2.plot(d1.dose, d1.death_time_mean, marker="s", ms=3, lw=1.0, ls="--", color=C[1], alpha=0.6)
+    for df, lab, col, mk in series:
+        g = df[df.dose > 0]
+        ax2.plot(g.dose, g.death_time_mean, marker=mk, ms=3, lw=1.0, ls="--", color=col, alpha=0.6)
     ax2.set_ylabel("mean death time (dashed)", fontsize=6.5, labelpad=2); ax2.tick_params(labelsize=6.5)
-    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
     ax.set_title("a   decay and single-cell timing", loc="left", fontweight="semibold", color="#2a2a28")
 
     ax = fig.add_subplot(gs[0, 1])
@@ -194,24 +201,38 @@ try:
     def excess(df, m, r):
         g = df[(df.model == m) & (df.relation == r)]
         return float(g.concordance.iloc[0] - g.expected_independent.iloc[0]) if len(g) else _np.nan
-    x = _np.arange(len(keys)); w = 0.38
-    ax.bar(x - w/2, [excess(con0, m, r) for m, r in keys], width=w, color=C[0], label="cycle-blind")
-    ax.bar(x + w/2, [excess(con1, m, r) for m, r in keys], width=w, color=C[1], label="cycle-gated")
+    try:
+        conm = pd.read_csv(os.path.join(OUT, "fig4i_cycle_matched_concordance.csv"))
+    except Exception:
+        conm = None
+    arms_b = [(con0, "cycle-blind", C[0]), (con1, "cycle-gated", C[1])]
+    if conm is not None:
+        arms_b.append((conm, "gated, matched hazard", C[2]))
+    x = _np.arange(len(keys)); w = 0.8 / len(arms_b)
+    for i, (df, lab, col) in enumerate(arms_b):
+        ax.bar(x + (i - (len(arms_b) - 1) / 2) * w, [excess(df, m, r) for m, r in keys],
+               width=w, color=col, label=lab)
     ax.axhline(0, color=INK, lw=0.6)
     ax.set_xticks(x); ax.set_xticklabels([f"{m}\n{r}" for m, r in keys], fontsize=6)
     ax.set_ylabel("excess concordance")
-    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
+    ax.legend(fontsize=5.5, loc="upper center", bbox_to_anchor=(0.5, -0.30), ncol=2)
     ax.set_title("b   do related cells still share fates?", loc="left", fontweight="semibold", color="#2a2a28")
 
     ax = fig.add_subplot(gs[1, :])
     mechs = [m for m in dict.fromkeys(mel0.mechanism)]
     scheds = [s for s in dict.fromkeys(mel0.schedule)]
     x = _np.arange(len(mechs)); w = 0.8 / (2 * len(scheds))
+    try:
+        melm = pd.read_csv(os.path.join(OUT, "fig8f_melanoma_cycle_matched.csv"))
+        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.55), (melm, "gated, matched hazard", 0.3))
+    except Exception:
+        arms = ((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))
+    w = 0.8 / (len(arms) * len(scheds))
     for j, s in enumerate(scheds):
-        for k, (df, lab, alpha) in enumerate(((mel0, "cycle-blind", 1.0), (mel1, "cycle-gated", 0.45))):
+        for k, (df, lab, alpha) in enumerate(arms):
             vals = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.mean() for m in mechs]
             sds = [df[(df.mechanism == m) & (df.schedule == s)].ttp_baseline_weeks.std() for m in mechs]
-            off = (j * 2 + k - (2 * len(scheds) - 1) / 2) * w
+            off = (j * len(arms) + k - (len(arms) * len(scheds) - 1) / 2) * w
             ax.bar(x + off, vals, yerr=sds, width=w, color=C[j], alpha=alpha, capsize=1.2,
                    label=(s if k == 0 else None))
     cens = mel0.ttp_baseline_weeks.max()
@@ -220,9 +241,89 @@ try:
     ax.set_xticks(x); ax.set_xticklabels(["no fitness cost", "fitness cost", "partial protection"], fontsize=6.5)
     ax.set_ylabel("weeks to loss of control")
     h, l = ax.get_legend_handles_labels()
-    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for a in (1.0, 0.45)]; l += ["cycle-blind", "cycle-gated"]
-    ax.legend(h, l, fontsize=6, ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
+    h += [plt.Rectangle((0, 0), 1, 1, fc=INK2, alpha=a) for _, _, a in arms]; l += [lab for _, lab, _ in arms]
+    ax.legend(h, l, fontsize=5.5, ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.16), columnspacing=1.0)
     ax.set_title("c   melanoma schedule ranking", loc="left", fontweight="semibold", color="#2a2a28")
     save(fig, "figS5_cycle_robustness")
 except Exception as e:
     print("S5 skipped:", e)
+
+# S6: the population and lineage layers against exact stationary laws
+try:
+    import numpy as _np
+    val = pd.read_csv(os.path.join(OUT, "fig9_validation.csv"))
+    pmf = pd.read_csv(os.path.join(OUT, "fig9_pmf.csv"))
+    cnt = pd.read_csv(os.path.join(OUT, "fig9_counts.csv"))
+    LABEL = {"constitutive": "const.", "bursty": "burst", "telegraph": "teleg.",
+             "replication": "replic."}
+    MODES = ("lineage", "population")
+    fig = plt.figure(figsize=(7.2, 5.0))
+    gs = fig.add_gridspec(2, 2, hspace=0.62, wspace=0.42)
+
+    # (a) simulated against exact distributions, both modes, for the constitutive model
+    ax = fig.add_subplot(gs[0, 0])
+    base = val[val.case == "constitutive"].dt.iloc[0]
+    for i, mode in enumerate(MODES):
+        g = cnt[(cnt.case == "constitutive") & (cnt["mode"] == mode) & (cnt.kernel == "DirectSSA") & (cnt.dt == base)]
+        h = g.groupby("n").cells.sum()
+        n = _np.arange(0, 60)
+        freq = _np.array([h.get(k, 0) for k in n], dtype=float); freq /= freq.sum()
+        ax.step(n, freq, where="mid", color=C[i], lw=1.1, label=f"{mode} (simulated)")
+        e = pmf[pmf["mode"] == mode].set_index("n").exact
+        ax.plot(n, [e.get(k, 0.0) for k in n], ls="--", lw=1.0, color=INK2,
+                label="exact" if i == 0 else None)
+    ax.set_xlabel("molecules per cell"); ax.set_ylabel("frequency")
+    ax.legend(fontsize=6, loc="upper right")
+    ax.set_title("a   one model, two modes", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (b) distance to the exact law of the matching mode and of the other mode
+    ax = fig.add_subplot(gs[0, 1])
+    main = val[(val.case != "constitutive_dt") & (val.kernel == "DirectSSA")]
+    keys = [(c, m) for c in ("constitutive", "bursty", "telegraph", "replication") for m in MODES
+            if len(main[(main.case == c) & (main["mode"] == m)])]
+    x = _np.arange(len(keys)); w = 0.38
+    own = [main[(main.case == c) & (main["mode"] == m)].ks.max() for c, m in keys]
+    oth = [main[(main.case == c) & (main["mode"] == m)].ks_other_mode.min() for c, m in keys]
+    crit = [main[(main.case == c) & (main["mode"] == m)].ks_crit99.min() for c, m in keys]
+    ax.bar(x - w / 2, own, width=w, color=C[0], label="to its own mode")
+    ax.bar(x + w / 2, oth, width=w, color=C[1], label="to the other mode")
+    for xi, ci in zip(x, crit):
+        ax.plot([xi - 0.45, xi + 0.45], [ci, ci], ls=":", lw=0.9, color=INK2)
+    ax.set_yscale("log"); ax.set_ylabel("Kolmogorov–Smirnov distance")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{LABEL[c]}\n{'lin.' if m == 'lineage' else 'pop.'}" for c, m in keys], fontsize=6)
+    ax.legend(fontsize=6, loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=2)
+    ax.set_title("b   agreement, and its power to discriminate", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (c) convergence in the update step
+    ax = fig.add_subplot(gs[1, 0])
+    dtv = val[val.case == "constitutive_dt"].sort_values("dt")
+    ax.plot(dtv["dt"], dtv.ks_scheme_vs_continuum, marker="o", ms=3.5, lw=1.2, color=C[0],
+            label="scheme against continuum (theory)")
+    ax.plot(dtv["dt"], dtv.ks_continuum, marker="s", ms=3.5, lw=1.2, color=C[1],
+            label="simulated against continuum")
+    ax.plot(dtv["dt"], dtv.ks_crit99, ls=":", lw=0.9, color=INK2, label="99% critical value")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xticks(list(dtv["dt"]))
+    ax.set_xticklabels([f"1/{round(1/v)}" for v in dtv["dt"]], fontsize=6.5)
+    ax.xaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+    ax.set_xlabel("update step, as a fraction of the interdivision time"); ax.set_ylabel("Kolmogorov–Smirnov distance")
+    ax.legend(fontsize=6)
+    ax.set_title("c   the step-size bias is first order", loc="left", fontweight="semibold", color="#2a2a28")
+
+    # (d) the emergent distribution of cell-cycle phase
+    ax = fig.add_subplot(gs[1, 1])
+    age = pd.read_csv(os.path.join(OUT, "fig9_agefit.csv"))
+    for i, mode in enumerate(MODES):
+        g = age[age["mode"] == mode].groupby("phase")[["observed", "expected"]].mean().reset_index()
+        k = max(1, len(g) // 60)
+        gg = g.iloc[::k]
+        ax.plot(gg.phase, gg.observed / gg.observed.sum(), lw=1.1, color=C[i], label=f"{mode} (measured)")
+        ax.plot(gg.phase, gg.expected / gg.expected.sum(), ls="--", lw=1.0, color=INK2,
+                label="predicted" if i == 0 else None)
+    ax.set_xlabel("cell-cycle phase"); ax.set_ylabel("fraction of cells")
+    ax.legend(fontsize=6)
+    ax.set_title("d   where the two modes differ", loc="left", fontweight="semibold", color="#2a2a28")
+    save(fig, "figS6_exact")
+except Exception as e:
+    print("S6 skipped:", e)

@@ -81,7 +81,7 @@ export AbstractKernel, DirectSSA, TauLeap, HybridSSATau, AdaptiveTauLeap, Worksp
 export simulate, ensemble_final, Trajectory
 # cells
 export Cell, ExponentialGrowth, Sizer, Adder, AgeTimer, BinomialPartition, BetaBinomialPartition
-export Replication, ConstantN, FreeGrowth, LogisticGrowth, PopulationSettings, PopulationResult
+export Replication, ConstantN, FreeGrowth, LogisticGrowth, MotherMachine, PopulationSettings, PopulationResult
 export simulate_population, snapshot, final_snapshot, popsize, concentrations
 # perturbation
 export DoseSchedule, ConstantDose, PulsedDose, PiecewiseDose, BolusPK, FunctionDose, AdaptiveDose, dose, daily_boluses, cycle_days, cumulative_dose

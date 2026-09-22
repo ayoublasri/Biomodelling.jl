@@ -89,3 +89,26 @@ ax.set_yticks(range(piv.shape[0])); ax.set_yticklabels([f"{int(r*100)}%" for r i
 ax.set_xlabel("memory (generations)"); ax.set_ylabel("cells resistant"); ax.grid(False)
 cb=fig.colorbar(im,ax=ax,fraction=0.046,pad=0.03); cb.set_label("error",fontsize=22); cb.ax.tick_params(labelsize=19)
 save(fig,"chart_ident.png")
+
+# Exact stationary laws of a growing, dividing population (Beentjes et al. 2020; Jia & Grima 2023).
+# A single lineage and a snapshot of the same population obey different laws, because a snapshot
+# over-weights cells that have just divided and so just lost half their molecules. Both are drawn
+# here against the simulated counts, which is the point: the layer has to get the mode right, not
+# just the shape.
+d=pd.read_csv(os.path.join(OUT,"fig9_counts.csv")); ex=pd.read_csv(os.path.join(OUT,"fig9_pmf.csv"))
+d=d[(d.case=="constitutive")&(d.kernel=="DirectSSA")]
+fig,ax=plt.subplots(figsize=FS)
+from matplotlib.lines import Line2D
+for i,(mode,lab,tx,ty) in enumerate((("lineage","single lineage",18.2,0.0505),
+                                     ("population","population snapshot",0.2,0.0905))):
+    e=ex[ex["mode"]==mode].sort_values("n")
+    ax.plot(e.n,e.exact,lw=4.0,color=C[i],zorder=2)
+    g=d[d["mode"]==mode].groupby("n").cells.sum(); g=g/g.sum()
+    ax.plot(g.index,g.values,ls="none",marker="o",ms=7.5,mfc="white",mew=2.2,mec=C[i],zorder=3)
+    ax.text(tx,ty,lab,color=C[i],fontsize=25,fontweight=600)
+ax.set_xlim(-0.5,34); ax.set_ylim(0,0.102)
+ax.set_xlabel("molecules per cell"); ax.set_ylabel("probability")
+ax.legend(handles=[Line2D([],[],lw=4.0,color=INK2,label="exact solution"),
+                   Line2D([],[],ls="none",marker="o",ms=7.5,mfc="white",mew=2.2,mec=INK2,label="simulated")],
+          ncol=2,loc="upper center",bbox_to_anchor=(0.5,-0.26),columnspacing=1.8,handlelength=1.7)
+save(fig,"chart_exact.png")

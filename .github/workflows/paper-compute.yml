@@ -1,0 +1,119 @@
+# Runs the paper's simulation scripts on a hosted runner and prints the resulting CSV files
+# to the job log, gzipped and base64-encoded between markers, so that the numbers can be
+# checked out of the log. Each job is opt-in: push a commit whose message contains the
+# matching marker, or dispatch the workflow manually.
+name: Paper compute
+
+on:
+  push:
+    branches: ['claude/**', master, main]
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Which job to run (tests, validation, fig4, fig8, all)'
+        required: true
+        default: 'all'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paper-compute-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  JULIA_NUM_THREADS: auto
+
+jobs:
+  tests:
+    name: package tests
+    if: >-
+      (github.event_name == 'workflow_dispatch' && contains(fromJSON('["tests","all"]'), github.event.inputs.job)) ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[compute'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+
+  compute:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: validation
+            marker: '[compute:validation]'
+            script: paper/scripts/fig9_validation.jl
+            args: ''
+            outputs: fig9_counts.csv fig9_ages.csv fig9_settings.csv
+          - name: fig4
+            marker: '[compute:fig4]'
+            script: paper/scripts/fig4_persisters.jl
+            args: 'cycle seeds'
+            outputs: fig4i_cycle_decay.csv fig4i_cycle_matched.csv fig4i_cycle_concordance.csv fig4i_cycle_matched_concordance.csv fig4i_cycle_matching.csv fig4i_cycle_schedules.csv fig4f_schedules_seeds.csv
+          - name: fig8
+            marker: '[compute:fig8]'
+            script: paper/scripts/fig8_schedules.jl
+            args: 'melanoma_cycle melanoma_memory'
+            outputs: fig8f_melanoma_cycle.csv fig8f_melanoma_cycle_matched.csv fig8g_memory_sensitivity.csv
+    steps:
+      - uses: actions/checkout@v4
+      - name: Should this job run?
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            want='${{ github.event.inputs.job }}'
+            if [ "$want" = "all" ] || [ "$want" = "${{ matrix.name }}" ]; then echo "run=yes" >> "$GITHUB_OUTPUT"; else echo "run=no" >> "$GITHUB_OUTPUT"; fi
+          else
+            msg=$(git log -1 --pretty=%B)
+            case "$msg" in
+              *"${{ matrix.marker }}"*|*"[compute:all]"*) echo "run=yes" >> "$GITHUB_OUTPUT" ;;
+              *) echo "run=no" >> "$GITHUB_OUTPUT" ;;
+            esac
+          fi
+      - uses: julia-actions/setup-julia@v2
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v2
+        if: steps.gate.outputs.run == 'yes'
+      - uses: julia-actions/julia-buildpkg@v1
+        if: steps.gate.outputs.run == 'yes'
+      - name: Parse-check every script
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          julia -e '
+            for p in filter(f -> endswith(f, ".jl"), readdir("paper/scripts", join=true))
+                Meta.parseall(read(p, String); filename=p)
+                println("parse ok: ", p)
+            end'
+      - name: Run ${{ matrix.script }}
+        if: steps.gate.outputs.run == 'yes'
+        run: julia --project=. --threads=auto ${{ matrix.script }} ${{ matrix.args }}
+      - name: Print the results
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          for f in ${{ matrix.outputs }}; do
+            p="paper/output/$f"
+            if [ -f "$p" ]; then
+              echo "===BEGIN $f $(wc -l < "$p") lines==="
+              gzip -9 -c "$p" | base64 -w 120
+              echo "===END $f==="
+            else
+              echo "===MISSING $f==="
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          name: paper-output-${{ matrix.name }}
+          path: paper/output/*.csv
+          retention-days: 7
