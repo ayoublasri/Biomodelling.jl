@@ -1,7 +1,7 @@
 name = "Biomodelling"
 uuid = "9f4c04fe-aef9-11e9-18a8-b5ce91034548"
-authors = ["Ayoub Lasri"]
 version = "2.0.0"
+authors = ["Ayoub Lasri"]
 
 [deps]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
@@ -28,7 +28,7 @@ DelimitedFiles = "1"
 Distributions = "0.25"
 HDF5 = "0.16, 0.17"
 LinearAlgebra = "1"
-Optim = "1"
+Optim = "1, 2"
 PoissonRandom = "0.4"
 Printf = "1"
 QuadGK = "2"
