@@ -8,10 +8,10 @@
     "render": "remotion render Showcase out/biomodelling.mp4"
   },
   "dependencies": {
-    "@remotion/cli": "4.0.526",
+    "@remotion/cli": "4.0.527",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "remotion": "4.0.526"
+    "remotion": "4.0.527"
   },
   "devDependencies": {
     "@types/react": "19.0.0",
